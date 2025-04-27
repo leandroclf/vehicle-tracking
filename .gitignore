@@ -16,9 +16,19 @@ yarn-error.log
 logs
 *.log
 
+# Next.js
+.next/
+.next/cache/
+out/
+.swc/
+.turbo/
+
 # Diretório de build
 dist/
 build/
+
+# Coverage
+coverage/
 
 # Arquivos temporários
 .tmp/
@@ -33,3 +43,27 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local Netlify folder
+.netlify
+
+# Arquivos de teste
+/cypress/screenshots/
+/cypress/videos/
+
+# Vercel
+.vercel
+.now
+
+# Supabase
+.branches/
+.supabase/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
