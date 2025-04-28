@@ -15,9 +15,9 @@ RUN npm install --legacy-peer-deps
 # Copia o restante do código da aplicação
 COPY . .
 
-# Garante que todas as dependências listadas em requirements.txt estejam instaladas
-# Isso inclui Supabase, Google Maps API e outras bibliotecas essenciais
-RUN cat requirements.txt | grep -v "^#" | grep "@" | xargs -I {} npm install {} --legacy-peer-deps
+# Garante que todas as dependências estejam instaladas corretamente
+# As dependências já estão no package.json, então não precisamos instalar do requirements.txt
+# O requirements.txt serve apenas como documentação das dependências principais
 
 # Define todas as variáveis de ambiente necessárias para build
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="YOUR_GOOGLE_MAPS_API_KEY_HERE"
