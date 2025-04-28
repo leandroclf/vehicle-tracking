@@ -7,10 +7,11 @@
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
   
-  /* Cores personalizadas */
-  --primary: 59, 130, 246;    /* blue-500 */
-  --primary-dark: 37, 99, 235; /* blue-600 */
-  --secondary: 249, 115, 22;   /* orange-500 */
+  /* Cores personalizadas Yukz */
+  --primary: 0, 49, 92;       /* Azul escuro Yukz - #00315c */
+  --primary-dark: 0, 35, 66;  /* Versão mais escura - #002342 */
+  --secondary: 250, 166, 49;  /* Laranja Yukz - #faa631 */
+  --accent: 0, 125, 184;      /* Azul médio Yukz - #007db8 */
   --background: 249, 250, 251; /* gray-50 */
   
   /* Variáveis usadas pelo shadcn/ui */
@@ -20,19 +21,19 @@
   --card-foreground: 222.2 84% 4.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
+  --primary: 210 100% 18%;     /* Azul escuro Yukz */
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 35 100% 59%;     /* Laranja Yukz */
+  --secondary-foreground: 210 40% 98%;
   --muted: 210 40% 96.1%;
   --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
+  --accent: 200 100% 36%;       /* Azul médio Yukz */
+  --accent-foreground: 210 40% 98%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
+  --ring: 200 100% 36%;         /* Azul médio Yukz */
   --radius: 0.5rem;
 }
 
@@ -50,30 +51,42 @@ body {
 
 @layer components {
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors;
+    @apply bg-[#00315c] hover:bg-[#002342] text-white font-medium py-2 px-4 rounded-md transition-colors shadow-sm;
   }
   
   .btn-secondary {
-    @apply bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-md transition-colors;
+    @apply bg-[#faa631] hover:bg-[#d69028] text-white font-medium py-2 px-4 rounded-md transition-colors shadow-sm;
   }
   
   .btn-outline {
-    @apply border border-gray-300 hover:bg-gray-100 text-gray-700 font-medium py-2 px-4 rounded-md transition-colors;
+    @apply border border-[#00315c] hover:bg-[#f1f5f9] text-[#00315c] font-medium py-2 px-4 rounded-md transition-colors;
   }
   
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#007db8] focus:border-transparent;
   }
   
   .card {
-    @apply bg-white rounded-lg shadow-md p-4;
+    @apply bg-white rounded-lg shadow-md p-4 border-t-4 border-t-[#00315c];
+  }
+  
+  .card-accent {
+    @apply bg-white rounded-lg shadow-md p-4 border-t-4 border-t-[#faa631];
   }
   
   .nav-link {
-    @apply text-gray-700 hover:text-blue-600 transition-colors;
+    @apply text-gray-700 hover:text-[#007db8] transition-colors;
   }
   
   .nav-link-active {
-    @apply text-blue-600 font-medium;
+    @apply text-[#00315c] font-medium;
+  }
+  
+  .yukz-gradient {
+    @apply bg-gradient-to-b from-[#00315c] to-[#007db8];
+  }
+  
+  .yukz-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 }
