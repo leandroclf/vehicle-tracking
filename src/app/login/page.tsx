@@ -31,16 +31,26 @@ export default function LoginPage() {
 
     try {
       console.log('Tentando login com:', { email });
+      
+      // Adicionar delay para garantir que logs anteriores sejam exibidos
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Tentar fazer login
       const result = await login(email, password);
       console.log('Resultado do login:', result);
+      
       if (result.success) {
+        console.log('Login bem-sucedido, redirecionando para dashboard');
+        // Adicionar pequeno delay para garantir que o token seja armazenado
+        await new Promise(resolve => setTimeout(resolve, 300));
         router.push('/dashboard');
       } else {
+        console.error('Falha no login:', result.error);
         setError(result.error || 'Erro ao fazer login');
       }
     } catch (err) {
+      console.error('Exceção durante login:', err);
       setError('Ocorreu um erro ao tentar fazer login');
-      console.error('Erro durante login:', err);
     } finally {
       setIsLoading(false);
     }

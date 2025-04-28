@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabaseClient';
 
 interface RegisterRequest {
   name: string;
@@ -17,20 +18,69 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nome, email e senha são obrigatórios' }, { status: 400 });
     }
 
-    // TODO: Implementar cadastro real com banco de dados
-    // Por agora, apenas simulamos um registro bem-sucedido
+    // Verificar se o email já existe
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('email')
+      .eq('email', email)
+      .single();
 
-    // Simulação de validação de email já existente
-    if (email === 'demo@yukz.com' || email === 'teste@yukz.com') {
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = não encontrado, que é o que queremos
+      console.error('Erro ao verificar email existente:', checkError);
+      return NextResponse.json({ error: 'Erro ao verificar disponibilidade do email' }, { status: 500 });
+    }
+
+    if (existingUser) {
       return NextResponse.json({ error: 'Este email já está em uso' }, { status: 409 });
     }
 
-    // Simular atraso da rede para dar feedback visual
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Registrar o usuário no Auth do Supabase
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name
+        }
+      }
+    });
+
+    if (authError) {
+      console.error('Erro ao criar conta:', authError);
+      return NextResponse.json({ error: authError.message }, { status: 400 });
+    }
+
+    if (!authData.user) {
+      return NextResponse.json({ error: 'Erro ao criar usuário' }, { status: 500 });
+    }
+
+    // Inserir dados do usuário em nossa tabela personalizada
+    const { error: insertError } = await supabase
+      .from('users')
+      .insert([
+        {
+          id: authData.user.id,
+          email,
+          name,
+          phone: phone || null,
+          role: 'user', // Papel padrão para novos usuários
+          created_at: new Date().toISOString()
+        }
+      ]);
+
+    if (insertError) {
+      console.error('Erro ao salvar dados do usuário:', insertError);
+      
+      // Tentar remover o usuário auth se não conseguirmos criar o perfil
+      // para manter consistência
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      
+      return NextResponse.json({ error: 'Erro ao criar perfil do usuário' }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Usuário registrado com sucesso'
+      message: 'Usuário registrado com sucesso. Por favor, verifique seu email para confirmar sua conta.'
     }, { status: 201 });
 
   } catch (error) {
