@@ -38,15 +38,15 @@ O projeto está organizado em duas partes principais:
     *   Crie um arquivo `.env` na raiz de `yukz-app` com base no exemplo abaixo, preenchendo com suas credenciais:
         ```env
         # Credenciais do Supabase (para o cliente)
-        NEXT_SUPABASE_URL=https://<seu-projeto-id>.supabase.co
-        NEXT_SUPABASE_ANON_KEY=<sua-chave-anon>
+        SUPABASE_URL=https://<seu-projeto-id>.supabase.co
+        SUPABASE_ANON_KEY=<sua-chave-anon>
 
         # Chave da API do Google Maps
-        NEXT_GOOGLE_MAPS_API_KEY=<sua-chave-google-maps>
+        GOOGLE_MAPS_API_KEY=<sua-chave-google-maps>
 
         # Outras configurações (opcional)
-        NEXT_APP_NAME=Yukz Tracking
-        NEXT_APP_VERSION=1.0.0
+        APP_NAME=Yukz Tracking
+        APP_VERSION=1.0.0
         ```
 
 3.  **Configurar o Servidor de Rastreadores (`tracker-server`):**
@@ -55,8 +55,8 @@ O projeto está organizado em duas partes principais:
     *   Crie um arquivo `.env` na raiz de `tracker-server` com base no exemplo abaixo, preenchendo com suas credenciais:
         ```env
         # Credenciais do Supabase (para o servidor)
-        NEXT_SUPABASE_URL=https://<seu-projeto-id>.supabase.co
-        NEXT_SUPABASE_ANON_KEY=<sua-chave-anon> # Pode ser a mesma do cliente
+        SUPABASE_URL=https://<seu-projeto-id>.supabase.co
+        SUPABASE_ANON_KEY=<sua-chave-anon> # Pode ser a mesma do cliente
         SUPABASE_SERVICE_ROLE_KEY=<sua-chave-service-role> # ESSENCIAL para operações de backend
 
         # Configurações do servidor de rastreadores

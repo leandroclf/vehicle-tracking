@@ -17,16 +17,16 @@ try {
 }
 
 # Solicitar variáveis de ambiente se não estiverem definidas
-if (-not $env:NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
-    $env:NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = Read-Host "Digite sua chave de API do Google Maps"
+if (-not $env:GOOGLE_MAPS_API_KEY) {
+    $env:GOOGLE_MAPS_API_KEY = Read-Host "Digite sua chave de API do Google Maps"
 }
 
-if (-not $env:NEXT_PUBLIC_SUPABASE_URL) {
-    $env:NEXT_PUBLIC_SUPABASE_URL = Read-Host "Digite a URL do Supabase"
+if (-not $env:SUPABASE_URL) {
+    $env:SUPABASE_URL = Read-Host "Digite a URL do Supabase"
 }
 
-if (-not $env:NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    $env:NEXT_PUBLIC_SUPABASE_ANON_KEY = Read-Host "Digite a chave anônima do Supabase"
+if (-not $env:SUPABASE_ANON_KEY) {
+    $env:SUPABASE_ANON_KEY = Read-Host "Digite a chave anônima do Supabase"
 }
 
 if (-not $env:JWT_SECRET) {
@@ -50,9 +50,9 @@ if ($LASTEXITCODE -ne 0) {
 # Executar o contêiner
 Write-Host "${Yellow}Executando o contêiner...${NC}"
 docker run -p 3000:3000 `
-  -e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="$env:NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" `
-  -e NEXT_PUBLIC_SUPABASE_URL="$env:NEXT_PUBLIC_SUPABASE_URL" `
-  -e NEXT_PUBLIC_SUPABASE_ANON_KEY="$env:NEXT_PUBLIC_SUPABASE_ANON_KEY" `
+  -e GOOGLE_MAPS_API_KEY="$env:GOOGLE_MAPS_API_KEY" `
+  -e SUPABASE_URL="$env:SUPABASE_URL" `
+  -e SUPABASE_ANON_KEY="$env:SUPABASE_ANON_KEY" `
   -e JWT_SECRET="$env:JWT_SECRET" `
   -e SUPABASE_SERVICE_ROLE_KEY="$env:SUPABASE_SERVICE_ROLE_KEY" `
   yukz-vehicle-tracking

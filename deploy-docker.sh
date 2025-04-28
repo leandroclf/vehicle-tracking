@@ -17,16 +17,16 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # Solicitar variáveis de ambiente se não estiverem definidas
-if [ -z "$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" ]; then
-    read -p "Digite sua chave de API do Google Maps: " NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+if [ -z "$GOOGLE_MAPS_API_KEY" ]; then
+    read -p "Digite sua chave de API do Google Maps: " GOOGLE_MAPS_API_KEY
 fi
 
-if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
-    read -p "Digite a URL do Supabase: " NEXT_PUBLIC_SUPABASE_URL
+if [ -z "$SUPABASE_URL" ]; then
+    read -p "Digite a URL do Supabase: " SUPABASE_URL
 fi
 
-if [ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ]; then
-    read -p "Digite a chave anônima do Supabase: " NEXT_PUBLIC_SUPABASE_ANON_KEY
+if [ -z "$SUPABASE_ANON_KEY" ]; then
+    read -p "Digite a chave anônima do Supabase: " SUPABASE_ANON_KEY
 fi
 
 if [ -z "$JWT_SECRET" ]; then
@@ -50,9 +50,9 @@ fi
 # Executar o contêiner
 echo -e "${YELLOW}Executando o contêiner...${NC}"
 docker run -p 3000:3000 \
-  -e NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" \
-  -e NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
-  -e NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+  -e GOOGLE_MAPS_API_KEY="$GOOGLE_MAPS_API_KEY" \
+  -e SUPABASE_URL="$SUPABASE_URL" \
+  -e SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
   -e JWT_SECRET="$JWT_SECRET" \
   -e SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
   yukz-vehicle-tracking
