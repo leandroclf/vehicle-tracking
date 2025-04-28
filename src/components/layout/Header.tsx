@@ -13,7 +13,7 @@ export default function Header() {
     <header className="bg-[#00315c] text-white shadow-md sticky top-0 z-50">
       <div className="yukz-container py-3 flex justify-between items-center">
         {/* Logo */}
-        <Link href="/dashboard" className="text-xl font-bold flex items-center">
+        <Link href="/dashboard/dashboard" className="text-xl font-bold flex items-center">
           <span className="mr-2 text-[#faa631]">Yukz</span>
           <span className="text-sm font-normal hidden sm:inline">Rastreamento</span>
         </Link>
@@ -22,19 +22,19 @@ export default function Header() {
         <nav className="hidden md:flex items-center space-x-6">
           {isAuthenticated && (
             <>
-              <Link href="/dashboard" className="hover:text-[#faa631] flex items-center">
+              <Link href="/dashboard/dashboard" className="hover:text-[#faa631] flex items-center">
                 <BarChart className="w-4 h-4 mr-1" />
                 Dashboard
               </Link>
-              <Link href="/map" className="hover:text-[#faa631] flex items-center">
+              <Link href="/dashboard/map" className="hover:text-[#faa631] flex items-center">
                 <MapPin className="w-4 h-4 mr-1" />
                 Mapa
               </Link>
-              <Link href="/alerts" className="hover:text-[#faa631] flex items-center">
+              <Link href="/dashboard/alerts" className="hover:text-[#faa631] flex items-center">
                 <Bell className="w-4 h-4 mr-1" />
                 Alertas
               </Link>
-              <Link href="/settings" className="hover:text-[#faa631] flex items-center">
+              <Link href="/dashboard/settings" className="hover:text-[#faa631] flex items-center">
                 <Settings className="w-4 h-4 mr-1" />
                 Configurações
               </Link>
@@ -81,7 +81,7 @@ export default function Header() {
             {isAuthenticated ? (
               <>
                 <Link 
-                  href="/dashboard" 
+                  href="/dashboard/dashboard" 
                   className="flex items-center px-4 py-2 hover:bg-[#007db8]/20 rounded-md"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -89,7 +89,7 @@ export default function Header() {
                   Dashboard
                 </Link>
                 <Link 
-                  href="/map" 
+                  href="/dashboard/map" 
                   className="flex items-center px-4 py-2 hover:bg-[#007db8]/20 rounded-md"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -97,7 +97,7 @@ export default function Header() {
                   Mapa
                 </Link>
                 <Link 
-                  href="/alerts" 
+                  href="/dashboard/alerts" 
                   className="flex items-center px-4 py-2 hover:bg-[#007db8]/20 rounded-md"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -105,7 +105,7 @@ export default function Header() {
                   Alertas
                 </Link>
                 <Link 
-                  href="/settings" 
+                  href="/dashboard/settings" 
                   className="flex items-center px-4 py-2 hover:bg-[#007db8]/20 rounded-md"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >

@@ -43,14 +43,14 @@ export default function Sidebar() {
   }, [pathname]);
 
   const navItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: <Home className="w-5 h-5" /> },
-    { name: 'Mapa', href: '/map', icon: <Map className="w-5 h-5" /> },
-    { name: 'Veículos', href: '/vehicles', icon: <Truck className="w-5 h-5" /> },
-    { name: 'Geocercas', href: '/geofences', icon: <MapPin className="w-5 h-5" /> },
-    { name: 'Alertas', href: '/alerts', icon: <Bell className="w-5 h-5" /> },
-    { name: 'Relatórios', href: '/reports', icon: <FileText className="w-5 h-5" /> },
-    { name: 'Configurações', href: '/settings', icon: <Settings className="w-5 h-5" /> },
-    { name: 'Perfil', href: '/profile', icon: <User className="w-5 h-5" /> },
+    { name: 'Dashboard', href: '/dashboard/dashboard', icon: <Home className="w-5 h-5" /> },
+    { name: 'Mapa', href: '/dashboard/map', icon: <Map className="w-5 h-5" /> },
+    { name: 'Veículos', href: '/dashboard/vehicles', icon: <Truck className="w-5 h-5" /> },
+    { name: 'Geocercas', href: '/dashboard/geofences', icon: <MapPin className="w-5 h-5" /> },
+    { name: 'Alertas', href: '/dashboard/alerts', icon: <Bell className="w-5 h-5" /> },
+    { name: 'Relatórios', href: '/dashboard/reports', icon: <FileText className="w-5 h-5" /> },
+    { name: 'Configurações', href: '/dashboard/settings', icon: <Settings className="w-5 h-5" /> },
+    { name: 'Perfil', href: '/dashboard/profile', icon: <User className="w-5 h-5" /> },
   ];
 
   const isActive = (path: string) => {

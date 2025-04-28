@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateToken } from '@/lib/jwt';
+import { supabase } from '@/lib/supabaseClient';
 
 interface LoginRequest {
   email: string;
@@ -16,47 +17,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email e senha são obrigatórios' }, { status: 400 });
     }
 
-    // TODO: Implementar validação real com banco de dados
-    // Por agora, apenas aceitamos os usuários de teste
-    const mockUsers = [
-      {
-        id: '1',
-        email: 'demo@yukz.com',
-        name: 'Usuário Demo',
-        password: 'demo123',
-        phone: '11999999999'
-      },
-      {
-        id: '2',
-        email: 'teste@yukz.com',
-        name: 'Usuário Teste',
-        password: 'senha123',
-        phone: '11988888888'
-      }
-    ];
+    // Autenticação com Supabase
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
 
-    const user = mockUsers.find(u => u.email === email);
-
-    if (!user || user.password !== password) {
+    if (error || !data.user) {
+      console.error('Erro de autenticação:', error);
       return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
     }
 
-    // Gerar token JWT
+    // Buscar dados adicionais do usuário
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, name, email, phone, role')
+      .eq('email', email)
+      .single();
+
+    if (userError) {
+      console.error('Erro ao buscar dados do usuário:', userError);
+      return NextResponse.json({ error: 'Erro ao buscar dados do usuário' }, { status: 500 });
+    }
+
+    // Gerar token JWT com dados do usuário
     const token = generateToken({
-      id: user.id,
-      email: user.email,
-      name: user.name
+      id: userData.id,
+      email: userData.email,
+      name: userData.name
     });
 
-    // Remover senha antes de retornar
-    const { password: _, ...userWithoutPassword } = user;
-    
     // Log para depuração
     console.log('Login bem-sucedido para:', email);
-    console.log('Dados do usuário retornados:', { user: userWithoutPassword, tokenLength: token.length });
-
+    console.log('Token gerado com sucesso, comprimento:', token.length);
+    
     return NextResponse.json({
-      user: userWithoutPassword,
+      user: {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        phone: userData.phone,
+        role: userData.role
+      },
       token
     }, { status: 200 });
 
