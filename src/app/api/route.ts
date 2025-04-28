@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { D1Database } from '@cloudflare/workers-types';
 import { z } from 'zod';
 import { verifyAuth } from '@/lib/auth-middleware';
+import { createClient } from '@supabase/supabase-js';
 
 // Esquema para marcar alertas como lidos
 const markReadSchema = z.object({
   alertIds: z.array(z.number().int().positive()).min(1, "Pelo menos um ID de alerta é necessário"),
 });
+
+// Criar cliente Supabase
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Credenciais do Supabase não encontradas');
+  }
+  
+  return createClient(supabaseUrl, supabaseKey);
+};
 
 // Handler para listar alertas (GET)
 export async function GET(request: NextRequest) {
@@ -18,33 +30,29 @@ export async function GET(request: NextRequest) {
     }
     const userId = authResult.user.id;
 
-    const db = (request as any).env?.DB as D1Database;
-    if (!db) {
-      return NextResponse.json({ error: 'Erro de configuração do banco de dados' }, { status: 500 });
-    }
-
+    const supabase = getSupabaseClient();
+    
     // Buscar alertas do usuário, ordenados por data decrescente
     // Incluir nome do veículo se disponível
-    const { results } = await db
-      .prepare(`
-        SELECT 
-          a.*, 
-          v.name as vehicleName
-        FROM alerts a
-        LEFT JOIN vehicles v ON a.vehicle_id = v.id
-        WHERE a.user_id = ?
-        ORDER BY a.timestamp DESC
+    const { data: alerts, error } = await supabase
+      .from('alerts')
+      .select(`
+        *,
+        vehicles (name)
       `)
-      .bind(userId)
-      .all();
+      .eq('user_id', userId)
+      .order('timestamp', { ascending: false });
+      
+    if (error) throw error;
 
-    // Converter 'read' de inteiro para booleano
-    const alerts = results?.map(alert => ({
+    // Formatar os dados para manter compatibilidade
+    const formattedAlerts = alerts?.map(alert => ({
       ...alert,
+      vehicleName: alert.vehicles?.name,
       read: Boolean(alert.read)
     })) || [];
 
-    return NextResponse.json(alerts, { status: 200 });
+    return NextResponse.json(formattedAlerts, { status: 200 });
 
   } catch (error) {
     console.error('Erro ao listar alertas:', error);
@@ -62,11 +70,6 @@ export async function PATCH(request: NextRequest) {
     }
     const userId = authResult.user.id;
 
-    const db = (request as any).env?.DB as D1Database;
-    if (!db) {
-      return NextResponse.json({ error: 'Erro de configuração do banco de dados' }, { status: 500 });
-    }
-
     // Obter e validar os IDs dos alertas a serem marcados como lidos
     const body = await request.json();
     const result = markReadSchema.safeParse(body);
@@ -75,16 +78,18 @@ export async function PATCH(request: NextRequest) {
     }
     const { alertIds } = result.data;
 
-    // Criar placeholders para a query IN
-    const placeholders = alertIds.map(() => '?').join(',');
-
+    const supabase = getSupabaseClient();
+    
     // Atualizar o status 'read' dos alertas especificados para o usuário
-    const info = await db
-      .prepare(`UPDATE alerts SET read = 1 WHERE id IN (${placeholders}) AND user_id = ?`)
-      .bind(...alertIds, userId)
-      .run();
+    const { error } = await supabase
+      .from('alerts')
+      .update({ read: true })
+      .in('id', alertIds)
+      .eq('user_id', userId);
+      
+    if (error) throw error;
 
-    return NextResponse.json({ message: `${info.changes || 0} alerta(s) marcado(s) como lido(s)` }, { status: 200 });
+    return NextResponse.json({ message: `Alerta(s) marcado(s) como lido(s) com sucesso` }, { status: 200 });
 
   } catch (error) {
     console.error('Erro ao marcar alertas como lidos:', error);
@@ -101,19 +106,19 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
       }
       const userId = authResult.user.id;
-  
-      const db = (request as any).env?.DB as D1Database;
-      if (!db) {
-        return NextResponse.json({ error: 'Erro de configuração do banco de dados' }, { status: 500 });
-      }
-  
+      
+      const supabase = getSupabaseClient();
+      
       // Atualizar o status 'read' de TODOS os alertas do usuário
-      const info = await db
-        .prepare(`UPDATE alerts SET read = 1 WHERE user_id = ? AND read = 0`)
-        .bind(userId)
-        .run();
+      const { error } = await supabase
+        .from('alerts')
+        .update({ read: true })
+        .eq('user_id', userId)
+        .eq('read', false);
+        
+      if (error) throw error;
   
-      return NextResponse.json({ message: `Todos os ${info.changes || 0} alerta(s) não lido(s) foram marcados como lidos` }, { status: 200 });
+      return NextResponse.json({ message: `Todos os alertas foram marcados como lidos` }, { status: 200 });
   
     } catch (error) {
       console.error('Erro ao marcar todos os alertas como lidos:', error);
