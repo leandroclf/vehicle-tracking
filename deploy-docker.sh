@@ -33,8 +33,8 @@ if [ -z "$JWT_SECRET" ]; then
     read -p "Digite a chave secreta JWT: " JWT_SECRET
 fi
 
-if [ -z "$SUPABASE_SERVICE_KEY" ]; then
-    read -p "Digite a chave de serviço do Supabase: " SUPABASE_SERVICE_KEY
+if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+    read -p "Digite a chave de serviço do Supabase: " SUPABASE_SERVICE_ROLE_KEY
 fi
 
 # Construir a imagem Docker
@@ -54,7 +54,7 @@ docker run -p 3000:3000 \
   -e NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   -e NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
   -e JWT_SECRET="$JWT_SECRET" \
-  -e SUPABASE_SERVICE_KEY="$SUPABASE_SERVICE_KEY" \
+  -e SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
   yukz-vehicle-tracking
 
 echo -e "${GREEN}Aplicação iniciada em http://localhost:3000${NC}"
