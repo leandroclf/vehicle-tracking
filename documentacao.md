@@ -9,8 +9,8 @@ O Yukz é um aplicativo de rastreamento veicular que permite aos usuários monit
 Esta versão inclui todas as funcionalidades do protótipo inicial, agora suportadas por um backend real:
 
 - **Autenticação Segura**: Sistema de login e registro com persistência em banco de dados e autenticação via JWT (JSON Web Tokens).
-- **Backend Funcional**: API RESTful desenvolvida com Cloudflare Workers para gerenciar usuários, veículos, geocercas, configurações e alertas.
-- **Banco de Dados Persistente**: Utilização do Cloudflare D1 para armazenamento seguro e escalável dos dados.
+- **Backend Funcional**: API RESTful desenvolvida para gerenciar usuários, veículos, geocercas, configurações e alertas.
+- **Banco de Dados Persistente**: Utilização do para armazenamento seguro e escalável dos dados.
 - **Gerenciamento Completo de Veículos**: CRUD (Criar, Ler, Atualizar, Deletar) de veículos associados ao usuário.
 - **Gerenciamento de Geocercas**: CRUD completo para geocercas circulares e poligonais, com alertas de entrada/saída configuráveis.
 - **Gerenciamento de Alertas**: Listagem de alertas gerados (velocidade, ignição, geocerca, etc.) e marcação como lidos.
@@ -18,7 +18,7 @@ Esta versão inclui todas as funcionalidades do protótipo inicial, agora suport
 - **Interface Responsiva**: Adaptações na interface para melhor visualização e uso em dispositivos móveis.
 - **Integração Frontend-Backend**: O frontend agora consome a API real para todas as operações, utilizando o token JWT para autenticação.
 - **Estrutura de Testes**: Configuração do ambiente de testes com Jest e React Testing Library (testes iniciais implementados).
-- **Configuração de Infraestrutura**: Preparação do ambiente para deploy no Cloudflare (`wrangler.toml`).
+- **Configuração de Infraestrutura**: Preparação do ambiente para deploy.
 
 ## 3. Tecnologias Utilizadas
 

@@ -15,19 +15,7 @@ RUN npm install --legacy-peer-deps
 # Copia o restante do código da aplicação
 COPY . .
 
-# Garante que todas as dependências estejam instaladas corretamente
-# As dependências já estão no package.json, então não precisamos instalar do requirements.txt
-# O requirements.txt serve apenas como documentação das dependências principais
 
-# Define todas as variáveis de ambiente necessárias para build
-ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="YOUR_GOOGLE_MAPS_API_KEY_HERE"
-ENV NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL_HERE"
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY_HERE"
-ENV JWT_SECRET="YOUR_JWT_SECRET_KEY_HERE"
-ENV SUPABASE_SERVICE_ROLE_KEY="YOUR_SUPABASE_SERVICE_ROLE_KEY_HERE"
-
-# Compila a aplicação Next.js para produção
-# Nota: Não usamos mais 'build:worker' pois estamos migrando do Cloudflare
 RUN npm run build
 
 # Remove dependências de desenvolvimento
@@ -41,13 +29,6 @@ WORKDIR /app
 
 # Define o ambiente para produção
 ENV NODE_ENV=production
-
-# Define todas as variáveis de ambiente necessárias para execução
-ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="YOUR_GOOGLE_MAPS_API_KEY_HERE"
-ENV NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL_HERE"
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY_HERE"
-ENV JWT_SECRET="YOUR_JWT_SECRET_KEY_HERE"
-ENV SUPABASE_SERVICE_ROLE_KEY="YOUR_SUPABASE_SERVICE_ROLE_KEY_HERE"
 
 # Copia os artefatos de build do estágio anterior
 COPY --from=builder /app/public ./public

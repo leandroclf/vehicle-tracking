@@ -7,7 +7,7 @@ const libraries: LoadScriptProps['libraries'] = ['places', 'geometry', 'drawing'
 // Provedor de contexto para o Google Maps
 export const GoogleMapsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Obter a chave da API do Google Maps das variáveis de ambiente
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
 
   if (!apiKey) {
     console.error('Chave da API do Google Maps não encontrada nas variáveis de ambiente');
