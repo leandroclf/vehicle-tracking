@@ -15,6 +15,9 @@ RUN npm install --legacy-peer-deps
 # Copia o restante do código da aplicação
 COPY . .
 
+# Garante que a dependência do Supabase esteja instalada
+RUN npm install @supabase/supabase-js
+
 # Compila a aplicação Next.js para produção
 # Nota: Não usamos mais 'build:worker' pois estamos migrando do Cloudflare
 RUN npm run build
