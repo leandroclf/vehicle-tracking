@@ -107,5 +107,3 @@ docker build -t yukz-app .
 *   Configurar `docker-compose` para orquestrar os serviços.
 
 ---
-
-Desenvolvido por Manus.
