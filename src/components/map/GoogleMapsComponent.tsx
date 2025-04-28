@@ -49,7 +49,7 @@ export default function GoogleMapsComponent({
 }: GoogleMapsComponentProps) {
   // Carregar o script do Google Maps
   const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   });
 
   // Estado para os veículos
