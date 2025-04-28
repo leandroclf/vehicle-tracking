@@ -33,8 +33,8 @@ if (-not $env:JWT_SECRET) {
     $env:JWT_SECRET = Read-Host "Digite a chave secreta JWT"
 }
 
-if (-not $env:SUPABASE_SERVICE_KEY) {
-    $env:SUPABASE_SERVICE_KEY = Read-Host "Digite a chave de serviço do Supabase"
+if (-not $env:SUPABASE_SERVICE_ROLE_KEY) {
+    $env:SUPABASE_SERVICE_ROLE_KEY = Read-Host "Digite a chave de serviço do Supabase"
 }
 
 # Construir a imagem Docker
@@ -54,7 +54,7 @@ docker run -p 3000:3000 `
   -e NEXT_PUBLIC_SUPABASE_URL="$env:NEXT_PUBLIC_SUPABASE_URL" `
   -e NEXT_PUBLIC_SUPABASE_ANON_KEY="$env:NEXT_PUBLIC_SUPABASE_ANON_KEY" `
   -e JWT_SECRET="$env:JWT_SECRET" `
-  -e SUPABASE_SERVICE_KEY="$env:SUPABASE_SERVICE_KEY" `
+  -e SUPABASE_SERVICE_ROLE_KEY="$env:SUPABASE_SERVICE_ROLE_KEY" `
   yukz-vehicle-tracking
 
 Write-Host "${Green}Aplicação iniciada em http://localhost:3000${NC}"

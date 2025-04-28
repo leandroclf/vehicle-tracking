@@ -6,16 +6,16 @@ const { decodeTeltonikaCodec8, createTeltonikaResponse } = require("./teltonika-
 // Configurações
 const TCP_PORT = process.env.TRACKER_TCP_PORT || 5027; // Porta padrão para Teltonika
 const SUPABASE_URL = process.env.NEXT_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY; // Usar chave de serviço para operações no backend
+const SUPABASE_SERVICE_ROLE_KEY = process.env.NEXT_SUPABASE_SERVICE_ROLE_KEY; // Usar chave de serviço para operações no backend
 
 // Validar configurações essenciais
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("Erro: Variáveis de ambiente Supabase (URL e SERVICE_ROLE_KEY) não configuradas.");
   process.exit(1);
 }
 
 // Inicializar cliente Supabase
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // Armazenar IMEI por conexão
 const connections = new Map(); // socket -> { imei: string | null }
