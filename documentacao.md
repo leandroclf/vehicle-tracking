@@ -45,57 +45,57 @@ Para acessar o aplicativo (após deploy ou rodando localmente com o backend), ut
 yukz-app/
 ├── __tests__/                  # Testes automatizados
 │   ├── api/                    # Testes de API
-│   └── components/             # Testes de componentes React
-├── migrations/                 # Migrações do banco de dados D1
-│   └── 0001_initial_schema.sql
-├── src/
-│   ├── app/
-│   │   ├── api/                # Rotas da API (Backend - Cloudflare Workers)
-│   │   │   ├── auth/ (login, register)
-│   │   │   ├── vehicles/ ([id])
-│   │   │   ├── geofences/ ([id])
-│   │   │   ├── settings/
-│   │   │   └── alerts/
-│   │   ├── (dashboard)/        # Rotas protegidas (Frontend)
+│   │   └── components/             # Testes de componentes React
+│   ├── migrations/                 # Migrações do banco de dados D1
+│   │   └── 0001_initial_schema.sql
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── api/                # Rotas da API (Backend - Cloudflare Workers)
+│   │   │   │   ├── auth/ (login, register)
+│   │   │   │   ├── vehicles/ ([id])
+│   │   │   │   ├── geofences/ ([id])
+│   │   │   │   ├── settings/
+│   │   │   │   └── alerts/
+│   │   │   ├── dashboard/        # Rotas protegidas (Frontend)
+│   │   │   │   ├── dashboard/
+│   │   │   │   ├── map/
+│   │   │   │   ├── history/
+│   │   │   │   ├── vehicles/
+│   │   │   │   ├── geofences/      # Nova página de geocercas
+│   │   │   │   ├── alerts/         # Nova página de alertas
+│   │   │   │   ├── reports/
+│   │   │   │   ├── profile/
+│   │   │   │   └── settings/
+│   │   │   ├── login/
+│   │   │   ├── register/
+│   │   │   └── layout.tsx          # Layout principal
+│   │   ├── components/             # Componentes React reutilizáveis
+│   │   │   ├── auth/
 │   │   │   ├── dashboard/
 │   │   │   ├── map/
-│   │   │   ├── history/
-│   │   │   ├── vehicles/
-│   │   │   ├── geofences/      # Nova página de geocercas
-│   │   │   ├── alerts/         # Nova página de alertas
-│   │   │   ├── reports/
-│   │   │   ├── profile/
-│   │   │   └── settings/
-│   │   ├── login/
-│   │   ├── register/
-│   │   └── layout.tsx          # Layout principal
-│   ├── components/             # Componentes React reutilizáveis
-│   │   ├── auth/
-│   │   ├── dashboard/
-│   │   ├── map/
-│   │   ├── vehicle/
-│   │   ├── ui/
-│   │   └── layout/
-│   ├── lib/                    # Bibliotecas, utilitários e contextos
-│   │   ├── auth.tsx            # Contexto e hooks de autenticação (Frontend)
-│   │   ├── apiClient.ts        # Cliente HTTP para consumir a API
-│   │   ├── auth-middleware.ts  # Middleware de autenticação JWT (Backend)
-│   │   ├── jwt.ts              # Funções para gerar/verificar JWT (Backend)
-│   │   ├── vehicles.tsx        # Contexto/Hooks para veículos (Frontend)
-│   │   ├── alerts.tsx          # Contexto/Hooks para alertas (Frontend)
-│   │   ├── reports.tsx         # Contexto/Hooks para relatórios (Frontend)
-│   │   ├── settings.tsx        # Contexto/Hooks para configurações (Frontend)
-│   │   └── providers.tsx       # Agrupador de provedores de contexto
-│   └── styles/                 # Estilos globais
-├── public/                     # Arquivos estáticos
-├── .env.example                # Exemplo de variáveis de ambiente
-├── .gitignore
-├── jest.config.js              # Configuração do Jest
-├── jest.setup.js               # Setup dos testes Jest
-├── next.config.mjs             # Configuração do Next.js
-├── package.json
-├── tsconfig.json
-└── wrangler.toml               # Configuração do Cloudflare Workers e D1
+│   │   │   ├── vehicle/
+│   │   │   ├── ui/
+│   │   │   └── layout/
+│   │   ├── lib/                    # Bibliotecas, utilitários e contextos
+│   │   │   ├── auth.tsx            # Contexto e hooks de autenticação (Frontend)
+│   │   │   ├── apiClient.ts        # Cliente HTTP para consumir a API
+│   │   │   ├── auth-middleware.ts  # Middleware de autenticação JWT (Backend)
+│   │   │   ├── jwt.ts              # Funções para gerar/verificar JWT (Backend)
+│   │   │   ├── vehicles.tsx        # Contexto/Hooks para veículos (Frontend)
+│   │   │   ├── alerts.tsx          # Contexto/Hooks para alertas (Frontend)
+│   │   │   ├── reports.tsx         # Contexto/Hooks para relatórios (Frontend)
+│   │   │   ├── settings.tsx        # Contexto/Hooks para configurações (Frontend)
+│   │   │   └── providers.tsx       # Agrupador de provedores de contexto
+│   │   └── styles/                 # Estilos globais
+│   ├── public/                     # Arquivos estáticos
+│   ├── .env.example                # Exemplo de variáveis de ambiente
+│   ├── .gitignore
+│   ├── jest.config.js              # Configuração do Jest
+│   ├── jest.setup.js               # Setup dos testes Jest
+│   ├── next.config.mjs             # Configuração do Next.js
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── wrangler.toml               # Configuração do Cloudflare Workers e D1
 ```
 
 ## 6. Instruções de Instalação e Execução Local

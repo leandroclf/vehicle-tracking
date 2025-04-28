@@ -21,6 +21,8 @@ export function generateToken(user: { id: string; email: string; name: string })
     email: user.email,
     name: user.name,
   };
+  
+  console.log('Token payload gerado:', payload);
 
   const token = jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
