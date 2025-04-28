@@ -18,6 +18,12 @@ COPY . .
 # Garante que a dependência do Supabase esteja instalada
 RUN npm install @supabase/supabase-js --legacy-peer-deps
 
+# Instala o pacote para GoogleMaps
+RUN npm install @react-google-maps/api --legacy-peer-deps
+
+# Define a variável de ambiente para a chave do Google Maps (temporária para build)
+ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="YOUR_GOOGLE_MAPS_API_KEY_HERE"
+
 # Compila a aplicação Next.js para produção
 # Nota: Não usamos mais 'build:worker' pois estamos migrando do Cloudflare
 RUN npm run build
@@ -33,6 +39,7 @@ WORKDIR /app
 
 # Define o ambiente para produção
 ENV NODE_ENV=production
+ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="YOUR_GOOGLE_MAPS_API_KEY_HERE"
 
 # Copia os artefatos de build do estágio anterior
 COPY --from=builder /app/public ./public
