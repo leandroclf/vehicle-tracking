@@ -16,9 +16,9 @@ if (!supabaseAnonKey) {
 // Create a single supabase client for interacting with your database
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Optional: Create a service role client for backend operations if needed
-// const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-// export const supabaseAdmin = supabaseServiceKey
-//   ? createClient(supabaseUrl, supabaseServiceKey)
-//   : null;
+// Create a service role client for backend operations if needed
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export const supabaseAdmin = supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
 
