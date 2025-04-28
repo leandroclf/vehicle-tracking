@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -150,29 +149,6 @@ export default function Header() {
               </>
             )}
           </div>
-        </div>
-      )}
-            {isAuthenticated && user ? (
-              <>
-                <span className="flex items-center py-1">
-                  <User className="w-4 h-4 mr-1" />
-                  {user.name || user.email}
-                </span>
-                <button
-                  onClick={() => { logout(); setIsMobileMenuOpen(false); }}
-                  className="flex items-center px-3 py-1 bg-red-600 hover:bg-red-700 rounded transition duration-300 text-left"
-                >
-                  <LogOut className="w-4 h-4 mr-1" />
-                  Sair
-                </button>
-              </>
-            ) : (
-              <>
-                <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-gray-300 py-1">Login</Link>
-                <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded transition duration-300">Registrar</Link>
-              </>
-            )}
-          </nav>
         </div>
       )}
     </header>
