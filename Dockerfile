@@ -6,8 +6,8 @@ FROM node:20-alpine AS builder
 # Define o diretório de trabalho
 WORKDIR /app
 
-# Copia os arquivos de gerenciamento de pacotes
-COPY package.json package-lock.json* ./
+# Copia os arquivos de gerenciamento de pacotes e requirements
+COPY package.json package-lock.json* requirements.txt ./
 
 # Instala as dependências (usando --legacy-peer-deps conforme necessário anteriormente)
 RUN npm install --legacy-peer-deps
@@ -15,14 +15,16 @@ RUN npm install --legacy-peer-deps
 # Copia o restante do código da aplicação
 COPY . .
 
-# Garante que a dependência do Supabase esteja instalada
-RUN npm install @supabase/supabase-js --legacy-peer-deps
+# Garante que todas as dependências listadas em requirements.txt estejam instaladas
+# Isso inclui Supabase, Google Maps API e outras bibliotecas essenciais
+RUN cat requirements.txt | grep -v "^#" | grep "@" | xargs -I {} npm install {} --legacy-peer-deps
 
-# Instala o pacote para GoogleMaps
-RUN npm install @react-google-maps/api --legacy-peer-deps
-
-# Define a variável de ambiente para a chave do Google Maps (temporária para build)
+# Define todas as variáveis de ambiente necessárias para build
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="YOUR_GOOGLE_MAPS_API_KEY_HERE"
+ENV NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL_HERE"
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY_HERE"
+ENV JWT_SECRET="YOUR_JWT_SECRET_KEY_HERE"
+ENV SUPABASE_SERVICE_KEY="YOUR_SUPABASE_SERVICE_KEY_HERE"
 
 # Compila a aplicação Next.js para produção
 # Nota: Não usamos mais 'build:worker' pois estamos migrando do Cloudflare
@@ -39,7 +41,13 @@ WORKDIR /app
 
 # Define o ambiente para produção
 ENV NODE_ENV=production
+
+# Define todas as variáveis de ambiente necessárias para execução
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="YOUR_GOOGLE_MAPS_API_KEY_HERE"
+ENV NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL_HERE"
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY_HERE"
+ENV JWT_SECRET="YOUR_JWT_SECRET_KEY_HERE"
+ENV SUPABASE_SERVICE_KEY="YOUR_SUPABASE_SERVICE_KEY_HERE"
 
 # Copia os artefatos de build do estágio anterior
 COPY --from=builder /app/public ./public
