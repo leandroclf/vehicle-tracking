@@ -1,20 +1,21 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col yukz-gradient text-white">
       <header className="yukz-container py-6 flex justify-between items-center">
         <h1 className="text-3xl font-bold">Yukz</h1>
-        <div className="space-x-4">
+        <div className="flex items-center space-x-4">
           <Link 
             href="/login" 
-            className="px-4 py-2 rounded-md border border-white hover:bg-white hover:text-[#00315c] transition-colors"
+            className="px-4 py-2 rounded-md border border-white hover:bg-white hover:text-[#00315c] transition-colors flex items-center justify-center"
           >
             Login
           </Link>
           <Link 
             href="/register" 
-            className="px-4 py-2 rounded-md bg-[#faa631] text-white hover:bg-[#d69028] transition-colors shadow-sm"
+            className="px-4 py-2 rounded-md bg-[#faa631] text-white hover:bg-[#d69028] transition-colors shadow-sm flex items-center justify-center"
           >
             Registrar
           </Link>
@@ -34,10 +35,16 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="md:w-1/2 flex justify-center">
-            <div className="w-full max-w-md h-80 bg-white/10 rounded-lg backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden">
-              <div className="relative w-full h-full flex items-center justify-center">
-                <div className="absolute inset-0 bg-[#007db8]/20 backdrop-blur-sm"></div>
-                <p className="text-xl font-semibold relative z-10">Imagem do aplicativo</p>
+            <div className="w-full max-w-md h-auto bg-white/10 rounded-lg backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden">
+              <div className="relative w-full h-full flex items-center justify-center p-4">
+                <Image 
+                  src="/yukz-app-screenshot.png" 
+                  alt="Aplicativo Yukz mostrando mapa com veículos rastreados" 
+                  width={320} 
+                  height={640} 
+                  className="rounded-lg shadow-lg" 
+                  priority
+                />
               </div>
             </div>
           </div>

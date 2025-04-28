@@ -1,8 +1,10 @@
-
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { verifyToken } from './jwt'; // Assuming jwt.ts is in the same lib folder
+import { verifyToken } from './jwt-client'; // Versão do cliente da função verifyToken
+
+// Para debug
+console.log('Módulo auth.tsx carregado - versão corrigida')
 
 // Definição do tipo de usuário (pode ser estendido com base no payload do JWT)
 interface User {
@@ -10,6 +12,19 @@ interface User {
   name: string;
   email: string;
   phone?: string;
+}
+
+// Interface para a resposta da API de login
+interface LoginResponse {
+  user: User;
+  token: string;
+  error?: string;
+}
+
+// Interface para a resposta da API de registro
+interface RegisterResponse {
+  success: boolean;
+  error?: string;
 }
 
 // Definição do contexto de autenticação
@@ -68,24 +83,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkAuth = async () => {
       try {
         const storedToken = getLocalStorageItem('yukz_token');
+        console.log('Token armazenado encontrado:', !!storedToken);
+        
         if (storedToken) {
+          // Tentar decodificar o token
           const decodedUser = verifyToken(storedToken);
-          if (decodedUser) {
-            setUser({ 
+          console.log('Token decodificado:', decodedUser);
+          
+          if (decodedUser && decodedUser.userId) {
+            // Criar objeto de usuário com os dados do token
+            const userData: User = { 
               id: decodedUser.userId, 
-              name: decodedUser.name, 
-              email: decodedUser.email 
-              // phone: pode ser buscado separadamente se necessário
-            });
+              name: decodedUser.name || 'Usuário', // Valor padrão caso o nome não esteja no token
+              email: decodedUser.email || '' // Valor padrão caso o email não esteja no token
+            };
+            
+            setUser(userData);
             setToken(storedToken);
+            console.log('Usuário autenticado:', userData);
           } else {
+            console.error('Token inválido ou expirado');
             // Token inválido ou expirado, limpar localStorage
             removeLocalStorageItem('yukz_token');
+            setUser(null);
+            setToken(null);
           }
         }
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
         removeLocalStorageItem('yukz_token'); // Limpar em caso de erro
+        setUser(null);
+        setToken(null);
       } finally {
         setIsLoading(false);
       }
@@ -98,20 +126,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
+      // Limpar qualquer autenticação anterior
+      removeLocalStorageItem('yukz_token');
+      setUser(null);
+      setToken(null);
+      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
+        // Garantir que as credenciais sejam enviadas
+        credentials: 'include'
       });
 
-      const data = await response.json();
+      const data = await response.json() as LoginResponse;
 
       if (!response.ok) {
+        console.error('Erro na resposta do login:', data);
         return { success: false, error: data.error || 'Falha no login' };
       }
 
       // Login bem-sucedido, armazenar token e dados do usuário
       const { user: userData, token: userToken } = data;
+      console.log('Login bem-sucedido:', { userData, tokenLength: userToken?.length });
+      
+      // Verificar se o token foi recebido corretamente
+      if (!userToken) {
+        console.error('Token não recebido do servidor');
+        return { success: false, error: 'Erro de autenticação: token não recebido' };
+      }
+      
+      // Verificar se o token é válido antes de armazenar
+      const decodedUser = verifyToken(userToken);
+      if (!decodedUser || !decodedUser.userId) {
+        console.error('Token recebido é inválido');
+        return { success: false, error: 'Erro de autenticação: token inválido' };
+      }
+      
+      // Armazenar token e dados do usuário
       setLocalStorageItem('yukz_token', userToken);
       setUser(userData);
       setToken(userToken);
@@ -144,7 +196,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ name, email, phone, password }),
       });
 
-      const data = await response.json();
+      const data = await response.json() as RegisterResponse;
 
       if (!response.ok) {
         return { success: false, error: data.error || 'Falha no registro' };

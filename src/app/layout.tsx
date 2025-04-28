@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import '@/styles/globals.css';
+import { Providers } from '@/lib/providers';
 
 export const metadata: Metadata = {
   title: 'Yukz - Rastreamento Veicular',
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
