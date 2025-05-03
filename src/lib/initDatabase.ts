@@ -1,6 +1,7 @@
 import { getAdminClient } from './databaseConfig';
 import fs from 'fs';
 import path from 'path';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Inicializa o banco de dados aplicando as migrações necessárias
@@ -11,19 +12,50 @@ export async function initializeDatabase() {
     
     const admin = getAdminClient();
     
-    // Verifica se o banco já foi inicializado
-    const { data: tableInfo, error: tableError } = await admin
-      .from('profiles')
-      .select('id')
-      .limit(1)
-      .maybeSingle();
+    // Verifica se o banco já foi inicializado tentando usar a função "pgexec"
+    console.log('Verificando estado atual do banco de dados...');
     
-    // Se der erro porque a tabela não existe, vamos criar o esquema
-    if (tableError && tableError.message.includes('relation "profiles" does not exist')) {
-      console.log('Tabela profiles não encontrada, criando esquema inicial...');
-    } else if (tableError) {
-      throw new Error(`Erro ao verificar tabelas: ${tableError.message}`);
-    } else {
+    const { data: dbInfo, error: dbError } = await admin.rpc('pgexec', { 
+      sql: "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'profiles');"
+    });
+    
+    if (dbError) {
+      if (dbError.message.includes('function "pgexec" does not exist')) {
+        // Precisamos criar a função pgexec primeiro
+        console.log('Função pgexec não existe, criando...');
+        
+        const createPgexecQuery = `
+          CREATE OR REPLACE FUNCTION pgexec(sql text) RETURNS json AS $$
+          DECLARE
+            result json;
+          BEGIN
+            EXECUTE sql;
+            result := json_build_object('success', true);
+            RETURN result;
+          EXCEPTION WHEN OTHERS THEN
+            result := json_build_object('success', false, 'error', SQLERRM);
+            RETURN result;
+          END;
+          $$ LANGUAGE plpgsql SECURITY DEFINER;
+        `;
+        
+        const { error: createFnError } = await admin.rpc('pg_execute', { query: createPgexecQuery });
+        
+        if (createFnError) {
+          console.log('Não foi possível criar a função pgexec, tentando criar tabelas diretamente...');
+          await applyMigrationDirectly(admin);
+          return true;
+        }
+      } else {
+        console.log(`Erro ao verificar estado do banco: ${dbError.message}`);
+        // Tenta aplicar as migrações mesmo assim
+        await applyMigrationDirectly(admin);
+        return true;
+      }
+    }
+    
+    // Se chegamos aqui e profiles existe, o banco já está inicializado
+    if (dbInfo && dbInfo.success && dbInfo.exists) {
       console.log('Banco de dados já inicializado');
       return true;
     }
@@ -31,6 +63,21 @@ export async function initializeDatabase() {
     // Aplica o script de migração
     console.log('Aplicando migrações...');
     
+    await applyMigrationDirectly(admin);
+    
+    console.log('Banco de dados inicializado com sucesso!');
+    return true;
+  } catch (error) {
+    console.error('Falha ao inicializar o banco de dados:', error);
+    throw error;
+  }
+}
+
+/**
+ * Aplica a migração diretamente usando instruções SQL individuais
+ */
+async function applyMigrationDirectly(admin: SupabaseClient) {
+  try {
     // Lê o arquivo de migração
     const migrationPath = path.join(process.cwd(), 'migrations', '20250427221812_initial_schema.sql');
     
@@ -40,14 +87,31 @@ export async function initializeDatabase() {
     
     const migrationSql = fs.readFileSync(migrationPath, 'utf8');
     
-    // Executa o script SQL
-    const { error: migrationError } = await admin.rpc('pgexec', { sql: migrationSql });
+    // Dividir o script em comandos SQL separados por ';'
+    const sqlCommands = migrationSql.split(';').map(cmd => cmd.trim()).filter(cmd => cmd.length > 0);
     
-    if (migrationError) {
-      throw new Error(`Erro ao aplicar migração: ${migrationError.message}`);
+    console.log(`Aplicando ${sqlCommands.length} comandos SQL...`);
+    
+    // Executa cada comando separadamente
+    for (let i = 0; i < sqlCommands.length; i++) {
+      const sql = sqlCommands[i];
+      
+      // Pula comentários
+      if (sql.startsWith('--')) continue;
+      
+      try {
+        const { error } = await admin.rpc('pg_execute', { query: sql });
+        
+        if (error) {
+          console.warn(`Aviso: Comando ${i+1} falhou: ${error.message.substring(0, 100)}...`);
+          // Continua para o próximo comando mesmo com falha
+        }
+      } catch (cmdError: unknown) {
+        const errorMessage = cmdError instanceof Error ? cmdError.message : String(cmdError);
+        console.warn(`Aviso: Erro ao executar comando ${i+1}: ${errorMessage.substring(0, 100)}...`);
+        // Continua para o próximo comando mesmo com falha
+      }
     }
-    
-    console.log('Migração aplicada com sucesso');
     
     // Verificação final
     const requiredTables = [
@@ -63,7 +127,7 @@ export async function initializeDatabase() {
     
     let missingTables = [];
     
-    // Tentamos consultar cada tabela para verificar se existe - sem usar count(*)
+    // Tentamos consultar cada tabela para verificar se existe
     for (const table of requiredTables) {
       const { error } = await admin.from(table).select('id').limit(1);
       if (error && error.message.includes(`relation "${table}" does not exist`)) {
@@ -75,10 +139,10 @@ export async function initializeDatabase() {
       throw new Error(`Algumas tabelas não foram criadas: ${missingTables.join(', ')}`);
     }
     
-    console.log('Banco de dados inicializado com sucesso!');
+    console.log('Migração aplicada com sucesso');
     return true;
   } catch (error) {
-    console.error('Falha ao inicializar o banco de dados:', error);
+    console.error('Erro durante aplicação direta da migração:', error);
     throw error;
   }
 }
