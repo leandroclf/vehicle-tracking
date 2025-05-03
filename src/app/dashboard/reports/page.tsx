@@ -264,7 +264,7 @@ export default function ReportsPage() {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Relatórios</h1>
+      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Relatórios</h1>
       
       {selectedReport ? (
         <div className="mb-6">

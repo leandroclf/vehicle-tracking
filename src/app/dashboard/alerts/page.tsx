@@ -7,7 +7,7 @@ import Badge from '@/components/ui/Badge';
 export default function AlertsPage() {
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Alertas</h1>
+      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Alertas</h1>
       
       <Card 
         title="Lista de Alertas" 

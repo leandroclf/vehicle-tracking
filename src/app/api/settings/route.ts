@@ -5,15 +5,19 @@ import { z } from 'zod';
 
 // Esquema para validar dados de configurações
 const settingsSchema = z.object({
+  company_name: z.string().optional().nullable(),
   notification_email: z.string().email('Email inválido').optional().nullable(),
   notification_sms: z.boolean().optional(),
   notification_push: z.boolean().optional(),
   language: z.string().min(2, 'Código de idioma inválido').optional(),
   timezone: z.string().optional(),
   distance_unit: z.enum(['km', 'mi']).optional(),
+  speed_unit: z.enum(['kmh', 'mph']).optional(),
+  fuel_unit: z.enum(['liter', 'gallon']).optional(),
   temperature_unit: z.enum(['C', 'F']).optional(),
   map_type: z.enum(['roadmap', 'satellite', 'hybrid', 'terrain']).optional(),
   default_view: z.enum(['map', 'list', 'dashboard']).optional(),
+  show_traffic: z.boolean().optional(),
   alert_sound: z.boolean().optional(),
   dark_mode: z.boolean().optional(),
   auto_refresh: z.number().int().min(0).optional()
@@ -45,15 +49,19 @@ export async function GET(request: NextRequest) {
     // Se não existirem configurações, retornar valores padrão
     if (!settings) {
       const defaultSettings = {
+        company_name: 'Minha Empresa',
         notification_email: null,
         notification_sms: false,
         notification_push: true,
         language: 'pt-BR',
         timezone: 'America/Sao_Paulo',
         distance_unit: 'km',
+        speed_unit: 'kmh',
+        fuel_unit: 'liter',
         temperature_unit: 'C',
         map_type: 'roadmap',
         default_view: 'map',
+        show_traffic: true,
         alert_sound: true,
         dark_mode: false,
         auto_refresh: 30
