@@ -10,7 +10,7 @@ Esta versão inclui todas as funcionalidades do protótipo inicial, agora suport
 
 - **Autenticação Segura**: Sistema de login e registro com persistência em banco de dados e autenticação via JWT (JSON Web Tokens).
 - **Backend Funcional**: API RESTful desenvolvida para gerenciar usuários, veículos, geocercas, configurações e alertas.
-- **Banco de Dados Persistente**: Utilização do para armazenamento seguro e escalável dos dados.
+- **Banco de Dados Persistente**: Utilização de banco de dados SQL para armazenamento seguro e escalável dos dados.
 - **Gerenciamento Completo de Veículos**: CRUD (Criar, Ler, Atualizar, Deletar) de veículos associados ao usuário.
 - **Gerenciamento de Geocercas**: CRUD completo para geocercas circulares e poligonais, com alertas de entrada/saída configuráveis.
 - **Gerenciamento de Alertas**: Listagem de alertas gerados (velocidade, ignição, geocerca, etc.) e marcação como lidos.
@@ -23,8 +23,8 @@ Esta versão inclui todas as funcionalidades do protótipo inicial, agora suport
 ## 3. Tecnologias Utilizadas
 
 - **Frontend**: Next.js 15.1.4 com React 19.1.0
-- **Backend**: Cloudflare Workers
-- **Banco de Dados**: Cloudflare D1
+- **Backend**: Node.js com Express
+- **Banco de Dados**: PostgreSQL
 - **Estilização**: Tailwind CSS
 - **Gerenciamento de Estado (Frontend)**: Context API do React
 - **Autenticação**: JWT (jsonwebtoken), bcryptjs
@@ -46,11 +46,11 @@ yukz-app/
 ├── __tests__/                  # Testes automatizados
 │   ├── api/                    # Testes de API
 │   │   └── components/             # Testes de componentes React
-│   ├── migrations/                 # Migrações do banco de dados D1
+│   ├── migrations/                 # Migrações do banco de dados
 │   │   └── 0001_initial_schema.sql
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── api/                # Rotas da API (Backend - Cloudflare Workers)
+│   │   │   ├── api/                # Rotas da API (Backend - Express)
 │   │   │   │   ├── auth/ (login, register)
 │   │   │   │   ├── vehicles/ ([id])
 │   │   │   │   ├── geofences/ ([id])
@@ -94,8 +94,7 @@ yukz-app/
 │   ├── jest.setup.js               # Setup dos testes Jest
 │   ├── next.config.mjs             # Configuração do Next.js
 │   ├── package.json
-│   ├── tsconfig.json
-│   └── wrangler.toml               # Configuração do Cloudflare Workers e D1
+│   └── tsconfig.json
 ```
 
 ## 6. Instruções de Instalação e Execução Local
@@ -103,7 +102,7 @@ yukz-app/
 ### Pré-requisitos
 - Node.js 18.0.0 ou superior
 - npm (geralmente vem com Node.js)
-- Wrangler CLI (instalado globalmente ou via npx): `npm install -g wrangler`
+- PostgreSQL instalado e configurado
 
 ### Passos
 
@@ -116,24 +115,24 @@ yukz-app/
     ```bash
     npm install --legacy-peer-deps
     ```
-3.  **Configure o Banco de Dados D1 Local**:
-    *   Verifique o arquivo `wrangler.toml` para a configuração do banco local (`[[d1_databases]]`).
+3.  **Configure o Banco de Dados**:
+    *   Crie um banco de dados PostgreSQL para o projeto.
     *   Aplique as migrações para criar as tabelas:
         ```bash
-        wrangler d1 migrations apply DB --local
+        npm run migrate
         ```
-        *(Pode ser necessário confirmar com 'Y')*
 4.  **Configure Variáveis de Ambiente**:
     *   Crie um arquivo `.env` na raiz do projeto (`yukz-app/yukz-app`).
-    *   Adicione a chave secreta para JWT (gere uma chave segura):
+    *   Adicione as variáveis necessárias:
         ```
+        DATABASE_URL=postgres://usuario:senha@localhost:5432/yukz_db
         JWT_SECRET=sua_chave_secreta_super_segura_aqui
         ```
-5.  **Inicie o Servidor de Desenvolvimento (Next.js + Wrangler)**:
+5.  **Inicie o Servidor de Desenvolvimento**:
     ```bash
     npm run dev
     ```
-    Isso iniciará o frontend Next.js e o backend Wrangler localmente.
+    Isso iniciará o frontend Next.js e o backend Express localmente.
 6.  **Acesse o aplicativo** em seu navegador:
     ```
     http://localhost:3000
@@ -143,7 +142,7 @@ yukz-app/
 
 O uso geral permanece similar ao protótipo, mas agora as ações interagem com o backend real:
 
-- **Autenticação**: Login e registro agora criam/validam usuários no banco de dados D1. O token JWT é armazenado localmente para sessões futuras.
+- **Autenticação**: Login e registro agora criam/validam usuários no banco de dados. O token JWT é armazenado localmente para sessões futuras.
 - **Gerenciamento**: Adicionar, editar ou excluir veículos e geocercas persistirá as alterações no banco de dados.
 - **Configurações**: Alterações nas configurações de alertas ou preferências são salvas no perfil do usuário.
 - **Alertas**: A página de alertas exibirá os alertas reais gerados (a lógica de *geração* de alertas baseada em eventos ainda precisa ser implementada).
@@ -181,10 +180,10 @@ Os seguintes endpoints foram implementados:
 
 ## 10. Infraestrutura e Deploy
 
-- O arquivo `wrangler.toml` foi configurado para desenvolvimento local e produção.
-- Inclui a definição do banco de dados D1 (local e produção placeholder) e variáveis de ambiente (como `JWT_SECRET` para produção).
-- O build para produção pode ser gerado com `npm run build:worker`.
-- O deploy para o Cloudflare pode ser feito usando `wrangler deploy` (requer configuração da conta Cloudflare e do `database_id` de produção no `wrangler.toml`).
+- O projeto está configurado para desenvolvimento local e produção.
+- Inclui a definição do banco de dados (local e produção) e variáveis de ambiente (como `JWT_SECRET` para produção).
+- O build para produção pode ser gerado com `npm run build`.
+- O deploy pode ser feito em qualquer plataforma que suporte Node.js, como Vercel, Heroku, ou AWS.
 
 ## 11. Limitações Atuais
 
@@ -197,12 +196,12 @@ Os seguintes endpoints foram implementados:
 ## 12. Próximos Passos Sugeridos
 
 1.  **Corrigir Testes Automatizados**: Investigar e resolver os problemas de configuração do Jest.
-2.  **Implementar Lógica de Geração de Alertas**: Criar workers/processos no backend para monitorar eventos e gerar alertas no banco de dados.
+2.  **Implementar Lógica de Geração de Alertas**: Criar processos no backend para monitorar eventos e gerar alertas no banco de dados.
 3.  **Integrar Mapa Real**: Substituir o mapa simulado no frontend por uma biblioteca como Leaflet, Mapbox GL JS ou Google Maps Platform.
 4.  **Desenvolver API de Ingestão de Dados**: Criar um endpoint seguro para receber dados dos dispositivos de rastreamento.
 5.  **Refinar Frontend**: Melhorar a interface com base no mapa real, exibir histórico no mapa, implementar funcionalidade completa de relatórios e comandos remotos.
 6.  **Aplicativo Móvel**: Considerar o desenvolvimento de aplicativos nativos ou PWA.
-7.  **Infraestrutura de Produção**: Configurar completamente o ambiente de produção no Cloudflare (D1 ID, secrets, etc.) e implementar CI/CD.
+7.  **Infraestrutura de Produção**: Configurar completamente o ambiente de produção (banco de dados, secrets, etc.) e implementar CI/CD.
 
 ## 13. Suporte
 
