@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
@@ -10,7 +10,7 @@ import Alert from '@/components/ui/Alert';
 import Container from '@/components/ui/Container';
 import Card from '@/components/ui/Card';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
   const { register } = useAuth();
   const [name, setName] = useState('');
@@ -133,5 +133,13 @@ export default function RegisterPage() {
         </Card>
       </Container>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-100">Carregando...</div>}>
+      <RegisterForm />
+    </Suspense>
   );
 } 
