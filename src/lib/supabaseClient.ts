@@ -1,24 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Ensure environment variables are loaded (especially in non-Next.js contexts if needed)
-// In Next.js, process.env automatically includes .env variables
+// Configurações hardcoded para debug
+const supabaseUrl = "https://zktyautduranjobylpkb.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprdHlhdXRkdXJhbmpvYnlscGtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3NTgyMjYsImV4cCI6MjA2MTMzNDIyNn0.3vw7s9Y2P7prhfTKl6ULQtyZ3SgkPJo7UxX2SfAE4x0";
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-if (!supabaseUrl) {
-  throw new Error("Missing environment variable SUPABASE_URL");
-}
-if (!supabaseAnonKey) {
-  throw new Error("Missing environment variable SUPABASE_ANON_KEY");
-}
-
-// Create a single supabase client for interacting with your database
+// Criar cliente Supabase
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Logs para debug
+console.log('Cliente Supabase inicializado com URL:', supabaseUrl);
+console.log('ANON KEY (primeiros 10 caracteres):', supabaseAnonKey.substring(0, 10) + '...');
+
 // Create a service role client for backend operations if needed
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-export const supabaseAdmin = supabaseServiceKey
-  ? createClient(supabaseUrl, supabaseServiceKey)
-  : null;
+// Desativado para debug
+// const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// export const supabaseAdmin = supabaseServiceKey
+//   ? createClient(supabaseUrl, supabaseServiceKey)
+//   : null;
 

@@ -7,37 +7,77 @@ interface LoginRequest {
   password: string;
 }
 
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  user_type?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as LoginRequest;
     const { email, password } = body;
 
+    console.log('Tentativa de login para:', email);
+
     // Validação básica
     if (!email || !password) {
+      console.log('Erro: Email ou senha não fornecidos');
       return NextResponse.json({ error: 'Email e senha são obrigatórios' }, { status: 400 });
     }
 
-    // Autenticação com Supabase
+    // Inicialização do Supabase
+    console.log('Verificando conexão com Supabase antes da autenticação');
+    
+    // Autenticação direta com Supabase
+    console.log('Iniciando autenticação com Supabase para:', email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
-    if (error || !data.user) {
-      console.error('Erro de autenticação:', error);
-      return NextResponse.json({ error: 'Credenciais inválidas' }, { status: 401 });
+    // Log detalhado do erro de autenticação
+    if (error) {
+      console.error('Erro detalhado de autenticação:', JSON.stringify(error, null, 2));
+      return NextResponse.json({ error: 'Credenciais inválidas', details: error.message }, { status: 401 });
     }
+
+    if (!data.user) {
+      console.error('Usuário não encontrado após autenticação');
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 401 });
+    }
+
+    console.log('Autenticação bem-sucedida, buscando dados do usuário');
 
     // Buscar dados adicionais do usuário
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('id, name, email, phone, role')
+      .select('id, name, email, phone, user_type')
       .eq('email', email)
       .single();
 
     if (userError) {
       console.error('Erro ao buscar dados do usuário:', userError);
-      return NextResponse.json({ error: 'Erro ao buscar dados do usuário' }, { status: 500 });
+      
+      // Fallback: Se não encontrar na tabela users, usar os dados da autenticação
+      console.log('Usando dados do usuário da autenticação como fallback');
+      const token = generateToken({
+        id: data.user.id,
+        email: data.user.email || email,
+        name: data.user?.user_metadata?.name || 'Usuário'
+      });
+      
+      return NextResponse.json({
+        user: {
+          id: data.user.id,
+          email: data.user.email || email,
+          name: data.user?.user_metadata?.name || 'Usuário',
+          role: 'user'
+        },
+        token
+      }, { status: 200 });
     }
 
     // Gerar token JWT com dados do usuário
@@ -57,13 +97,16 @@ export async function POST(request: NextRequest) {
         email: userData.email,
         name: userData.name,
         phone: userData.phone,
-        role: userData.role
+        role: userData.user_type
       },
       token
     }, { status: 200 });
 
   } catch (error) {
     console.error('Erro no login:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Erro interno do servidor', 
+      details: error instanceof Error ? error.message : 'Erro desconhecido'
+    }, { status: 500 });
   }
 }
