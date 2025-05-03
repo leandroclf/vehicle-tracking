@@ -1,65 +1,131 @@
-# Documentação do Sistema Yukz - Rastreamento Veicular
+# Índice da Documentação - Yukz
 
-## Índice
+Esta documentação técnica abrangente fornece informações detalhadas sobre o sistema Yukz de rastreamento veicular, destinado a desenvolvedores, administradores e usuários técnicos.
+
+## Visão Geral do Sistema
 
 1. [Visão Geral do Sistema](1-visao-geral.md)
-   - 1.1 Propósito e Objetivos
-   - 1.2 Contexto e Problemas Resolvidos
-   - 1.3 Público-Alvo
-   - 1.4 Diferenciais Competitivos
+   - Propósito e Objetivos
+   - Contexto e Problemas Resolvidos
+   - Público-Alvo
+   - Diferenciais Competitivos
+
+## Especificações Técnicas
 
 2. [Arquitetura do Sistema](2-arquitetura.md)
-   - 2.1 Visão Geral da Arquitetura
-   - 2.2 Componentes Principais
-   - 2.3 Fluxos de Dados Principais
-   - 2.4 Infraestrutura e Deploy
+   - Visão Geral da Arquitetura
+   - Componentes Principais
+   - Fluxos de Dados
+   - Infraestrutura e Deploy
 
 3. [Módulos e Responsabilidades](3-modulos.md)
-   - 3.1 Módulo de Autenticação
-   - 3.2 Módulo de Veículos
-   - 3.3 Módulo de Mapa
-   - 3.4 Módulo de Geocercas
-   - 3.5 Módulo de Alertas
-   - 3.6 Módulo de Relatórios
-   - 3.7 Módulo de Configurações
-   - 3.8 Módulo de UI
-   - 3.9 Tracker Server
+   - Módulo de Autenticação
+   - Módulo de Veículos
+   - Módulo de Mapa
+   - Módulo de Geocercas
+   - Módulo de Alertas
+   - Módulo de Relatórios
+   - Módulo de Configurações
+   - Módulo de UI
+   - Tracker Server
 
 4. [Dependências e Configuração](4-dependencias.md)
-   - 4.1 Bibliotecas e Frameworks
-   - 4.2 Variáveis de Ambiente
-   - 4.3 Passos de Instalação
-   - 4.4 Banco de Dados
+   - Bibliotecas e Frameworks
+   - Variáveis de Ambiente
+   - Passos de Instalação
+   - Banco de Dados
 
 5. [API e Endpoints](5-api.md)
-   - 5.1 Convenções da API
-   - 5.2 Autenticação
-   - 5.3 Veículos
-   - 5.4 Geocercas
-   - 5.5 Alertas
-   - 5.6 Configurações
-   - 5.7 Histórico de Posições
-   - 5.8 Relatórios
+   - Convenções da API
+   - Autenticação
+   - Endpoints de Veículos
+   - Endpoints de Geocercas
+   - Endpoints de Alertas
+   - Endpoints de Relatórios
+   - Endpoints de Configurações
+
+## Guias Operacionais
 
 6. [Instalação e Execução](6-instalacao.md)
-   - 6.1 Requisitos do Sistema
-   - 6.2 Instalação do Ambiente de Desenvolvimento
-   - 6.3 Configuração do Ambiente
-   - 6.4 Execução do Sistema
-   - 6.5 Implantação com Docker
-   - 6.6 Acessando a Aplicação
-   - 6.7 Testes
-   - 6.8 Solução de Problemas
-   - 6.9 [Deploy com Docker (Detalhado)](docker-deployment.md)
+   - Requisitos do Sistema
+   - Instalação do Ambiente de Desenvolvimento
+   - Configuração do Ambiente
+   - Execução do Sistema
+   - Implantação com Docker
 
 7. [Referências e Recursos](7-referencias.md)
-   - 7.1 Documentação Oficial das Tecnologias
-   - 7.2 Protocolos de Rastreamento
-   - 7.3 Padrões de Design Adotados
-   - 7.4 Bibliotecas e Utilitários Principais
-   - 7.5 Tutoriais e Recursos de Aprendizado
-   - 7.6 Comunidade e Suporte
-   - 7.7 Ferramentas Recomendadas
+   - Documentação Oficial das Tecnologias
+   - Tutoriais e Artigos
+   - Ferramentas Recomendadas
+   - Comunidades e Suporte
+
+## Tópicos Específicos
+
+- [Estrutura do Banco de Dados](estrutura-banco-dados.md)
+   - Tabelas Principais
+   - Relações entre Tabelas
+   - Políticas de Segurança (RLS)
+   - Migrations
+
+- [Integração com Supabase](supabase-integracao.md)
+   - Configuração do Projeto Supabase
+   - Autenticação
+   - Banco de Dados
+   - Storage
+   - Realtime
+
+- [Tracker Server](tracker-server.md)
+   - Arquitetura do Servidor
+   - Protocolos Suportados
+   - Fluxo de Processamento de Dados
+   - Configuração e Deployment
+
+- [Mapa e Rastreamento](mapa-rastreamento.md)
+   - Integração com Google Maps
+   - Rastreamento em Tempo Real
+   - Histórico de Rotas
+   - Geocercas
+
+- [Docker Deployment](docker-deployment.md)
+   - Arquitetura Docker
+   - Configuração de Containers
+   - Networking e Volumes
+   - CI/CD com Docker
+
+- [Performance no Frontend](performance-frontend.md)
+   - Otimizações de Renderização
+   - Carregamento Assíncrono
+   - Caching de Dados
+   - Lazy Loading
+
+- [Implementação de Gestão de Relatórios](implementacao_gestao_relatorios.md)
+   - Geração de Relatórios
+   - Exportação de Dados
+   - Agendamento
+   - Visualizações
+
+- [Guia do Usuário](guia-do-usuario.md)
+   - Instruções para Usuários Finais
+   - Fluxos de Trabalho Comuns
+   - Solução de Problemas
+
+- [Supabase Setup](supabase-setup.md)
+   - Configuração Inicial
+   - Políticas de Segurança
+   - Funções e Triggers
+   - Backups e Manutenção
+
+- [Acesso para Teste](acesso-teste.md)
+   - Credenciais de Teste
+   - Ambientes Disponíveis
+   - Limitações de Teste
+
+## Planejamento
+
+- [Tarefas de Desenvolvimento](TODO.md)
+   - Lista Priorizada de Tarefas
+   - Estimativas e Dependências
+   - Plano de Desenvolvimento
 
 ## Documentos Adicionais
 
@@ -69,10 +135,17 @@
 - [Acesso para Teste](acesso-teste.md) - Credenciais e instruções para ambiente de teste
 - [Performance do Frontend](performance-frontend.md) - Diretrizes e métricas de desempenho
 - [Configuração do Supabase](supabase-setup.md) - Setup do ambiente Supabase
+- [Mapa de Rastreamento](mapa-rastreamento.md) - Documentação detalhada do componente de mapa
+
+## Componentes Detalhados
+
+- [Servidor de Rastreamento](tracker-server.md) - Documentação do servidor de comunicação com dispositivos GPS
+- [Mapa de Rastreamento](mapa-rastreamento.md) - Implementação e funcionalidades do mapa interativo
+- [Integração com Supabase](supabase-integracao.md) - Detalhes sobre o uso do Supabase como backend
 
 ## Versão da Documentação
 
-**Versão:** 1.0.0  
+**Versão:** 1.1.0  
 **Data:** Maio/2025  
 **Autores:** Equipe Yukz
 
