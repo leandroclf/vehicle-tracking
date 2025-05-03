@@ -13,17 +13,17 @@ export async function initializeDatabase() {
     
     // Verifica se o banco já foi inicializado
     const { data: tableInfo, error: tableError } = await admin
-      .from('information_schema.tables')
-      .select('table_name')
-      .eq('table_schema', 'public')
-      .eq('table_name', 'profiles');
+      .from('profiles')
+      .select('count(*)')
+      .limit(1)
+      .maybeSingle();
     
-    if (tableError) {
+    // Se der erro porque a tabela não existe, vamos criar o esquema
+    if (tableError && tableError.message.includes('relation "profiles" does not exist')) {
+      console.log('Tabela profiles não encontrada, criando esquema inicial...');
+    } else if (tableError) {
       throw new Error(`Erro ao verificar tabelas: ${tableError.message}`);
-    }
-    
-    // Se a tabela profiles já existir, considera que o banco já está inicializado
-    if (tableInfo && tableInfo.length > 0) {
+    } else {
       console.log('Banco de dados já inicializado');
       return true;
     }
@@ -50,15 +50,6 @@ export async function initializeDatabase() {
     console.log('Migração aplicada com sucesso');
     
     // Verificação final
-    const { data: finalCheck, error: finalError } = await admin
-      .from('information_schema.tables')
-      .select('table_name')
-      .eq('table_schema', 'public');
-    
-    if (finalError) {
-      throw new Error(`Erro na verificação final: ${finalError.message}`);
-    }
-    
     const requiredTables = [
       'profiles', 
       'vehicles', 
@@ -70,11 +61,18 @@ export async function initializeDatabase() {
       'geofences'
     ];
     
-    const createdTables = finalCheck?.map(t => t.table_name) || [];
-    const missing = requiredTables.filter(table => !createdTables.includes(table));
+    let missingTables = [];
     
-    if (missing.length > 0) {
-      throw new Error(`Algumas tabelas não foram criadas: ${missing.join(', ')}`);
+    // Tentamos consultar cada tabela para verificar se existe
+    for (const table of requiredTables) {
+      const { error } = await admin.from(table).select('count(*)').limit(1);
+      if (error && error.message.includes(`relation "${table}" does not exist`)) {
+        missingTables.push(table);
+      }
+    }
+    
+    if (missingTables.length > 0) {
+      throw new Error(`Algumas tabelas não foram criadas: ${missingTables.join(', ')}`);
     }
     
     console.log('Banco de dados inicializado com sucesso!');
@@ -89,8 +87,8 @@ export async function initializeDatabase() {
  * Cria tabelas de teste para ambiente de desenvolvimento
  */
 export async function seedTestData() {
-  if (process.env.NODE_ENV !== 'development') {
-    console.log('Ignorando seed de dados em ambiente não-desenvolvimento');
+  if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
+    console.log(`Ignorando seed de dados em ambiente ${process.env.NODE_ENV}`);
     return;
   }
   
@@ -103,7 +101,7 @@ export async function seedTestData() {
     const { data: existingUser, error: userError } = await admin
       .from('auth.users')
       .select('id')
-      .eq('email', 'demo@yukz.com')
+      .eq('email', 'admin@yukz.com')
       .limit(1);
     
     if (userError) {
@@ -116,39 +114,73 @@ export async function seedTestData() {
       return;
     }
     
-    // Criar usuário de teste
-    const { data: newUser, error: createError } = await admin
+    // Criar usuários de teste conforme documentação
+    
+    // 1. Criar usuário padrão
+    const { data: userPadrao, error: errorPadrao } = await admin
       .auth.admin.createUser({
-        email: 'demo@yukz.com',
-        password: 'demo123',
+        email: 'teste@yukz.com',
+        password: 'teste123',
         user_metadata: {
-          name: 'Usuário Demonstração'
+          name: 'Usuário Teste',
+          type: 'individual'
         }
       });
     
-    if (createError) {
-      throw new Error(`Erro ao criar usuário de teste: ${createError.message}`);
+    if (errorPadrao) {
+      throw new Error(`Erro ao criar usuário padrão: ${errorPadrao.message}`);
     }
     
-    const userId = newUser.user.id;
+    console.log('Usuário padrão criado com sucesso');
     
-    // Criar veículo de teste
+    // 2. Criar usuário administrador
+    const { data: userAdmin, error: errorAdmin } = await admin
+      .auth.admin.createUser({
+        email: 'admin@yukz.com',
+        password: 'admin123',
+        user_metadata: {
+          name: 'Administrador',
+          type: 'large_fleet'
+        }
+      });
+    
+    if (errorAdmin) {
+      throw new Error(`Erro ao criar usuário administrador: ${errorAdmin.message}`);
+    }
+    
+    console.log('Usuário administrador criado com sucesso');
+    
+    // Criar veículo de demonstração para o administrador
     const { data: vehicle, error: vehicleError } = await admin
       .from('vehicles')
       .insert({
-        user_id: userId,
-        name: 'Caminhão Demo',
-        type: 'truck',
-        plate: 'DEMO1234',
-        model: 'Volvo FH 540',
-        year: '2025',
-        color: '#FF0000'
+        user_id: userAdmin.user.id,
+        name: 'Carro Demonstração',
+        type: 'car',
+        plate: 'ABC1234',
+        model: 'Toyota Corolla',
+        year: '2023',
+        color: 'Prata'
       })
       .select()
       .single();
     
     if (vehicleError) {
-      throw new Error(`Erro ao criar veículo de teste: ${vehicleError.message}`);
+      throw new Error(`Erro ao criar veículo de demonstração: ${vehicleError.message}`);
+    }
+    
+    // Configurar rastreador para o veículo
+    const { error: trackerError } = await admin
+      .from('trackers')
+      .insert({
+        vehicle_id: vehicle.id,
+        imei: '123456789012345',
+        protocol: 'teltonika',
+        status: 'active'
+      });
+      
+    if (trackerError) {
+      throw new Error(`Erro ao criar rastreador: ${trackerError.message}`);
     }
     
     // Criar status inicial do veículo
@@ -159,9 +191,9 @@ export async function seedTestData() {
         status: 'online',
         is_moving: false,
         last_update: new Date().toISOString(),
-        lat: -23.5505,
-        lng: -46.6333,
-        address: 'Av. Paulista, São Paulo',
+        lat: -23.550520,
+        lng: -46.633308,
+        address: 'Centro de São Paulo',
         speed: 0,
         direction: 'Norte',
         ignition: false,
@@ -171,27 +203,6 @@ export async function seedTestData() {
     
     if (statusError) {
       throw new Error(`Erro ao criar status do veículo: ${statusError.message}`);
-    }
-    
-    // Criar geocerca de teste
-    const { error: geofenceError } = await admin
-      .from('geofences')
-      .insert({
-        user_id: userId,
-        name: 'Área Central',
-        description: 'Região central da cidade',
-        type: 'circle',
-        coordinates: { 
-          lat: -23.5505, 
-          lng: -46.6333 
-        },
-        radius_meters: 5000,
-        alert_on_enter: true,
-        alert_on_exit: true
-      });
-    
-    if (geofenceError) {
-      throw new Error(`Erro ao criar geocerca de teste: ${geofenceError.message}`);
     }
     
     console.log('Dados de teste criados com sucesso!');
