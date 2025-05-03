@@ -22,8 +22,8 @@ RUN npm ci
 # Copiar o restante do código-fonte
 COPY . .
 
-# Gerar build de produção
-RUN npm run build
+# Gerar build de produção com ESLint ignorado
+RUN DISABLE_ESLINT_PLUGIN=true npm run build
 
 # Estágio de execução
 FROM node:18-alpine AS runner

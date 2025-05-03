@@ -50,6 +50,7 @@
    - 6.6 Acessando a Aplicação
    - 6.7 Testes
    - 6.8 Solução de Problemas
+   - 6.9 [Deploy com Docker (Detalhado)](docker-deployment.md)
 
 7. [Referências e Recursos](7-referencias.md)
    - 7.1 Documentação Oficial das Tecnologias
