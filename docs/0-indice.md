@@ -61,6 +61,15 @@
    - 7.6 Comunidade e Suporte
    - 7.7 Ferramentas Recomendadas
 
+## Documentos Adicionais
+
+- [Estrutura do Banco de Dados](estrutura-banco-dados.md) - Detalhamento das tabelas e relações
+- [Guia do Usuário](guia-do-usuario.md) - Manual de uso do sistema
+- [Tarefas Pendentes de Documentação](TODO.md) - Lista de melhorias planejadas para a documentação
+- [Acesso para Teste](acesso-teste.md) - Credenciais e instruções para ambiente de teste
+- [Performance do Frontend](performance-frontend.md) - Diretrizes e métricas de desempenho
+- [Configuração do Supabase](supabase-setup.md) - Setup do ambiente Supabase
+
 ## Versão da Documentação
 
 **Versão:** 1.0.0  
