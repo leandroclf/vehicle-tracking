@@ -46,7 +46,7 @@ type ReportDataItem = MovementDataItem | StopDataItem | GeofenceDataItem | Speed
 
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   const supabase = createRouteHandlerClient({ cookies });
   
@@ -57,7 +57,7 @@ export async function GET(
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
     
-    const reportId = context.params.id;
+    const reportId = params.id;
     
     // Buscar relatório pelo ID
     const { data: report, error: reportError } = await supabase
