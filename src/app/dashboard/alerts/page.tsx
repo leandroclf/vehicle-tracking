@@ -1,13 +1,56 @@
 'use client';
 
+import { useState } from 'react';
 import Alert from '@/components/ui/Alert';
 import Card from '@/components/ui/Card';
 import Badge from '@/components/ui/Badge';
+import { Bell, Trash2 } from 'lucide-react';
+import Button from '@/components/ui/Button';
+import { useAlerts } from '@/lib/alerts';
+import AlertNotifications from '@/components/dashboard/AlertNotifications';
 
 export default function AlertsPage() {
+  const { alerts, markAsRead, markAllAsRead } = useAlerts();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<{ name?: string, plate?: string, model?: string } | null>(null);
+
+  const handleShowNotifications = (vehicleName?: string, vehiclePlate?: string, vehicleModel?: string) => {
+    setSelectedVehicle({
+      name: vehicleName,
+      plate: vehiclePlate,
+      model: vehicleModel,
+    });
+    setShowNotifications(true);
+  };
+
+  const handleCloseNotifications = () => {
+    setShowNotifications(false);
+    setSelectedVehicle(null);
+  };
+
+  const handleMarkAllAsRead = () => {
+    markAllAsRead();
+  };
+
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Alertas</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Alertas</h1>
+        <div className="flex space-x-2">
+          <Button 
+            variant="secondary" 
+            onClick={() => handleShowNotifications()}
+          >
+            <Bell size={16} className="mr-2" /> Ver Notificações
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleMarkAllAsRead}
+          >
+            <Trash2 size={16} className="mr-2" /> Limpar Todos
+          </Button>
+        </div>
+      </div>
       
       <Card 
         title="Lista de Alertas" 
@@ -15,43 +58,96 @@ export default function AlertsPage() {
         className="mb-6"
       >
         <div className="space-y-4">
-          <Alert
-            variant="error"
-            title="Veículo fora da geocerca"
-            className="flex justify-between items-start"
-          >
-            <div>
-              <p className="text-sm text-gray-600">O veículo ABC-1234 saiu da geocerca &quot;Zona de Entrega&quot;</p>
-              <p className="text-xs text-gray-500 mt-1">Hoje às 14:25</p>
+          {alerts.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">
+              Nenhum alerta disponível no momento.
             </div>
-            <Badge variant="danger" className="ml-4">Crítico</Badge>
-          </Alert>
-          
-          <Alert
-            variant="warning"
-            title="Velocidade excedida"
-            className="flex justify-between items-start"
-          >
-            <div>
-              <p className="text-sm text-gray-600">O veículo DEF-5678 está a 95 km/h em zona de 60 km/h</p>
-              <p className="text-xs text-gray-500 mt-1">Hoje às 13:10</p>
-            </div>
-            <Badge variant="warning" className="ml-4">Médio</Badge>
-          </Alert>
-          
-          <Alert
-            variant="info"
-            title="Parada não programada"
-            className="flex justify-between items-start"
-          >
-            <div>
-              <p className="text-sm text-gray-600">O veículo GHI-9012 está parado há 45 minutos</p>
-              <p className="text-xs text-gray-500 mt-1">Ontem às 17:30</p>
-            </div>
-            <Badge variant="info" className="ml-4">Informativo</Badge>
-          </Alert>
+          ) : (
+            alerts.map((alert) => (
+              <Alert
+                key={alert.id}
+                variant={
+                  alert.type === 'panic' ? 'error' :
+                  alert.type === 'speed' ? 'warning' :
+                  'info'
+                }
+                title={
+                  alert.type === 'movement' ? 'Movimento Detectado' :
+                  alert.type === 'speed' ? 'Velocidade Excedida' :
+                  alert.type === 'ignition' ? 'Ignição Alterada' :
+                  alert.type === 'panic' ? 'Botão de Pânico' :
+                  alert.type === 'battery' ? 'Bateria Baixa' :
+                  'Desconexão'
+                }
+                className="flex justify-between items-start"
+              >
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{alert.message}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    {new Date(alert.timestamp).toLocaleString('pt-BR')}
+                  </p>
+                </div>
+                <div className="flex space-x-2 items-center">
+                  <Badge 
+                    variant={
+                      alert.type === 'panic' ? 'danger' :
+                      alert.type === 'speed' ? 'warning' :
+                      'info'
+                    } 
+                    className="ml-4"
+                  >
+                    {
+                      alert.type === 'panic' ? 'Crítico' :
+                      alert.type === 'speed' ? 'Médio' :
+                      'Informativo'
+                    }
+                  </Badge>
+                  
+                  <button 
+                    className="text-blue-600 hover:text-blue-800 text-sm"
+                    onClick={() => handleShowNotifications(
+                      alert.vehicleName,
+                      "ABC-1234", // Placa exemplo
+                      "Ford Ecosport" // Modelo exemplo
+                    )}
+                  >
+                    Ver Detalhes
+                  </button>
+                  
+                  {!alert.read && (
+                    <button
+                      className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                      onClick={() => markAsRead(alert.id)}
+                    >
+                      Novo
+                    </button>
+                  )}
+                </div>
+              </Alert>
+            ))
+          )}
         </div>
       </Card>
+      
+      {/* Modal de notificações */}
+      {showNotifications && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div>
+            <AlertNotifications 
+              vehicleName={selectedVehicle?.name}
+              vehiclePlate={selectedVehicle?.plate}
+              vehicleModel={selectedVehicle?.model}
+            />
+          </div>
+          
+          <button 
+            className="absolute top-4 right-4 text-white bg-gray-800 rounded-full p-2"
+            onClick={handleCloseNotifications}
+          >
+            <span className="text-2xl">×</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 } 

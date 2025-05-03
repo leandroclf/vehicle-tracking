@@ -12,6 +12,7 @@ import { useVehicles } from '@/lib/vehicles';
 import { useGeofences } from '@/lib/geofences';
 import { calculateCenter } from '@/lib/google-maps';
 import { Vehicle } from '@/lib/vehicles';
+import MapCustomizationPanel from '@/components/map/MapCustomizationPanel';
 
 export default function MapPage() {
   // Estados para controlar o mapa
@@ -25,6 +26,10 @@ export default function MapPage() {
   const [routeHistoryStartDate, setRouteHistoryStartDate] = useState<Date | null>(null);
   const [routeHistoryEndDate, setRouteHistoryEndDate] = useState<Date | null>(null);
   const [selectedGeofence, setSelectedGeofence] = useState<Geofence | null>(null);
+  const [showMapCustomization, setShowMapCustomization] = useState(false);
+  const [showVehicleIndicators, setShowVehicleIndicators] = useState(false);
+  const [showGroupedVehicles, setShowGroupedVehicles] = useState(true);
+  const [vehicleInfoDisplay, setVehicleInfoDisplay] = useState('placa_velocidade');
   
   // Estados para centro e zoom do mapa
   const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral | null>(null);
@@ -142,6 +147,18 @@ export default function MapPage() {
     { id: 'terrain', label: 'Terreno', icon: <MapIcon size={16} /> },
   ];
 
+  const handleMapTypeChange = (type: string) => {
+    setMapType(type as 'roadmap' | 'satellite' | 'hybrid' | 'terrain');
+  };
+
+  const handleInfoDisplayChange = (value: any) => {
+    setVehicleInfoDisplay(value);
+  };
+
+  const toggleShowMapCustomization = () => {
+    setShowMapCustomization(!showMapCustomization);
+  };
+
   // Definição das abas
   const tabItems = [
     {
@@ -166,7 +183,38 @@ export default function MapPage() {
             onGeofenceUpdate={handleGeofenceUpdate}
             onGeofenceDelete={handleGeofenceDelete}
             onRoutePointClick={handleRoutePointClick}
+            showVehicleIndicators={showVehicleIndicators}
+            showGroupedVehicles={showGroupedVehicles}
           />
+          
+          {/* Floating button for map customization */}
+          <div className="absolute top-4 right-4 flex flex-col gap-2">
+            <button 
+              className="bg-white p-3 rounded-full shadow-md hover:bg-gray-100 transition-colors"
+              onClick={toggleShowMapCustomization}
+              title="Customização do mapa"
+            >
+              <Settings size={20} />
+            </button>
+          </div>
+          
+          {/* Map customization panel */}
+          {showMapCustomization && (
+            <div className="absolute top-4 right-16 z-10">
+              <MapCustomizationPanel 
+                onMapTypeChange={handleMapTypeChange}
+                onInfoDisplayChange={handleInfoDisplayChange}
+                onShowVehicleIndicators={setShowVehicleIndicators}
+                onShowGroupedVehicles={setShowGroupedVehicles}
+                onShowNegativeGeofences={() => {}}
+                onShowRiskAreas={() => {}}
+                onShowAnchors={() => {}}
+                onAllowMapMarker={() => {}}
+                onAllowVehicleSearch={() => {}}
+                onAllowAddressSearch={() => {}}
+              />
+            </div>
+          )}
         </div>
       ),
     },
