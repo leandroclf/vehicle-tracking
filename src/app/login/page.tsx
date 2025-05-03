@@ -127,7 +127,7 @@ function LoginForm() {
               <p className="text-gray-700 dark:text-gray-300">
                 Não tem uma conta?{' '}
                 <Link href="/register" className="text-[#007db8] dark:text-blue-400 hover:underline">
-                  Registre-se
+                  Novo Usuário
                 </Link>
               </p>
             </div>

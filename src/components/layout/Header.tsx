@@ -46,10 +46,10 @@ export default function Header() {
         <div className="hidden md:flex items-center space-x-4">
           {isAuthenticated && user ? (
             <>
-              <span className="flex items-center text-sm bg-[#007db8]/30 px-3 py-1 rounded-full">
+              <Link href="/dashboard/profile" className="flex items-center text-sm bg-[#007db8]/30 px-3 py-1 rounded-full">
                 <User className="w-4 h-4 mr-1" />
                 {user.name || user.email}
-              </span>
+              </Link>
               <button
                 onClick={logout}
                 className="flex items-center px-3 py-1 bg-[#faa631] hover:bg-[#d69028] rounded transition duration-300 text-sm"
@@ -61,7 +61,7 @@ export default function Header() {
           ) : (
             <>
               <Link href="/login" className="hover:text-[#faa631] transition-colors">Login</Link>
-              <Link href="/register" className="px-3 py-1 bg-[#faa631] hover:bg-[#d69028] rounded transition duration-300 text-sm">Registrar</Link>
+              <Link href="/register" className="px-3 py-1 bg-[#faa631] hover:bg-[#d69028] rounded transition duration-300 text-sm">Novo Usuário</Link>
             </>
           )}
         </div>
@@ -144,7 +144,7 @@ export default function Header() {
                   className="flex items-center px-4 py-2 bg-[#faa631] text-white rounded-md mx-4"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Registrar
+                  Novo Usuário
                 </Link>
               </>
             )}
