@@ -18,16 +18,7 @@ export const ensureDatabaseStructure = async () => {
   try {
     const admin = getAdminClient();
     
-    // Verificar se as tabelas principais existem
-    const { data: tablesList, error: tablesError } = await admin.from('information_schema.tables')
-      .select('table_name')
-      .eq('table_schema', 'public');
-    
-    if (tablesError) {
-      console.error('Erro ao verificar tabelas:', tablesError);
-      return false;
-    }
-    
+    // Verificar se as tabelas principais existem consultando cada uma delas
     const requiredTables = [
       'profiles', 
       'vehicles', 
@@ -39,9 +30,15 @@ export const ensureDatabaseStructure = async () => {
       'geofences'
     ];
     
-    const missingTables = requiredTables.filter(
-      table => !tablesList?.some(t => t.table_name === table)
-    );
+    let missingTables = [];
+    
+    // Tentamos consultar cada tabela para verificar se existe
+    for (const table of requiredTables) {
+      const { error } = await admin.from(table).select('count(*)').limit(1);
+      if (error && error.message.includes(`relation "${table}" does not exist`)) {
+        missingTables.push(table);
+      }
+    }
     
     if (missingTables.length > 0) {
       console.warn(`Tabelas faltantes: ${missingTables.join(', ')}`);
