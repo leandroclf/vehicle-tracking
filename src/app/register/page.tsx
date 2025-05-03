@@ -4,6 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Alert from '@/components/ui/Alert';
+import Container from '@/components/ui/Container';
+import Card from '@/components/ui/Card';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -38,100 +43,95 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white rounded-lg shadow-md border-t-4 border-t-[#00315c] p-8 w-full max-w-md">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-[#00315c]">Yukz</h1>
-          <p className="text-gray-700 mt-2">Crie sua conta</p>
-        </div>
-        
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        )}
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-700">
-              Nome
-            </label>
-            <input
-              type="text"
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-white text-gray-800 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#007db8] focus:border-transparent"
-              placeholder="Seu nome completo"
-              required
-            />
+      <Container className="max-w-md">
+        <Card className="border-t-4 border-t-[#00315c]">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-[#00315c]">Yukz</h1>
+            <p className="text-gray-700 mt-2">Crie sua conta</p>
           </div>
           
-          <div>
-            <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 bg-white text-gray-800 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#007db8] focus:border-transparent"
-              placeholder="seu@email.com"
-              required
-            />
-          </div>
+          {error && (
+            <Alert variant="danger" className="mb-4">
+              {error}
+            </Alert>
+          )}
           
-          <div>
-            <label htmlFor="phone" className="block mb-2 text-sm font-medium text-gray-700">
-              Telefone
-            </label>
-            <input
-              type="tel"
-              id="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3 py-2 bg-white text-gray-800 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#007db8] focus:border-transparent"
-              placeholder="(00) 00000-0000"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-700">
-              Senha
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-white text-gray-800 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#007db8] focus:border-transparent"
-              placeholder="********"
-              required
-            />
-          </div>
-          
-          <button
-            type="submit"
-            disabled={isLoading}
-            className={`w-full py-2 px-4 rounded-md transition-colors font-medium shadow-sm ${
-              isLoading 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-[#00315c] hover:bg-[#002342] text-white'
-            }`}
-          >
-            {isLoading ? 'Registrando...' : 'Registrar'}
-          </button>
-          
-          <div className="mt-6 text-center">
-            <p className="text-gray-700">
-              Já tem uma conta?{' '}
-              <Link href="/login" className="text-[#007db8] hover:underline">
-                Fazer login
-              </Link>
-            </p>
-          </div>
-        </form>
-      </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-700">
+                Nome
+              </label>
+              <Input
+                type="text"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Seu nome completo"
+                required
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-700">
+                Email
+              </label>
+              <Input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
+                required
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="phone" className="block mb-2 text-sm font-medium text-gray-700">
+                Telefone
+              </label>
+              <Input
+                type="tel"
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-700">
+                Senha
+              </label>
+              <Input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="********"
+                required
+              />
+            </div>
+            
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              isLoading={isLoading}
+            >
+              {isLoading ? 'Registrando...' : 'Registrar'}
+            </Button>
+            
+            <div className="mt-6 text-center">
+              <p className="text-gray-700">
+                Já tem uma conta?{' '}
+                <Link href="/login" className="text-[#007db8] hover:underline">
+                  Fazer login
+                </Link>
+              </p>
+            </div>
+          </form>
+        </Card>
+      </Container>
     </div>
   );
 } 

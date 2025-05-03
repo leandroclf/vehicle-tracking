@@ -8,6 +8,7 @@ interface ReportRequest {
   startDate: string;
   endDate: string;
   vehicleIds: string[];
+  format?: 'pdf' | 'excel';
 }
 
 export async function POST(request: NextRequest) {
@@ -18,7 +19,8 @@ export async function POST(request: NextRequest) {
       reportType, 
       startDate, 
       endDate, 
-      vehicleIds 
+      vehicleIds,
+      format = 'pdf'
     } = await request.json() as ReportRequest;
     
     // Verificar autenticação
@@ -44,6 +46,7 @@ export async function POST(request: NextRequest) {
         start_date: startDate,
         end_date: endDate,
         vehicle_ids: vehicleIds,
+        format: format,
         status: 'processing'
       })
       .select()

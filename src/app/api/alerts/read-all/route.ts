@@ -14,7 +14,7 @@ export async function PUT(request: NextRequest) {
     const userId = authResult.user.id;
 
     // Atualizar o status 'read' de TODOS os alertas do usuário usando Supabase
-    const { data, error, count } = await supabase
+    const { error, count } = await supabase
       .from('alerts')
       .update({ status: 'read', updated_at: new Date().toISOString() })
       .eq('user_id', userId)

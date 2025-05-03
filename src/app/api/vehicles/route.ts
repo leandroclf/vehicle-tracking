@@ -23,22 +23,6 @@ const vehicleSchema = z.object({
   vin: z.string().optional()
 });
 
-// Interface para o veículo vindo do Supabase
-interface DbVehicle {
-  id: string;
-  user_id: string;
-  name: string;
-  license_plate: string;
-  model: string | null;
-  year: number | null;
-  device_id: string | null;
-  status: 'active' | 'inactive';
-  color: string | null;
-  vin: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
 // Handler para listar veículos (GET)
 export async function GET(request: NextRequest) {
   try {
@@ -169,7 +153,7 @@ export async function PUT(request: NextRequest) {
     const userId = authResult.user.id;
     
     // Extrair e validar corpo da requisição
-    const body = await request.json();
+    const body = await request.json() as { id: string; [key: string]: unknown };
     const { id, ...vehicleData } = body;
     
     if (!id) {

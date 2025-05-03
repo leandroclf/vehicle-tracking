@@ -1,21 +1,39 @@
+import Card from '@/components/ui/Card';
+import Container from '@/components/ui/Container';
+import Grid from '@/components/ui/Grid';
+import Stats from '@/components/ui/Stats';
+import { Truck, Bell, MapPin } from 'lucide-react';
+
 export default function DashboardPage() {
+  const statsItems = [
+    {
+      id: "vehicles",
+      label: "Veículos Ativos",
+      value: "12",
+      icon: <Truck className="w-5 h-5" />,
+    },
+    {
+      id: "alerts",
+      label: "Alertas Recentes",
+      value: "3",
+      icon: <Bell className="w-5 h-5" />,
+    },
+    {
+      id: "geofences",
+      label: "Geocercas",
+      value: "5",
+      icon: <MapPin className="w-5 h-5" />,
+    }
+  ];
+
   return (
-    <div className="container mx-auto p-4">
+    <Container>
       <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white shadow rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-2">Veículos Ativos</h2>
-          <p className="text-3xl font-bold">12</p>
-        </div>
-        <div className="bg-white shadow rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-2">Alertas Recentes</h2>
-          <p className="text-3xl font-bold">3</p>
-        </div>
-        <div className="bg-white shadow rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-2">Geocercas</h2>
-          <p className="text-3xl font-bold">5</p>
-        </div>
-      </div>
-    </div>
+      <Stats 
+        items={statsItems}
+        columns={3}
+        className="gap-4"
+      />
+    </Container>
   );
 } 

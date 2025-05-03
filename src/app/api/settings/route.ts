@@ -19,26 +19,6 @@ const settingsSchema = z.object({
   auto_refresh: z.number().int().min(0).optional()
 });
 
-// Interface para as configurações vindas do Supabase
-interface DbSettings {
-  id: string;
-  user_id: string;
-  notification_email: string | null;
-  notification_sms: boolean;
-  notification_push: boolean;
-  language: string;
-  timezone: string;
-  distance_unit: 'km' | 'mi';
-  temperature_unit: 'C' | 'F';
-  map_type: 'roadmap' | 'satellite' | 'hybrid' | 'terrain';
-  default_view: 'map' | 'list' | 'dashboard';
-  alert_sound: boolean;
-  dark_mode: boolean;
-  auto_refresh: number;
-  created_at: string;
-  updated_at: string;
-}
-
 // Handler para obter configurações do usuário (GET)
 export async function GET(request: NextRequest) {
   try {

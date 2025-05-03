@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { Polygon, Circle, DrawingManager } from '@react-google-maps/api';
 
 export interface Geofence {
@@ -44,7 +44,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
   const [selectedGeofence, setSelectedGeofence] = useState<Geofence | null>(null);
   
   // Cores padrão para as geocercas
-  const defaultColors = [
+  const defaultColors = useMemo(() => [
     '#4285F4', // Google Blue
     '#DB4437', // Google Red
     '#F4B400', // Google Yellow
@@ -53,7 +53,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
     '#FF9800', // Orange
     '#795548', // Brown
     '#607D8B', // Blue Grey
-  ];
+  ], []);
 
   // Efeito para atualizar a geocerca selecionada com base no ID
   useEffect(() => {
@@ -64,6 +64,13 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
       setSelectedGeofence(null);
     }
   }, [selectedGeofenceId, geofences]);
+
+  // Reset do modo de desenho quando o modo de edição é desativado
+  useEffect(() => {
+    if (!editable) {
+      setDrawingMode(null);
+    }
+  }, [editable]);
 
   // Função para lidar com a criação de um polígono
   const handlePolygonComplete = useCallback((polygon: google.maps.Polygon) => {
@@ -139,15 +146,15 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
   }, [onGeofenceCreate, geofences, defaultColors]);
 
   // Função para lidar com o clique em uma geocerca
-  const handleGeofenceClick = (geofence: Geofence) => {
+  const handleGeofenceClick = useCallback((geofence: Geofence) => {
     setSelectedGeofence(geofence);
     if (onGeofenceSelect) {
       onGeofenceSelect(geofence);
     }
-  };
+  }, [onGeofenceSelect]);
 
   // Função para atualizar uma geocerca (polígono)
-  const handlePolygonPath = (geofence: Geofence, polygon: google.maps.Polygon) => {
+  const handlePolygonPath = useCallback((geofence: Geofence, polygon: google.maps.Polygon) => {
     if (onGeofenceUpdate) {
       const paths: google.maps.LatLngLiteral[] = [];
       
@@ -167,10 +174,10 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
         updatedAt: new Date().toISOString(),
       });
     }
-  };
+  }, [onGeofenceUpdate]);
 
   // Função para atualizar uma geocerca (círculo)
-  const handleCircleChange = (geofence: Geofence, circle: google.maps.Circle) => {
+  const handleCircleChange = useCallback((geofence: Geofence, circle: google.maps.Circle) => {
     if (onGeofenceUpdate) {
       // Obter o centro e o raio atualizados
       const center = {
@@ -187,12 +194,12 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
         updatedAt: new Date().toISOString(),
       });
     }
-  };
+  }, [onGeofenceUpdate]);
 
-  // Opções para o gerenciador de desenho
-  const drawingManagerOptions: google.maps.drawing.DrawingManagerOptions = {
+  // Opções para o gerenciador de desenho - memoizadas para evitar re-renders
+  const drawingManagerOptions = useMemo(() => ({
     drawingMode: drawingMode,
-    drawingControl: editable, // Somente mostrar controles se for editável
+    drawingControl: editable,
     drawingControlOptions: {
       position: google.maps.ControlPosition.TOP_CENTER,
       drawingModes: [
@@ -220,7 +227,116 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
       draggable: true,
       zIndex: 1,
     },
-  };
+  }), [drawingMode, editable]);
+
+  // Filtrar geocercas por tipo - memoizado para evitar reprocessamento
+  const polygonGeofences = useMemo(() => 
+    geofences.filter(geofence => 
+      geofence.type === 'polygon' && geofence.paths && geofence.paths.length > 0
+    ), 
+    [geofences]
+  );
+
+  const circleGeofences = useMemo(() => 
+    geofences.filter(geofence => 
+      geofence.type === 'circle' && geofence.center && geofence.radius
+    ), 
+    [geofences]
+  );
+
+  // Componente para renderizar um polígono
+  const GeofencePolygon = memo(({ geofence }: { geofence: Geofence }) => {
+    const isSelected = selectedGeofence?.id === geofence.id;
+    const isEditable = editable && isSelected;
+
+    return (
+      <Polygon
+        key={geofence.id}
+        paths={geofence.paths!}
+        options={{
+          fillColor: geofence.fillColor,
+          fillOpacity: 0.4,
+          strokeColor: geofence.color,
+          strokeWeight: 2,
+          clickable: true,
+          editable: isEditable,
+          draggable: isEditable,
+          zIndex: isSelected ? 10 : 1,
+        }}
+        onClick={() => handleGeofenceClick(geofence)}
+        onMouseUp={() => {
+          if (isEditable) {
+            // Obter a referência ao polígono para atualizar os caminhos
+            const polygonRef = document.querySelector(`[title="${geofence.id}"]`);
+            if (polygonRef && 'getPath' in (polygonRef as any)) {
+              handlePolygonPath(geofence, polygonRef as unknown as google.maps.Polygon);
+            }
+          }
+        }}
+        onDragEnd={() => {
+          if (isEditable) {
+            // Obter a referência ao polígono para atualizar os caminhos
+            const polygonRef = document.querySelector(`[title="${geofence.id}"]`);
+            if (polygonRef && 'getPath' in (polygonRef as any)) {
+              handlePolygonPath(geofence, polygonRef as unknown as google.maps.Polygon);
+            }
+          }
+        }}
+      />
+    );
+  });
+
+  // Componente para renderizar um círculo
+  const GeofenceCircle = memo(({ geofence }: { geofence: Geofence }) => {
+    const isSelected = selectedGeofence?.id === geofence.id;
+    const isEditable = editable && isSelected;
+
+    return (
+      <Circle
+        key={geofence.id}
+        center={geofence.center!}
+        radius={geofence.radius!}
+        options={{
+          fillColor: geofence.fillColor,
+          fillOpacity: 0.4,
+          strokeColor: geofence.color,
+          strokeWeight: 2,
+          clickable: true,
+          editable: isEditable,
+          draggable: isEditable,
+          zIndex: isSelected ? 10 : 1,
+        }}
+        onClick={() => handleGeofenceClick(geofence)}
+        onCenterChanged={() => {
+          if (isEditable) {
+            // Obter a referência ao círculo para atualizar o centro e o raio
+            const circleRef = document.querySelector(`[title="${geofence.id}"]`);
+            if (circleRef && 'getCenter' in (circleRef as any)) {
+              handleCircleChange(geofence, circleRef as unknown as google.maps.Circle);
+            }
+          }
+        }}
+        onRadiusChanged={() => {
+          if (isEditable) {
+            // Obter a referência ao círculo para atualizar o centro e o raio
+            const circleRef = document.querySelector(`[title="${geofence.id}"]`);
+            if (circleRef && 'getRadius' in (circleRef as any)) {
+              handleCircleChange(geofence, circleRef as unknown as google.maps.Circle);
+            }
+          }
+        }}
+        onDragEnd={() => {
+          if (isEditable) {
+            // Obter a referência ao círculo para atualizar o centro e o raio
+            const circleRef = document.querySelector(`[title="${geofence.id}"]`);
+            if (circleRef && 'getCenter' in (circleRef as any)) {
+              handleCircleChange(geofence, circleRef as unknown as google.maps.Circle);
+            }
+          }
+        }}
+      />
+    );
+  });
 
   return (
     <>
@@ -234,95 +350,17 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
         />
       )}
 
-      {/* Renderizar polígonos para geocercas do tipo polígono */}
-      {geofences
-        .filter(geofence => geofence.type === 'polygon' && geofence.paths && geofence.paths.length > 0)
-        .map(geofence => (
-          <Polygon
-            key={geofence.id}
-            paths={geofence.paths!}
-            options={{
-              fillColor: geofence.fillColor,
-              fillOpacity: 0.4,
-              strokeColor: geofence.color,
-              strokeWeight: 2,
-              clickable: true,
-              editable: editable && selectedGeofence?.id === geofence.id,
-              draggable: editable && selectedGeofence?.id === geofence.id,
-              zIndex: selectedGeofence?.id === geofence.id ? 10 : 1,
-            }}
-            onClick={() => handleGeofenceClick(geofence)}
-            onMouseUp={() => {
-              if (editable && selectedGeofence?.id === geofence.id) {
-                // Obter a referência ao polígono para atualizar os caminhos
-                const polygonRef = document.querySelector(`[title="${geofence.id}"]`);
-                if (polygonRef && 'getPath' in (polygonRef as any)) {
-                  handlePolygonPath(geofence, polygonRef as unknown as google.maps.Polygon);
-                }
-              }
-            }}
-            onDragEnd={() => {
-              if (editable && selectedGeofence?.id === geofence.id) {
-                // Obter a referência ao polígono para atualizar os caminhos
-                const polygonRef = document.querySelector(`[title="${geofence.id}"]`);
-                if (polygonRef && 'getPath' in (polygonRef as any)) {
-                  handlePolygonPath(geofence, polygonRef as unknown as google.maps.Polygon);
-                }
-              }
-            }}
-          />
-        ))}
+      {/* Renderizar polígonos */}
+      {polygonGeofences.map(geofence => (
+        <GeofencePolygon key={geofence.id} geofence={geofence} />
+      ))}
 
-      {/* Renderizar círculos para geocercas do tipo círculo */}
-      {geofences
-        .filter(geofence => geofence.type === 'circle' && geofence.center && geofence.radius)
-        .map(geofence => (
-          <Circle
-            key={geofence.id}
-            center={geofence.center!}
-            radius={geofence.radius!}
-            options={{
-              fillColor: geofence.fillColor,
-              fillOpacity: 0.4,
-              strokeColor: geofence.color,
-              strokeWeight: 2,
-              clickable: true,
-              editable: editable && selectedGeofence?.id === geofence.id,
-              draggable: editable && selectedGeofence?.id === geofence.id,
-              zIndex: selectedGeofence?.id === geofence.id ? 10 : 1,
-            }}
-            onClick={() => handleGeofenceClick(geofence)}
-            onCenterChanged={() => {
-              if (editable && selectedGeofence?.id === geofence.id) {
-                // Obter a referência ao círculo para atualizar o centro e o raio
-                const circleRef = document.querySelector(`[title="${geofence.id}"]`);
-                if (circleRef && 'getCenter' in (circleRef as any)) {
-                  handleCircleChange(geofence, circleRef as unknown as google.maps.Circle);
-                }
-              }
-            }}
-            onRadiusChanged={() => {
-              if (editable && selectedGeofence?.id === geofence.id) {
-                // Obter a referência ao círculo para atualizar o centro e o raio
-                const circleRef = document.querySelector(`[title="${geofence.id}"]`);
-                if (circleRef && 'getRadius' in (circleRef as any)) {
-                  handleCircleChange(geofence, circleRef as unknown as google.maps.Circle);
-                }
-              }
-            }}
-            onDragEnd={() => {
-              if (editable && selectedGeofence?.id === geofence.id) {
-                // Obter a referência ao círculo para atualizar o centro e o raio
-                const circleRef = document.querySelector(`[title="${geofence.id}"]`);
-                if (circleRef && 'getCenter' in (circleRef as any)) {
-                  handleCircleChange(geofence, circleRef as unknown as google.maps.Circle);
-                }
-              }
-            }}
-          />
-        ))}
+      {/* Renderizar círculos */}
+      {circleGeofences.map(geofence => (
+        <GeofenceCircle key={geofence.id} geofence={geofence} />
+      ))}
     </>
   );
 };
 
-export default GeofenceManager; 
+export default memo(GeofenceManager); 

@@ -2,6 +2,8 @@
 
 Este documento contém o plano sequencial de tarefas a serem executadas para a continuidade do desenvolvimento do sistema Yukz de rastreamento veicular.
 
+# 0. Ler o arquivo 1-visao-geral.md para entender o contexto do projeto.
+
 ## 1. Estruturação e Implementação do Backend
 
 1. ✔ **Configurar Banco de Dados Supabase** - *Prioridade: Alta*  
@@ -24,22 +26,28 @@ Este documento contém o plano sequencial de tarefas a serem executadas para a c
 6. ✔ **Integrar Google Maps** - *Prioridade: Alta*  
    Implementar integração completa com a API do Google Maps, incluindo visualização de veículos, geocercas e histórico de rotas.
 
-7.  **Implementar Gestão de Relatórios** - *Prioridade: Baixa*  
+7. ✔ **Implementar Gestão de Relatórios** - *Prioridade: Baixa*  
    Desenvolver interface e lógica para geração e visualização de relatórios personalizados.
 
-8. **Validar paginas com os componentes de UI existentes** - *Prioridade: Média*  
+8. ✔ **Corrigir os erros de linter de todas as páginas do projeto** - *Prioridade: Baixa*  
+
+9. ✔ **Validar paginas com os componentes de UI existentes** - *Prioridade: Média*  
    Utilizar os componentes de UI adequado nas paginas, validar de navegaçao, corrigir erros de links quebrados e de responsividade.
 
-9. **Otimizar Performance do Frontend** - *Prioridade: Média*  
+10. ✔ **Otimizar Performance do Frontend** - *Prioridade: Média*  
    Realizar otimizações para melhorar o carregamento e renderização da aplicação, utilizando técnicas como lazy loading e memoização.
 
 
 ## 3. Implantação e DevOps
 
-12. **Refinar Processo de Deploy com Docker** - *Prioridade: Alta*  
-    Melhorar os scripts de implantação Docker, incluindo solução para o servidor de rastreamento.
+12.   **Refinar Processo de Deploy com Docker** - *Prioridade: Alta*  
+      Gerar os scripts de implantação Docker, incluindo solução para o servidor de rastreamento. (Docker files individuais, aplicaçao e servidor de rastreamento)
+      Adotar multi-stage builds para reduzir tamanho da imagem.
+      Consolidar variáveis de ambiente e segredos via ARG e ENV.
+      Incluir USER não-root e configurar permissões corretas para diretórios.      
+      Resultado Esperado: Imagens Docker leves e seguras, sem dependências desnecessárias.
 
-13. **Implementar Monitoramento** - *Prioridade: Baixa*  
+13. ✔ **Implementar Monitoramento** - *Prioridade: Baixa*  
     Configurar ferramentas de monitoramento para acompanhar performance, disponibilidade e erros.
 
 ## 5. Documentação e Finalização

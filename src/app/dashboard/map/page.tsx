@@ -222,6 +222,16 @@ export default function MapPage() {
           >
             Mostrar Histórico
           </button>
+          <div className="bg-yellow-50 border-yellow-200 border p-3 rounded-md mt-4">
+            <div className="flex items-start">
+              <AlertTriangle size={18} className="text-yellow-500 mt-0.5 mr-2" />
+              <div>
+                <p className="text-sm text-gray-700">
+                  O histórico de rotas está disponível apenas para assinantes do plano &quot;Premium&quot; ou superior.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       ),
     },
