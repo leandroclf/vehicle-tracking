@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyAuth } from '@/lib/auth-middleware';
 import { createClient } from '@supabase/supabase-js';
+import { setupDatabase } from '@/lib/setupDatabase';
+
+// Inicializar o banco de dados na inicialização da API
+setupDatabase().catch(error => {
+  console.error('Falha ao inicializar banco de dados:', error);
+});
 
 // Esquema para marcar alertas como lidos
 const markReadSchema = z.object({

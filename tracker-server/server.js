@@ -1,24 +1,83 @@
 require("dotenv").config();
 const net = require("net");
+const dgram = require("dgram"); // Adicionar suporte a UDP
 const { createClient } = require("@supabase/supabase-js");
+const winston = require('winston');
 const { decodeTeltonikaCodec8, createTeltonikaResponse } = require("./teltonika-decoder");
+
+// Configurar o logger
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.printf(({ level, message, timestamp }) => {
+      return `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+    })
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'tracker-server.log' })
+  ]
+});
 
 // Configurações
 const TCP_PORT = process.env.TRACKER_TCP_PORT || 5027; // Porta padrão para Teltonika
+const UDP_PORT = process.env.TRACKER_UDP_PORT || 5028; // Porta UDP para dispositivos que usam UDP
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // Usar chave de serviço para operações no backend
+const RECONNECT_INTERVAL = 5000; // Intervalo de reconexão ao Supabase em ms
 
 // Validar configurações essenciais
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("Erro: Variáveis de ambiente Supabase (URL e SERVICE_ROLE_KEY) não configuradas.");
+  logger.error("Erro: Variáveis de ambiente Supabase (URL e SERVICE_ROLE_KEY) não configuradas.");
   process.exit(1);
 }
 
 // Inicializar cliente Supabase
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+let isSupabaseConnected = true; // Flag para controlar estado da conexão com Supabase
 
-// Armazenar IMEI por conexão
-const connections = new Map(); // socket -> { imei: string | null }
+// Função para reconectar ao Supabase em caso de erros
+function reconnectSupabase() {
+  logger.info("Tentando reconexão com Supabase...");
+  try {
+    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    isSupabaseConnected = true;
+    logger.info("Reconectado ao Supabase com sucesso.");
+  } catch (error) {
+    logger.error(`Falha ao reconectar com Supabase: ${error.message}`);
+    isSupabaseConnected = false;
+    setTimeout(reconnectSupabase, RECONNECT_INTERVAL);
+  }
+}
+
+// Armazenar IMEI por conexão TCP
+const tcpConnections = new Map(); // socket -> { imei: string | null }
+
+// Armazenar IMEI para clientes UDP (usando endereço como chave)
+const udpClients = new Map(); // "ip:port" -> { imei: string | null, lastSeen: Date }
+
+// Função para limpar clientes UDP inativos
+function cleanupIdleUdpClients() {
+  const now = new Date();
+  const timeout = 30 * 60 * 1000; // 30 minutos em milissegundos
+  let removedCount = 0;
+  
+  for (const [address, client] of udpClients.entries()) {
+    if (now - client.lastSeen > timeout) {
+      logger.debug(`Removendo cliente UDP inativo: ${address}`);
+      udpClients.delete(address);
+      removedCount++;
+    }
+  }
+  
+  if (removedCount > 0) {
+    logger.info(`Limpeza de clientes UDP inativos: ${removedCount} clientes removidos`);
+  }
+}
+
+// Configurar limpeza periódica de clientes UDP inativos
+setInterval(cleanupIdleUdpClients, 10 * 60 * 1000); // A cada 10 minutos
 
 // Função para verificar alertas de velocidade
 async function checkSpeedAlert(vehicle, speed, status, location) {
@@ -32,7 +91,7 @@ async function checkSpeedAlert(vehicle, speed, status, location) {
       .single();
 
     if (settingsError && settingsError.code !== 'PGRST116') { // PGRST116 = Não encontrado
-      console.error(`Erro ao buscar configurações de alerta de velocidade: ${settingsError.message}`);
+      logger.error(`Erro ao buscar configurações de alerta de velocidade: ${settingsError.message}`);
       return;
     }
 
@@ -58,13 +117,13 @@ async function checkSpeedAlert(vehicle, speed, status, location) {
         .insert([alertData]);
 
       if (insertError) {
-        console.error(`Erro ao criar alerta de velocidade: ${insertError.message}`);
+        logger.error(`Erro ao criar alerta de velocidade: ${insertError.message}`);
       } else {
-        console.log(`Alerta de velocidade criado para veículo ${vehicle.id}: ${speed} km/h`);
+        logger.info(`Alerta de velocidade criado para veículo ${vehicle.id}: ${speed} km/h`);
       }
     }
   } catch (error) {
-    console.error("Erro na verificação de alerta de velocidade:", error);
+    logger.error("Erro na verificação de alerta de velocidade:", error);
   }
 }
 
@@ -79,7 +138,7 @@ async function checkGeofenceAlert(vehicle, lat, lng, status) {
       .or(`vehicle_id.eq.${vehicle.id},user_id.eq.${vehicle.user_id}`);
 
     if (geofenceError) {
-      console.error(`Erro ao buscar geocercas: ${geofenceError.message}`);
+      logger.error(`Erro ao buscar geocercas: ${geofenceError.message}`);
       return;
     }
 
@@ -94,7 +153,7 @@ async function checkGeofenceAlert(vehicle, lat, lng, status) {
       .eq("vehicle_id", vehicle.id);
 
     if (statesError) {
-      console.error(`Erro ao buscar estado atual de geocercas: ${statesError.message}`);
+      logger.error(`Erro ao buscar estado atual de geocercas: ${statesError.message}`);
       return;
     }
 
@@ -159,9 +218,9 @@ async function checkGeofenceAlert(vehicle, lat, lng, status) {
           .insert([alertData]);
 
         if (insertError) {
-          console.error(`Erro ao criar alerta de geocerca: ${insertError.message}`);
+          logger.error(`Erro ao criar alerta de geocerca: ${insertError.message}`);
         } else {
-          console.log(`Alerta de geocerca criado para veículo ${vehicle.id}: ${alertData.message}`);
+          logger.info(`Alerta de geocerca criado para veículo ${vehicle.id}: ${alertData.message}`);
         }
       }
       
@@ -176,11 +235,11 @@ async function checkGeofenceAlert(vehicle, lat, lng, status) {
         }, { onConflict: 'vehicle_id,geofence_id' });
       
       if (upsertError) {
-        console.error(`Erro ao atualizar estado de geocerca: ${upsertError.message}`);
+        logger.error(`Erro ao atualizar estado de geocerca: ${upsertError.message}`);
       }
     }
   } catch (error) {
-    console.error("Erro na verificação de alertas de geocerca:", error);
+    logger.error("Erro na verificação de alertas de geocerca:", error);
   }
 }
 
@@ -208,7 +267,7 @@ async function checkIdleAlert(vehicle, status, isMoving) {
           .eq("vehicle_id", vehicle.id);
         
         if (updateError) {
-          console.error(`Erro ao resetar estado de parada: ${updateError.message}`);
+          logger.error(`Erro ao resetar estado de parada: ${updateError.message}`);
         }
       }
       return;
@@ -223,7 +282,7 @@ async function checkIdleAlert(vehicle, status, isMoving) {
       .single();
     
     if (settingsError && settingsError.code !== 'PGRST116') {
-      console.error(`Erro ao buscar configurações de alerta de parada: ${settingsError.message}`);
+      logger.error(`Erro ao buscar configurações de alerta de parada: ${settingsError.message}`);
       return;
     }
     
@@ -252,13 +311,13 @@ async function checkIdleAlert(vehicle, status, isMoving) {
         }]);
       
       if (insertError) {
-        console.error(`Erro ao criar estado de parada: ${insertError.message}`);
+        logger.error(`Erro ao criar estado de parada: ${insertError.message}`);
       }
       return;
     }
     
     if (stateError) {
-      console.error(`Erro ao verificar estado de parada: ${stateError.message}`);
+      logger.error(`Erro ao verificar estado de parada: ${stateError.message}`);
       return;
     }
     
@@ -290,9 +349,9 @@ async function checkIdleAlert(vehicle, status, isMoving) {
           .insert([alertData]);
         
         if (insertError) {
-          console.error(`Erro ao criar alerta de parada: ${insertError.message}`);
+          logger.error(`Erro ao criar alerta de parada: ${insertError.message}`);
         } else {
-          console.log(`Alerta de parada criado para veículo ${vehicle.id}: ${alertData.message}`);
+          logger.info(`Alerta de parada criado para veículo ${vehicle.id}: ${alertData.message}`);
           
           // Marcar que o alerta foi disparado para esta parada
           const { error: updateError } = await supabase
@@ -301,13 +360,13 @@ async function checkIdleAlert(vehicle, status, isMoving) {
             .eq("vehicle_id", vehicle.id);
           
           if (updateError) {
-            console.error(`Erro ao atualizar estado de alerta de parada: ${updateError.message}`);
+            logger.error(`Erro ao atualizar estado de alerta de parada: ${updateError.message}`);
           }
         }
       }
     }
   } catch (error) {
-    console.error("Erro na verificação de alerta de parada:", error);
+    logger.error("Erro na verificação de alerta de parada:", error);
   }
 }
 
@@ -322,7 +381,7 @@ async function checkAllAlerts(vehicleId, status) {
       .single();
     
     if (vehicleError) {
-      console.error(`Erro ao buscar dados do veículo para alertas: ${vehicleError.message}`);
+      logger.error(`Erro ao buscar dados do veículo para alertas: ${vehicleError.message}`);
       return;
     }
     
@@ -352,14 +411,19 @@ async function checkAllAlerts(vehicleId, status) {
     // Outros tipos de alertas podem ser implementados conforme necessário
     
   } catch (error) {
-    console.error(`Erro na verificação de alertas para veículo ${vehicleId}:`, error);
+    logger.error(`Erro na verificação de alertas para veículo ${vehicleId}:`, error);
   }
 }
 
 // Função para atualizar o status do veículo no Supabase
 async function updateVehicleStatusInSupabase(imei, record) {
   if (!imei) {
-    console.error("IMEI não conhecido para este registro, não é possível atualizar o Supabase.");
+    logger.error("IMEI não conhecido para este registro, não é possível atualizar o Supabase.");
+    return;
+  }
+
+  if (!isSupabaseConnected) {
+    logger.error("Supabase desconectado. Não é possível atualizar os dados.");
     return;
   }
 
@@ -371,8 +435,22 @@ async function updateVehicleStatusInSupabase(imei, record) {
       .eq("device_imei", imei)
       .single();
 
-    if (vehicleError || !vehicle) {
-      console.error(`Veículo com IMEI ${imei} não encontrado ou erro:`, vehicleError?.message);
+    if (vehicleError) {
+      if (vehicleError.code === 'PGRST116') { // Não encontrado
+        logger.warn(`Veículo com IMEI ${imei} não encontrado no banco de dados.`);
+      } else {
+        logger.error(`Erro ao buscar veículo com IMEI ${imei}: ${vehicleError.message}`);
+        // Verificar se é um erro de conexão e tentar reconectar
+        if (vehicleError.code === 'PGRST301' || vehicleError.message.includes('connection')) {
+          isSupabaseConnected = false;
+          setTimeout(reconnectSupabase, RECONNECT_INTERVAL);
+        }
+      }
+      return;
+    }
+
+    if (!vehicle) {
+      logger.warn(`Veículo com IMEI ${imei} não encontrado.`);
       return;
     }
 
@@ -399,94 +477,169 @@ async function updateVehicleStatusInSupabase(imei, record) {
       .upsert(statusData, { onConflict: "vehicle_id" });
 
     if (upsertError) {
-      console.error(`Erro ao atualizar status para veículo ${vehicle.id} (IMEI: ${imei}):`, upsertError.message);
+      logger.error(`Erro ao atualizar status para veículo ${vehicle.id} (IMEI: ${imei}): ${upsertError.message}`);
+      
+      // Verificar se é um erro de conexão e tentar reconectar
+      if (upsertError.code === 'PGRST301' || upsertError.message.includes('connection')) {
+        isSupabaseConnected = false;
+        setTimeout(reconnectSupabase, RECONNECT_INTERVAL);
+      }
     } else {
-      console.log(`[${new Date().toISOString()}] Status atualizado para veículo ${vehicle.id} (IMEI: ${imei})`);
+      logger.info(`Status atualizado para veículo ${vehicle.id} (IMEI: ${imei})`);
     }
 
     // Verificar alertas para o veículo
     await checkAllAlerts(vehicle.id, statusData);
 
   } catch (error) {
-    console.error(`Erro inesperado ao processar registro para IMEI ${imei}:`, error);
+    logger.error(`Erro inesperado ao processar registro para IMEI ${imei}: ${error.message}`);
+    
+    // Verificar se é um erro de conexão e tentar reconectar
+    if (error.message && error.message.includes('connection')) {
+      isSupabaseConnected = false;
+      setTimeout(reconnectSupabase, RECONNECT_INTERVAL);
+    }
+  }
+}
+
+// Função para processar dados de qualquer fonte (TCP ou UDP)
+async function processData(data, connectionInfo, sendResponse) {
+  const decodedData = decodeTeltonikaCodec8(data);
+
+  if (!decodedData) {
+    logger.error("Falha ao decodificar dados");
+    return;
+  }
+
+  if (decodedData.type === "imei") {
+    // Recebeu pacote IMEI
+    logger.info(`IMEI ${decodedData.imei} recebido`);
+    connectionInfo.imei = decodedData.imei;
+    
+    // Enviar confirmação de aceitação (0x01)
+    if (sendResponse) {
+      sendResponse(Buffer.from([0x01]));
+      logger.debug(`Confirmação de IMEI enviada para ${decodedData.imei}`);
+    }
+  } else if (decodedData.type === "avl_data") {
+    // Recebeu pacote de dados AVL
+    const imei = connectionInfo?.imei;
+    if (!imei) {
+      logger.error("Recebido pacote AVL antes do IMEI. Ignorando.");
+      return;
+    }
+
+    logger.info(`Recebido ${decodedData.recordCount} registro(s) AVL de ${imei}`);
+    logger.debug(`Detalhes dos registros: ${JSON.stringify(decodedData.records.map(r => ({
+      timestamp: r.timestamp,
+      lat: r.latitude,
+      lng: r.longitude,
+      speed: r.speed
+    })))}`);
+
+    // Processar cada registro AVL
+    for (const record of decodedData.records) {
+      await updateVehicleStatusInSupabase(imei, record);
+    }
+
+    // Enviar confirmação com o número de registros recebidos
+    if (sendResponse) {
+      const confirmation = createTeltonikaResponse(decodedData.recordCount);
+      sendResponse(confirmation);
+      logger.debug(`Confirmação AVL (${decodedData.recordCount} registros) enviada para ${imei}`);
+    }
   }
 }
 
 // Criar servidor TCP
-const server = net.createServer((socket) => {
+const tcpServer = net.createServer((socket) => {
   const clientAddress = `${socket.remoteAddress}:${socket.remotePort}`;
-  console.log(`[${new Date().toISOString()}] Cliente conectado: ${clientAddress}`);
-  connections.set(socket, { imei: null });
+  logger.info(`Cliente TCP conectado: ${clientAddress}`);
+  tcpConnections.set(socket, { imei: null });
 
   // Handler para recebimento de dados
   socket.on("data", async (data) => {
-    console.log(`[${new Date().toISOString()}] Dados recebidos de ${clientAddress}: ${data.toString("hex")}`);
+    logger.debug(`Dados TCP recebidos de ${clientAddress}: ${data.toString("hex").substring(0, 50)}...`);
 
-    const decodedData = decodeTeltonikaCodec8(data);
-
-    if (!decodedData) {
-      console.error(`[${new Date().toISOString()}] Falha ao decodificar dados de ${clientAddress}`);
-      // Considerar fechar a conexão se os dados forem inválidos repetidamente
-      return;
-    }
-
-    const connectionInfo = connections.get(socket);
-
-    if (decodedData.type === "imei") {
-      // Recebeu pacote IMEI
-      console.log(`[${new Date().toISOString()}] IMEI ${decodedData.imei} recebido de ${clientAddress}`);
-      if (connectionInfo) {
-        connectionInfo.imei = decodedData.imei;
-      }
-      // Enviar confirmação de aceitação (0x01)
-      socket.write(Buffer.from([0x01]));
-      console.log(`[${new Date().toISOString()}] Confirmação de IMEI enviada para ${clientAddress}`);
-
-    } else if (decodedData.type === "avl_data") {
-      // Recebeu pacote de dados AVL
-      const imei = connectionInfo?.imei;
-      if (!imei) {
-        console.error(`[${new Date().toISOString()}] Recebido pacote AVL antes do IMEI de ${clientAddress}. Ignorando.`);
-        // O dispositivo deve enviar o IMEI primeiro. Se não enviou, algo está errado.
-        // Poderia solicitar o IMEI ou fechar a conexão.
-        return;
-      }
-
-      console.log(`[${new Date().toISOString()}] Recebido ${decodedData.recordCount} registro(s) AVL de ${imei} (${clientAddress})`);
-
-      // Processar cada registro AVL
-      for (const record of decodedData.records) {
-        await updateVehicleStatusInSupabase(imei, record);
-      }
-
-      // Enviar confirmação com o número de registros recebidos
-      const confirmation = createTeltonikaResponse(decodedData.recordCount);
-      socket.write(confirmation);
-      console.log(`[${new Date().toISOString()}] Confirmação AVL (${decodedData.recordCount} registros) enviada para ${imei} (${clientAddress})`);
-    }
+    const connectionInfo = tcpConnections.get(socket);
+    await processData(data, connectionInfo, (response) => {
+      socket.write(response);
+    });
   });
 
   // Handler para fechamento da conexão
   socket.on("close", () => {
-    console.log(`[${new Date().toISOString()}] Cliente desconectado: ${clientAddress}`);
-    connections.delete(socket);
+    logger.info(`Cliente TCP desconectado: ${clientAddress}`);
+    tcpConnections.delete(socket);
   });
 
   // Handler para erros na conexão
   socket.on("error", (err) => {
-    console.error(`[${new Date().toISOString()}] Erro na conexão com ${clientAddress}:`, err.message);
-    connections.delete(socket); // Remover conexão em caso de erro
+    logger.error(`Erro na conexão TCP com ${clientAddress}: ${err.message}`);
+    tcpConnections.delete(socket); // Remover conexão em caso de erro
   });
 });
 
-// Iniciar o servidor
-server.listen(TCP_PORT, "0.0.0.0", () => {
-  console.log(`[${new Date().toISOString()}] Servidor TCP de rastreadores (Teltonika) ouvindo na porta ${TCP_PORT}`);
+// Criar servidor UDP
+const udpServer = dgram.createSocket('udp4');
+
+udpServer.on('error', (err) => {
+  logger.error(`Erro no servidor UDP: ${err.message}`);
 });
 
-// Lidar com erros do servidor
-server.on("error", (err) => {
-  console.error(`[${new Date().toISOString()}] Erro no servidor TCP:`, err);
-  process.exit(1);
+udpServer.on('message', async (data, rinfo) => {
+  const clientAddress = `${rinfo.address}:${rinfo.port}`;
+  logger.debug(`Dados UDP recebidos de ${clientAddress}: ${data.toString("hex").substring(0, 50)}...`);
+  
+  // Obter ou criar informações do cliente
+  if (!udpClients.has(clientAddress)) {
+    udpClients.set(clientAddress, { imei: null, lastSeen: new Date() });
+    logger.info(`Novo cliente UDP: ${clientAddress}`);
+  }
+  
+  const connectionInfo = udpClients.get(clientAddress);
+  connectionInfo.lastSeen = new Date(); // Atualizar timestamp de atividade
+  
+  await processData(data, connectionInfo, (response) => {
+    udpServer.send(response, rinfo.port, rinfo.address, (err) => {
+      if (err) {
+        logger.error(`Erro ao enviar resposta UDP para ${clientAddress}: ${err.message}`);
+      }
+    });
+  });
 });
+
+udpServer.on('listening', () => {
+  const address = udpServer.address();
+  logger.info(`Servidor UDP de rastreadores ouvindo em ${address.address}:${address.port}`);
+});
+
+// Iniciar servidores
+tcpServer.listen(TCP_PORT, "0.0.0.0", () => {
+  logger.info(`Servidor TCP de rastreadores (Teltonika) ouvindo na porta ${TCP_PORT}`);
+});
+
+udpServer.bind(UDP_PORT, "0.0.0.0");
+
+// Lidar com erros do servidor TCP
+tcpServer.on("error", (err) => {
+  logger.error(`Erro no servidor TCP: ${err.message}`);
+});
+
+// Lidar com sinais de término do processo
+process.on('SIGINT', () => {
+  logger.info("Recebido sinal SIGINT. Encerrando servidores...");
+  tcpServer.close();
+  udpServer.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  logger.info("Recebido sinal SIGTERM. Encerrando servidores...");
+  tcpServer.close();
+  udpServer.close();
+  process.exit(0);
+});
+
+logger.info(`Servidor de rastreamento iniciado. TCP: ${TCP_PORT}, UDP: ${UDP_PORT}`);
 
