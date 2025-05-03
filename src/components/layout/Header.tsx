@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 import { Menu, X, User, LogOut, MapPin, Bell, Settings, BarChart } from 'lucide-react';
+import ThemeSwitcher from '@/components/ui/ThemeSwitcher';
 
 export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <header className="bg-[#00315c] text-white shadow-md sticky top-0 z-50">
+    <header className="bg-[#00315c] dark:bg-[#001a33] text-white shadow-md sticky top-0 z-50">
       <div className="yukz-container py-3 flex justify-between items-center">
         {/* Logo */}
         <Link href="/dashboard/dashboard" className="text-xl font-bold flex items-center">
@@ -44,6 +45,9 @@ export default function Header() {
 
         {/* User Info & Actions */}
         <div className="hidden md:flex items-center space-x-4">
+          {/* Theme Switcher */}
+          <ThemeSwitcher />
+          
           {isAuthenticated && user ? (
             <>
               <Link href="/dashboard/profile" className="flex items-center text-sm bg-[#007db8]/30 px-3 py-1 rounded-full">
@@ -67,8 +71,13 @@ export default function Header() {
         </div>
 
         {/* Mobile Menu Button */}
-        <div className="md:hidden">
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label="Toggle menu" className="text-white">
+        <div className="md:hidden flex items-center">
+          <ThemeSwitcher />
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+            aria-label="Toggle menu" 
+            className="text-white ml-3"
+          >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
@@ -76,7 +85,7 @@ export default function Header() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-[#00315c] border-t border-[#007db8]/30 py-4">
+        <div className="md:hidden bg-[#00315c] dark:bg-[#001a33] border-t border-[#007db8]/30 py-4">
           <div className="yukz-container flex flex-col space-y-4">
             {isAuthenticated ? (
               <>

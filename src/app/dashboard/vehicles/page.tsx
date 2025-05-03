@@ -196,8 +196,7 @@ export default function VehiclesPage() {
   };
   
   const handleShowDetails = (vehicle: Vehicle) => {
-    setSelectedVehicle(vehicle);
-    setIsViewModalOpen(true);
+    router.push(`/dashboard/vehicles/${vehicle.id}`);
   };
   
   const handleShowHistory = (vehicle: Vehicle) => {

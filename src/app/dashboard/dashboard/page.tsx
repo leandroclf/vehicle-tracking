@@ -1,39 +1,40 @@
-import Card from '@/components/ui/Card';
 import Container from '@/components/ui/Container';
-import Grid from '@/components/ui/Grid';
-import Stats from '@/components/ui/Stats';
-import { Truck, Bell, MapPin } from 'lucide-react';
+import React from 'react';
+import RealTimeUpdater from '@/components/dashboard/RealTimeUpdater';
+import dynamic from 'next/dynamic';
+
+// Importar widgets de forma dinâmica para melhorar performance
+const VehicleSummaryWidget = dynamic(() => import('@/components/dashboard/widgets/VehicleSummaryWidget'), {
+  loading: () => <div className="h-48 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+});
+
+const AlertsWidget = dynamic(() => import('@/components/dashboard/widgets/AlertsWidget'), {
+  loading: () => <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+});
+
+const MapPreviewWidget = dynamic(() => import('@/components/dashboard/widgets/MapPreviewWidget'), {
+  loading: () => <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+});
+
+const ActivityWidget = dynamic(() => import('@/components/dashboard/widgets/ActivityWidget'), {
+  loading: () => <div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+});
 
 export default function DashboardPage() {
-  const statsItems = [
-    {
-      id: "vehicles",
-      label: "Veículos Ativos",
-      value: "12",
-      icon: <Truck className="w-5 h-5" />,
-    },
-    {
-      id: "alerts",
-      label: "Alertas Recentes",
-      value: "3",
-      icon: <Bell className="w-5 h-5" />,
-    },
-    {
-      id: "geofences",
-      label: "Geocercas",
-      value: "5",
-      icon: <MapPin className="w-5 h-5" />,
-    }
-  ];
-
   return (
     <Container>
-      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Dashboard</h1>
-      <Stats 
-        items={statsItems}
-        columns={3}
-        className="gap-4"
-      />
+      {/* Componente invisível que atualiza dados em tempo real */}
+      <RealTimeUpdater />
+      
+      <h1 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Dashboard</h1>
+      
+      {/* Grid de widgets responsivo */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <VehicleSummaryWidget />
+        <AlertsWidget />
+        <MapPreviewWidget />
+        <ActivityWidget />
+      </div>
     </Container>
   );
 } 

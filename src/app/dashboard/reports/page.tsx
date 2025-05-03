@@ -1,29 +1,18 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
-import { Button } from '@/components/ui/Button';
-import Select from '@/components/ui/Select';
-import { Input } from '@/components/ui/Input';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
 import Table from '@/components/ui/Table';
 import Pagination from '@/components/ui/Pagination';
+import { Eye, Download, RefreshCw, Plus, Calendar, ListFilter } from 'lucide-react';
+import { useReports } from '@/lib/reports';
 import ReportDetails from '@/components/dashboard/ReportDetails';
 import ReportSummary from '@/components/dashboard/ReportSummary';
+import CustomReportForm from '@/components/dashboard/CustomReportForm';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Download, Eye, RefreshCw } from 'lucide-react';
-
-interface Report {
-  id: string;
-  report_type: string;
-  start_date: string;
-  end_date: string;
-  status: 'processing' | 'completed' | 'error';
-  file_url?: string;
-  created_at: string;
-  vehicle_ids: string[];
-}
 
 interface Vehicle {
   id: string;
@@ -31,43 +20,84 @@ interface Vehicle {
   model: string;
 }
 
-interface ApiVehiclesResponse {
-  vehicles: Vehicle[];
+interface Report {
+  id: string;
+  report_type: string;
+  start_date: string;
+  end_date: string;
+  status: 'processing' | 'completed' | 'error';
+  created_at: string;
+  vehicle_ids: string[];
+  schedule?: {
+    frequency: 'daily' | 'weekly' | 'monthly';
+    dayOfWeek?: number;
+    dayOfMonth?: number;
+    nextRunDate: string;
+  };
+  custom_fields?: string[];
+  custom_filters?: {
+    field: string;
+    operator: string;
+    value: string | number;
+  }[];
+}
+
+interface ApiResponse {
+  message?: string;
   error?: string;
 }
 
-interface ApiReportsResponse {
-  reports: Report[];
-  pagination: {
+interface ApiReportsResponse extends ApiResponse {
+  reports?: Report[];
+  pagination?: {
     total: number;
     limit: number;
     offset: number;
   };
-  error?: string;
 }
 
-interface ApiResponse {
-  error?: string;
-  message?: string;
-  reportId?: string;
-}
+const formatDate = (dateString: string) => {
+  try {
+    return format(new Date(dateString), 'dd/MM/yyyy');
+  } catch (error) {
+    return dateString;
+  }
+};
+
+const getReportTypeName = (type: string) => {
+  const types: Record<string, string> = {
+    'movement': 'Movimentação de Veículos',
+    'stops': 'Paradas',
+    'geofence': 'Violações de Geocerca',
+    'speed': 'Excesso de Velocidade',
+    'mileage': 'Quilometragem',
+    'consumption': 'Consumo de Combustível',
+    'behavior': 'Comportamento do Motorista',
+    'efficiency': 'Eficiência Operacional',
+    'custom': 'Relatório Customizado'
+  };
+  
+  return types[type] || type;
+};
 
 export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [reports, setReports] = useState<Report[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [totalReports, setTotalReports] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
   const [reportType, setReportType] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedVehicles, setSelectedVehicles] = useState<string[]>([]);
   const [reportFormat, setReportFormat] = useState<'pdf' | 'excel'>('pdf');
-  const [error, setError] = useState('');
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [totalReports, setTotalReports] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const { getReportTypes } = useReports();
   
-  const limit = 5;
+  const limit = 10;
   
   useEffect(() => {
     fetchVehicles();
@@ -77,7 +107,7 @@ export default function ReportsPage() {
   const fetchVehicles = async () => {
     try {
       const response = await fetch('/api/vehicles');
-      const data = await response.json() as ApiVehiclesResponse;
+      const data = await response.json() as { vehicles: Vehicle[], error?: string };
       
       if (response.ok) {
         setVehicles(data.vehicles || []);
@@ -156,54 +186,76 @@ export default function ReportsPage() {
     }
   };
   
-  const handleVehicleSelection = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const options = Array.from(e.target.selectedOptions);
-    setSelectedVehicles(options.map(option => option.value));
-  };
-  
-  const getReportTypeName = (type: string): string => {
-    const types: Record<string, string> = {
-      'movement': 'Movimentação de Veículos',
-      'stops': 'Paradas',
-      'geofence': 'Violações de Geocerca',
-      'speed': 'Excesso de Velocidade',
-      'mileage': 'Quilometragem',
-    };
-    
-    return types[type] || type;
-  };
-  
-  const formatDate = (dateString: string): string => {
-    try {
-      return format(new Date(dateString), 'dd/MM/yyyy');
-    } catch (error) {
-      return dateString;
-    }
-  };
-
-  const calculateTotalPages = (total: number, perPage: number): number => {
-    return Math.ceil(total / perPage);
-  };
-
-  const handleDownload = (report: Report) => {
-    const url = `/api/reports/${report.id}/download${reportFormat === 'excel' ? '?format=excel' : ''}`;
-    window.open(url, '_blank');
-  };
-
-  const handleFormatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setReportFormat(e.target.value as 'pdf' | 'excel');
-  };
-
   const handleViewDetails = (report: Report) => {
     setSelectedReport(report);
   };
-
+  
   const closeDetails = () => {
     setSelectedReport(null);
+    fetchReports(); // Recarregar lista em caso de alterações
   };
-
+  
+  const handleDownload = (report: Report) => {
+    window.open(`/api/reports/${report.id}/download?format=${reportFormat}`, '_blank');
+  };
+  
   const refreshReports = () => {
     fetchReports();
+  };
+  
+  const calculateTotalPages = (total: number, itemsPerPage: number) => {
+    return Math.ceil(total / itemsPerPage);
+  };
+  
+  const handleCustomReportSubmit = async (data: {
+    title: string;
+    vehicleIds: string[];
+    startDate: string;
+    endDate: string;
+    format: 'PDF' | 'Excel';
+    customFields: string[];
+    customFilters: {
+      field: string;
+      operator: string;
+      value: string | number;
+    }[];
+  }) => {
+    setSubmitting(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/reports/custom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: data.title,
+          vehicleIds: data.vehicleIds,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          format: data.format.toLowerCase(),
+          customFields: data.customFields,
+          customFilters: data.customFilters,
+          reportType: 'custom'
+        }),
+      });
+      
+      const responseData = await response.json() as ApiResponse;
+      
+      if (response.ok) {
+        toast.success('Relatório customizado solicitado com sucesso');
+        setShowCustomForm(false);
+        fetchReports();
+      } else {
+        setError(responseData.error || 'Erro ao solicitar relatório customizado');
+      }
+    } catch (error) {
+      console.error('Erro ao solicitar relatório customizado:', error);
+      setError('Erro ao solicitar relatório customizado. Tente novamente mais tarde.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Colunas para a tabela de relatórios
@@ -229,6 +281,16 @@ export default function ReportsPage() {
           {report.status === 'processing' && 'Em processamento'}
           {report.status === 'completed' && 'Concluído'}
           {report.status === 'error' && 'Erro'}
+        </span>
+      )
+    },
+    {
+      header: 'Agendamento',
+      accessor: (report: Report) => (
+        <span>
+          {report.schedule ? (
+            <Calendar size={16} className="text-blue-500" />
+          ) : null}
         </span>
       )
     },
@@ -275,68 +337,74 @@ export default function ReportsPage() {
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <Card className="p-4">
-            <h2 className="text-lg font-semibold mb-4">Gerar Relatório</h2>
-            {error && <Alert className="mb-4" variant="error">{error}</Alert>}
-            
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label htmlFor="reportType" className="block text-sm font-medium text-gray-700 mb-1">
-                  Tipo de Relatório
-                </label>
-                <select
-                  id="reportType"
-                  value={reportType}
-                  onChange={(e) => setReportType(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
-                  disabled={submitting}
-                >
-                  <option value="">Selecione o tipo</option>
-                  <option value="movement">Movimentação de Veículos</option>
-                  <option value="stops">Paradas</option>
-                  <option value="geofence">Violações de Geocerca</option>
-                  <option value="speed">Excesso de Velocidade</option>
-                  <option value="mileage">Quilometragem</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Inicial
+        <div className="grid grid-cols-1 gap-6 mb-6">
+          <div className="flex justify-between items-start mb-4">
+            <h2 className="text-lg font-semibold">Novo Relatório</h2>
+            <div className="flex gap-2">
+              <Button 
+                variant={showCustomForm ? "primary" : "secondary"}
+                className="flex items-center gap-1"
+                onClick={() => setShowCustomForm(false)}
+              >
+                <ListFilter size={16} />
+                Relatório Padrão
+              </Button>
+              <Button 
+                variant={showCustomForm ? "secondary" : "primary"}
+                className="flex items-center gap-1"
+                onClick={() => setShowCustomForm(true)}
+              >
+                <Plus size={16} />
+                Relatório Customizado
+              </Button>
+            </div>
+          </div>
+          
+          {showCustomForm ? (
+            <CustomReportForm
+              vehicles={vehicles}
+              onSubmit={handleCustomReportSubmit}
+              isSubmitting={submitting}
+            />
+          ) : (
+            <Card className="p-4">
+              <h2 className="text-lg font-semibold mb-4">Gerar Relatório</h2>
+              {error && <Alert className="mb-4" variant="error">{error}</Alert>}
+              
+              <form onSubmit={handleSubmit}>
+                <div className="mb-4">
+                  <label htmlFor="reportType" className="block text-sm font-medium text-gray-700 mb-1">
+                    Tipo de Relatório
                   </label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                  <select
+                    id="reportType"
+                    value={reportType}
+                    onChange={(e) => setReportType(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
                     disabled={submitting}
-                  />
+                  >
+                    <option value="">Selecione o tipo</option>
+                    {getReportTypes().filter(type => type.id !== 'custom').map(type => (
+                      <option key={type.id} value={type.id}>{type.name}</option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-                    Data Final
-                  </label>
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    disabled={submitting}
-                  />
-                </div>
-              </div>
 
               <div className="mb-4">
-                <label htmlFor="vehicles" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="vehicleIds" className="block text-sm font-medium text-gray-700 mb-1">
                   Veículos
                 </label>
                 <select
-                  id="vehicles"
+                  id="vehicleIds"
                   multiple
                   value={selectedVehicles}
-                  onChange={handleVehicleSelection}
+                  onChange={(e) => {
+                    const values = Array.from(
+                      e.target.selectedOptions,
+                      option => option.value
+                    );
+                    setSelectedVehicles(values);
+                  }}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 h-32"
                   disabled={submitting}
                 >
@@ -347,23 +415,54 @@ export default function ReportsPage() {
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Segure Ctrl (ou Cmd no Mac) para selecionar múltiplos veículos
+                  Segure Ctrl para selecionar múltiplos veículos
                 </p>
               </div>
 
-              <div className="mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
+                    Data Inicial
+                  </label>
+                  <input
+                    id="startDate"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    disabled={submitting}
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
+                    Data Final
+                  </label>
+                  <input
+                    id="endDate"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    disabled={submitting}
+                  />
+                </div>
+              </div>
+
+              <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Formato
                 </label>
-                <div className="flex items-center space-x-4">
+                <div className="flex space-x-4">
                   <label className="inline-flex items-center">
                     <input
                       type="radio"
                       name="format"
                       value="pdf"
-                      defaultChecked
+                      checked={reportFormat === 'pdf'}
+                      onChange={() => setReportFormat('pdf')}
                       className="h-4 w-4 text-blue-600"
-                      onChange={handleFormatChange}
+                      disabled={submitting}
                     />
                     <span className="ml-2">PDF</span>
                   </label>
@@ -372,24 +471,29 @@ export default function ReportsPage() {
                       type="radio"
                       name="format"
                       value="excel"
+                      checked={reportFormat === 'excel'}
+                      onChange={() => setReportFormat('excel')}
                       className="h-4 w-4 text-green-600"
-                      onChange={handleFormatChange}
+                      disabled={submitting}
                     />
                     <span className="ml-2">Excel</span>
                   </label>
                 </div>
               </div>
-              
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="w-full"
-              >
-                {submitting ? 'Gerando...' : 'Gerar Relatório'}
-              </Button>
-            </form>
-          </Card>
-          
+
+              <div>
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex items-center gap-1"
+                >
+                  {submitting ? 'Processando...' : 'Gerar Relatório'}
+                </Button>
+              </div>
+              </form>
+            </Card>
+          )}
+
           <Card className="p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Relatórios Recentes</h2>

@@ -16,32 +16,55 @@ export interface Geofence {
   updatedAt: string;
 }
 
+// Interface para evento de entrada/saída de geocerca
+export interface GeofenceEvent {
+  id: string;
+  vehicleId: number;
+  geofenceId: string;
+  eventType: 'enter' | 'exit';
+  timestamp: string;
+  position: google.maps.LatLngLiteral;
+}
+
 interface GeofenceManagerProps {
   map: google.maps.Map | null;
   geofences: Geofence[];
+  vehicles?: Array<{
+    id: number;
+    lat: number;
+    lng: number;
+    name: string;
+    plate: string;
+  }>;
   editable?: boolean;
   selectedGeofenceId?: string | null;
   onGeofenceSelect?: (geofence: Geofence | null) => void;
   onGeofenceCreate?: (geofence: Partial<Geofence>) => void;
   onGeofenceUpdate?: (geofence: Geofence) => void;
   onGeofenceDelete?: (geofenceId: string) => void;
+  onGeofenceEvent?: (event: GeofenceEvent) => void;
 }
 
 const GeofenceManager: React.FC<GeofenceManagerProps> = ({
   map,
   geofences,
+  vehicles = [],
   editable = false,
   selectedGeofenceId = null,
   onGeofenceSelect,
   onGeofenceCreate,
   onGeofenceUpdate,
   onGeofenceDelete,
+  onGeofenceEvent,
 }) => {
   // Estado para controlar o modo de desenho
   const [drawingMode, setDrawingMode] = useState<google.maps.drawing.OverlayType | null>(null);
   
   // Estado para armazenar a geocerca selecionada
   const [selectedGeofence, setSelectedGeofence] = useState<Geofence | null>(null);
+  
+  // Estado para rastrear veículos dentro de cada geocerca
+  const [vehiclesInGeofences, setVehiclesInGeofences] = useState<Record<string, number[]>>({});
   
   // Cores padrão para as geocercas
   const defaultColors = useMemo(() => [
@@ -71,6 +94,109 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
       setDrawingMode(null);
     }
   }, [editable]);
+
+  // Função para verificar se um ponto está dentro de um polígono
+  const isPointInPolygon = useCallback((point: google.maps.LatLngLiteral, polygon: google.maps.LatLngLiteral[]) => {
+    if (!point || !polygon || polygon.length < 3) return false;
+    
+    const x = point.lat;
+    const y = point.lng;
+    
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lat;
+      const yi = polygon[i].lng;
+      const xj = polygon[j].lat;
+      const yj = polygon[j].lng;
+      
+      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    
+    return inside;
+  }, []);
+
+  // Função para verificar se um ponto está dentro de um círculo
+  const isPointInCircle = useCallback((point: google.maps.LatLngLiteral, center: google.maps.LatLngLiteral, radius: number) => {
+    if (!point || !center || !radius) return false;
+    
+    const R = 6371000; // raio da Terra em metros
+    const rlat1 = center.lat * (Math.PI/180);
+    const rlat2 = point.lat * (Math.PI/180);
+    const rlon1 = center.lng * (Math.PI/180);
+    const rlon2 = point.lng * (Math.PI/180);
+    
+    const dlat = rlat2 - rlat1;
+    const dlon = rlon2 - rlon1;
+    
+    const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
+            Math.cos(rlat1) * Math.cos(rlat2) *
+            Math.sin(dlon/2) * Math.sin(dlon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+    
+    return distance <= radius;
+  }, []);
+
+  // Efeito para verificar veículos dentro das geocercas e disparar eventos
+  useEffect(() => {
+    // Ignorar se não existirem veículos ou geocercas
+    if (!vehicles.length || !geofences.length || !onGeofenceEvent) return;
+    
+    const newVehiclesInGeofences: Record<string, number[]> = {};
+    
+    // Para cada geocerca, verificar quais veículos estão dentro dela
+    for (const geofence of geofences) {
+      const insideVehicleIds: number[] = [];
+      
+      for (const vehicle of vehicles) {
+        const vehiclePoint = { lat: vehicle.lat, lng: vehicle.lng };
+        let isInside = false;
+        
+        if (geofence.type === 'polygon' && geofence.paths && geofence.paths.length > 2) {
+          isInside = isPointInPolygon(vehiclePoint, geofence.paths);
+        } else if (geofence.type === 'circle' && geofence.center && geofence.radius) {
+          isInside = isPointInCircle(vehiclePoint, geofence.center, geofence.radius);
+        }
+        
+        if (isInside) {
+          insideVehicleIds.push(vehicle.id);
+          
+          // Se não estava dentro antes, disparar evento de entrada
+          if (!vehiclesInGeofences[geofence.id] || !vehiclesInGeofences[geofence.id].includes(vehicle.id)) {
+            const enterEvent: GeofenceEvent = {
+              id: `${geofence.id}-${vehicle.id}-${Date.now()}`,
+              vehicleId: vehicle.id,
+              geofenceId: geofence.id,
+              eventType: 'enter',
+              timestamp: new Date().toISOString(),
+              position: vehiclePoint
+            };
+            
+            onGeofenceEvent(enterEvent);
+          }
+        } else {
+          // Se estava dentro antes, disparar evento de saída
+          if (vehiclesInGeofences[geofence.id] && vehiclesInGeofences[geofence.id].includes(vehicle.id)) {
+            const exitEvent: GeofenceEvent = {
+              id: `${geofence.id}-${vehicle.id}-${Date.now()}`,
+              vehicleId: vehicle.id,
+              geofenceId: geofence.id,
+              eventType: 'exit',
+              timestamp: new Date().toISOString(),
+              position: vehiclePoint
+            };
+            
+            onGeofenceEvent(exitEvent);
+          }
+        }
+      }
+      
+      newVehiclesInGeofences[geofence.id] = insideVehicleIds;
+    }
+    
+    setVehiclesInGeofences(newVehiclesInGeofences);
+  }, [vehicles, geofences, onGeofenceEvent, isPointInPolygon, isPointInCircle, vehiclesInGeofences]);
 
   // Função para lidar com a criação de um polígono
   const handlePolygonComplete = useCallback((polygon: google.maps.Polygon) => {

@@ -2,6 +2,7 @@ import React, { useMemo, memo, Suspense, lazy } from 'react';
 import { useLoadScript, GoogleMap, Marker, InfoWindow, TrafficLayer } from '@react-google-maps/api';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Vehicle } from '@/lib/vehicles';
+import { calculateCenter } from '@/lib/google-maps';
 
 // Importando os tipos diretamente para uso interno
 import type { Geofence } from './GeofenceManager';
@@ -133,93 +134,64 @@ function GoogleMapsComponent({
     }
   }, []);
 
-  // Efeito para carregar os veículos (simulados por enquanto)
+  // Atualizar estado de veículos quando as props mudarem
   useEffect(() => {
-    // Dados simulados - serão substituídos por dados reais do Supabase
-    const mockVehicles: VehiclePosition[] = [
-      {
-        id: 1,
-        name: 'Caminhão 01',
-        plate: 'ABC1234',
-        type: 'truck',
-        lat: -15.7801,
-        lng: -47.9292,
-        speed: 0,
-        heading: 90,
-        ignition: false,
-        is_moving: false,
-        status: 'online',
-        last_update: new Date().toISOString(),
-      },
-      {
-        id: 2,
-        name: 'Carro 02',
-        plate: 'DEF5678',
-        type: 'car',
-        lat: -15.7901,
-        lng: -47.9392,
-        speed: 60,
-        heading: 180,
-        ignition: true,
-        is_moving: true,
-        status: 'online',
-        last_update: new Date().toISOString(),
-      },
-      {
-        id: 3,
-        name: 'Moto 03',
-        plate: 'GHI9012',
-        type: 'motorcycle',
-        lat: -15.7701,
-        lng: -47.9192,
-        speed: 40,
-        heading: 270,
-        ignition: true,
-        is_moving: true,
-        status: 'online',
-        last_update: new Date().toISOString(),
-      },
-    ];
+    if (vehicles && vehicles.length > 0) {
+      // Converter Vehicle para VehiclePosition
+      const vehiclePositions: VehiclePosition[] = vehicles.map(v => ({
+        id: v.id,
+        name: v.name,
+        plate: v.plate,
+        type: (v.type as 'car' | 'motorcycle' | 'truck' | 'boat' | 'jetski') || 'car',
+        lat: v.lat,
+        lng: v.lng,
+        speed: v.speed || 0,
+        heading: v.heading,
+        ignition: v.ignition || false,
+        is_moving: v.is_moving || false,
+        status: v.status as 'online' | 'offline',
+        last_update: v.last_update || new Date().toISOString()
+      }));
+      setVehiclesState(vehiclePositions);
+    }
+  }, [vehicles]);
 
-    setVehiclesState(mockVehicles);
-  }, []);
-
-  // Efeito para carregar as geocercas (simuladas por enquanto)
+  // Atualizar estado de geocercas quando as props mudarem
   useEffect(() => {
-    // Dados simulados - serão substituídos por dados reais do Supabase
-    const mockGeofences: Geofence[] = [
-      {
-        id: '1',
-        name: 'Base Principal',
-        type: 'polygon',
-        paths: [
-          { lat: -15.7801, lng: -47.9292 },
-          { lat: -15.7851, lng: -47.9292 },
-          { lat: -15.7851, lng: -47.9342 },
-          { lat: -15.7801, lng: -47.9342 },
-        ],
-        color: '#4285F4',
-        fillColor: '#4285F466',
-        clientId: '1',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        name: 'Área de Entrega',
-        type: 'circle',
-        center: { lat: -15.7901, lng: -47.9392 },
-        radius: 500,
-        color: '#0F9D58',
-        fillColor: '#0F9D5866',
-        clientId: '1',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
+    if (geofences && geofences.length > 0) {
+      setGeofencesState(geofences);
+    }
+  }, [geofences]);
 
-    setGeofencesState(mockGeofences);
-  }, []);
+  // Efeito para selecionar veículo com base no ID
+  useEffect(() => {
+    if (selectedVehicleId !== null) {
+      const vehicle = vehiclesState.find(v => v.id === selectedVehicleId) || null;
+      setSelectedVehicle(vehicle);
+      
+      if (vehicle && mapRef.current) {
+        panTo({ lat: vehicle.lat, lng: vehicle.lng });
+      }
+    } else {
+      setSelectedVehicle(null);
+    }
+  }, [selectedVehicleId, vehiclesState, panTo]);
+
+  // Efeito para selecionar geocerca com base no ID
+  useEffect(() => {
+    if (selectedGeofenceId) {
+      const geofence = geofencesState.find(g => g.id === selectedGeofenceId);
+      if (geofence) {
+        // Centralizar no mapa
+        if (geofence.type === 'circle' && geofence.center) {
+          panTo(geofence.center);
+        } else if (geofence.type === 'polygon' && geofence.paths && geofence.paths.length > 0) {
+          const center = calculateCenter(geofence.paths);
+          panTo(center);
+        }
+      }
+    }
+  }, [selectedGeofenceId, geofencesState, panTo]);
 
   // Efeito para carregar o histórico de rotas (simulado por enquanto)
   useEffect(() => {
@@ -268,21 +240,6 @@ function GoogleMapsComponent({
     }
   }, [routeHistoryVehicleId, vehiclesState, showRouteHistory]);
 
-  // Efeito para selecionar o veículo com base no ID recebido via props
-  useEffect(() => {
-    if (selectedVehicleId !== null) {
-      const vehicle = vehiclesState.find(v => v.id === selectedVehicleId) || null;
-      setSelectedVehicle(vehicle);
-      
-      // Se encontrou o veículo, centralizar o mapa nele
-      if (vehicle) {
-        panTo({ lat: vehicle.lat, lng: vehicle.lng });
-      }
-    } else {
-      setSelectedVehicle(null);
-    }
-  }, [selectedVehicleId, vehiclesState, panTo]);
-
   // Função para lidar com o clique em um marcador de veículo
   const handleMarkerClick = useCallback((vehicle: VehiclePosition) => {
     setSelectedVehicle(vehicle);
@@ -302,63 +259,34 @@ function GoogleMapsComponent({
     }
   }, [onVehicleSelect]);
 
-  // Função para lidar com a seleção de uma geocerca
+  // Manipulador para seleção de geocerca
   const handleGeofenceSelect = useCallback((geofence: Geofence | null) => {
-    setSelectedGeofenceId(geofence ? geofence.id : null);
+    setSelectedGeofenceId(geofence?.id || null);
     if (onGeofenceSelect) {
       onGeofenceSelect(geofence);
     }
   }, [onGeofenceSelect]);
 
-  // Função para lidar com a criação de uma geocerca
+  // Manipulador para criação de geocerca
   const handleGeofenceCreate = useCallback((geofence: Partial<Geofence>) => {
-    // Na implementação real, esta função enviaria os dados para o backend
-    // e receberia o ID e outros dados gerados
-    const newId = `geofence-${Date.now()}`;
-    const newGeofence: Geofence = {
-      id: newId,
-      name: geofence.name || `Nova Geocerca ${geofencesState.length + 1}`,
-      type: geofence.type || 'polygon',
-      paths: geofence.paths,
-      center: geofence.center,
-      radius: geofence.radius,
-      color: geofence.color || '#4285F4',
-      fillColor: geofence.fillColor || '#4285F466',
-      clientId: '1', // ID do cliente atual
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    
-    setGeofencesState(prev => [...prev, newGeofence]);
-    setSelectedGeofenceId(newId);
-    
     if (onGeofenceCreate) {
       onGeofenceCreate(geofence);
     }
-  }, [onGeofenceCreate, geofencesState]);
+  }, [onGeofenceCreate]);
 
-  // Função para lidar com a atualização de uma geocerca
+  // Manipulador para atualização de geocerca
   const handleGeofenceUpdate = useCallback((geofence: Geofence) => {
-    setGeofencesState(prev => 
-      prev.map(g => g.id === geofence.id ? { ...g, ...geofence } : g)
-    );
-    
     if (onGeofenceUpdate) {
       onGeofenceUpdate(geofence);
     }
   }, [onGeofenceUpdate]);
 
-  // Função para lidar com a exclusão de uma geocerca
+  // Manipulador para exclusão de geocerca
   const handleGeofenceDelete = useCallback((geofenceId: string) => {
-    setGeofencesState(prev => prev.filter(g => g.id !== geofenceId));
-    if (selectedGeofenceId === geofenceId) {
-      setSelectedGeofenceId(null);
-    }
-    
     if (onGeofenceDelete) {
       onGeofenceDelete(geofenceId);
     }
-  }, [onGeofenceDelete, selectedGeofenceId]);
+  }, [onGeofenceDelete]);
 
   // Memorizando opções do mapa para evitar re-renderizações
   const mapOptions = useMemo(() => ({
