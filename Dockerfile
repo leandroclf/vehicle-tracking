@@ -20,12 +20,12 @@ WORKDIR /app
 # Copiar arquivos de configuração e dependências
 COPY package.json package-lock.json ./
 
-# Instalar dependências (apenas as necessárias para produção)
-RUN npm ci --only=production && \
+# Instalar TODAS as dependências (incluindo devDependencies necessárias para o build)
+RUN npm ci && \
     npm cache clean --force
 
-# Copiar o restante do código-fonte (excluindo arquivos desnecessários)
-COPY --chown=nextjs:nodejs . .
+# Copiar o restante do código-fonte
+COPY . .
 
 # Gerar build de produção com ESLint ignorado
 RUN DISABLE_ESLINT_PLUGIN=true npm run build
@@ -37,8 +37,7 @@ WORKDIR /app
 
 # Criar usuário não-root
 RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    chown -R nextjs:nodejs /app
+    adduser --system --uid 1001 nextjs
 
 # Definir variáveis de ambiente para runtime
 ENV NODE_ENV=production
@@ -48,12 +47,17 @@ ENV PORT=3000
 COPY --from=builder --chown=nextjs:nodejs /app/next.config.js ./
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+
+# Instalar apenas dependências de produção no estágio de execução
+RUN npm ci --only=production && \
+    npm cache clean --force
+
+# Copiar build do Next.js
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 
 # Configurar permissões corretas para diretórios
 RUN mkdir -p /app/.next && \
-    chown -R nextjs:nodejs /app/.next
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+    chown -R nextjs:nodejs /app
 
 # Mudar para usuário não-root
 USER nextjs
