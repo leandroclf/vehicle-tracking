@@ -55,6 +55,6 @@ Este documento contém o plano sequencial de tarefas a serem executadas para a c
 14. ✔ **Atualizar Documentação Técnica** - *Prioridade: Média*  
     Revisar e atualizar a documentação técnica conforme o desenvolvimento avança, garantindo precisão e completude.
 
-15. **Criar Guia do Usuário completo** - *Prioridade: Baixa*  
+15. ✔ **Criar Guia do Usuário completo** - *Prioridade: Baixa*  
     Desenvolver documentação voltada para usuários finais, com tutoriais e casos de uso comuns.
 
