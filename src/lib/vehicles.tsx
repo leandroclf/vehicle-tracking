@@ -1,35 +1,38 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
-
-// Definição do tipo de veículo
-export type VehicleType = 'car' | 'motorcycle' | 'truck' | 'boat' | 'jetski';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { createClient } from '@/lib/supabase';
 
 // Definição do tipo de veículo
 export interface Vehicle {
   id: number;
   name: string;
-  type: VehicleType;
   plate: string;
-  model?: string;
-  year?: string;
-  color?: string;
-  status: 'online' | 'offline';
+  type: string;
+  status: 'available' | 'in_use' | 'maintenance' | 'inactive' | 'online' | 'offline';
+  speed: number;
+  ignition: boolean;
   isMoving: boolean;
   lastUpdate: string;
   location: {
     lat: number;
     lng: number;
-    address: string;
   };
-  speed: number;
+  lat: number;
+  lng: number;
+  heading?: number;
+  last_update: string;
+  is_moving: boolean;
+  // Informações adicionais opcionais
+  battery?: number;
+  satellites?: number;
   direction?: string;
-  ignition: boolean;
-  battery: number;
-  satellites: number;
-  device?: {
-    imei: string;
+  details?: {
+    year: number;
     model: string;
+    manufacturer: string;
+    color: string;
+    vin: string;
     simCard: string;
     lastMaintenance: string;
   };
@@ -72,106 +75,104 @@ export interface Trip {
   }[];
 }
 
-// Definição do contexto de veículos
-interface VehicleContextType {
+// Definição do contexto
+interface VehicleContextProps {
   vehicles: Vehicle[];
   selectedVehicle: Vehicle | null;
-  events: VehicleEvent[];
-  trips: Trip[];
   isLoading: boolean;
   error: string | null;
-  selectVehicle: (id: number) => void;
-  refreshVehicleData: () => Promise<void>;
-  sendCommand: (vehicleId: number, command: string) => Promise<boolean>;
-  getVehicleTrips: (vehicleId: number) => Trip[];
-  getVehicleEvents: (vehicleId: number) => VehicleEvent[];
+  setSelectedVehicle: (vehicle: Vehicle | null) => void;
+  refreshVehicles: () => Promise<void>;
 }
 
-// Dados simulados de veículos
+// Criação do contexto
+const VehicleContext = createContext<VehicleContextProps | undefined>(undefined);
+
+// Mock de dados para desenvolvimento
 const mockVehicles: Vehicle[] = [
   {
     id: 1,
-    name: 'Honda Civic',
-    type: 'car',
-    plate: 'ABC1234',
-    model: 'Civic LX',
-    year: '2023',
-    color: 'Prata',
+    name: 'Caminhão 01',
+    plate: 'ABC-1234',
+    type: 'truck',
     status: 'online',
-    isMoving: true,
-    lastUpdate: '2 min atrás',
+    speed: 0,
+    ignition: false,
+    isMoving: false,
+    lastUpdate: '10/05/2023 08:45',
     location: {
       lat: -23.550520,
-      lng: -46.633308,
-      address: 'Av. Paulista, 1000, São Paulo - SP'
+      lng: -46.633308
     },
-    speed: 60,
-    direction: 'Nordeste (45°)',
-    ignition: true,
-    battery: 95,
-    satellites: 8,
-    device: {
-      imei: '123456789012345',
-      model: 'Yukz Tracker Pro',
+    details: {
+      year: 2020,
+      model: 'Actros 2546',
+      manufacturer: 'Mercedes-Benz',
+      color: 'Branco',
+      vin: '1HGCM82633A123456',
       simCard: '11987654321',
       lastMaintenance: '15/01/2025'
-    }
+    },
+    lat: -23.550520,
+    lng: -46.633308,
+    last_update: new Date().toISOString(),
+    is_moving: false
   },
   {
     id: 2,
-    name: 'Toyota Corolla',
-    type: 'car',
-    plate: 'DEF5678',
-    model: 'Corolla XEi',
-    year: '2022',
-    color: 'Branco',
+    name: 'Van 01',
+    plate: 'DEF-5678',
+    type: 'van',
     status: 'online',
-    isMoving: false,
-    lastUpdate: '5 min atrás',
+    speed: 60,
+    ignition: true,
+    isMoving: true,
+    lastUpdate: '10/05/2023 09:30',
     location: {
       lat: -23.551520,
-      lng: -46.634308,
-      address: 'Rua Augusta, 500, São Paulo - SP'
+      lng: -46.634308
     },
-    speed: 0,
-    direction: 'Parado',
-    ignition: false,
-    battery: 87,
-    satellites: 9,
-    device: {
-      imei: '987654321098765',
-      model: 'Yukz Tracker Lite',
+    details: {
+      year: 2021,
+      model: 'Sprinter',
+      manufacturer: 'Mercedes-Benz',
+      color: 'Prata',
+      vin: '1HGCM82633A789012',
       simCard: '11912345678',
       lastMaintenance: '20/03/2025'
-    }
+    },
+    lat: -23.551520,
+    lng: -46.634308,
+    last_update: new Date().toISOString(),
+    is_moving: true
   },
   {
     id: 3,
-    name: 'Yamaha Factor',
-    type: 'motorcycle',
-    plate: 'GHI9012',
-    model: 'Factor 150',
-    year: '2024',
-    color: 'Vermelho',
+    name: 'Carro 01',
+    plate: 'GHI-9012',
+    type: 'car',
     status: 'offline',
+    speed: 0,
+    ignition: false,
     isMoving: false,
-    lastUpdate: '1 hora atrás',
+    lastUpdate: '10/05/2023 07:15',
     location: {
       lat: -23.552520,
-      lng: -46.635308,
-      address: 'Av. Rebouças, 200, São Paulo - SP'
+      lng: -46.635308
     },
-    speed: 0,
-    direction: 'Parado',
-    ignition: false,
-    battery: 45,
-    satellites: 0,
-    device: {
-      imei: '456789012345678',
-      model: 'Yukz Tracker Mini',
+    details: {
+      year: 2022,
+      model: 'Onix',
+      manufacturer: 'Chevrolet',
+      color: 'Preto',
+      vin: '1HGCM82633A345678',
       simCard: '11978901234',
       lastMaintenance: '05/04/2025'
-    }
+    },
+    lat: -23.552520,
+    lng: -46.635308,
+    last_update: new Date().toISOString(),
+    is_moving: false
   }
 ];
 
@@ -299,166 +300,241 @@ const mockTrips: Trip[] = [
   }
 ];
 
-// Criação do contexto
-const VehicleContext = createContext<VehicleContextType | undefined>(undefined);
-
-// Hook personalizado para usar o contexto
-export const useVehicles = () => {
-  const context = useContext(VehicleContext);
-  if (context === undefined) {
-    throw new Error('useVehicles deve ser usado dentro de um VehicleProvider');
-  }
-  return context;
-};
-
-// Provedor de veículos
-export const VehicleProvider = ({ children }: { children: ReactNode }) => {
+// Provider do contexto
+export function VehicleProvider({ children }: { children: ReactNode }) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
-  const [events, setEvents] = useState<VehicleEvent[]>([]);
-  const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Carregar dados iniciais
-  useState(() => {
-    const loadInitialData = async () => {
-      try {
-        // Simulação de carregamento de dados
-        await new Promise(resolve => setTimeout(resolve, 1000));
+  const fetchVehicles = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const supabase = createClient();
+      
+      // Tentar buscar do Supabase
+      const { data, error } = await supabase
+        .from('vehicles')
+        .select('*');
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Transformar dados do Supabase para o formato esperado
+        const formattedVehicles = data.map(vehicle => ({
+          id: vehicle.id,
+          name: vehicle.name,
+          plate: vehicle.plate,
+          type: vehicle.type,
+          lat: vehicle.latitude,
+          lng: vehicle.longitude,
+          speed: vehicle.speed || 0,
+          heading: vehicle.heading,
+          ignition: vehicle.ignition,
+          is_moving: vehicle.is_moving,
+          status: vehicle.status,
+          last_update: vehicle.last_update,
+          battery: vehicle.battery || 100,
+          satellites: vehicle.satellites || 8,
+          direction: getDirectionFromHeading(vehicle.heading),
+          location: {
+            lat: vehicle.latitude,
+            lng: vehicle.longitude
+          },
+          lastUpdate: new Date(vehicle.last_update).toLocaleString('pt-BR'),
+          isMoving: vehicle.is_moving
+        }));
+        
+        setVehicles(formattedVehicles);
+      } else {
+        // Dados de exemplo para desenvolvimento
+        const mockVehicles: Vehicle[] = [
+          {
+            id: 1,
+            name: 'Caminhão 01',
+            plate: 'ABC1234',
+            type: 'truck',
+            lat: -15.7801,
+            lng: -47.9292,
+            speed: 0,
+            heading: 90,
+            ignition: false,
+            is_moving: false,
+            status: 'online',
+            last_update: new Date().toISOString(),
+            battery: 78,
+            satellites: 9,
+            direction: 'Leste',
+            location: { lat: -15.7801, lng: -47.9292 },
+            lastUpdate: new Date().toLocaleString('pt-BR'),
+            isMoving: false
+          },
+          {
+            id: 2,
+            name: 'Carro 02',
+            plate: 'DEF5678',
+            type: 'car',
+            lat: -15.7901,
+            lng: -47.9392,
+            speed: 60,
+            heading: 180,
+            ignition: true,
+            is_moving: true,
+            status: 'online',
+            last_update: new Date().toISOString(),
+            battery: 92,
+            satellites: 10,
+            direction: 'Sul',
+            location: { lat: -15.7901, lng: -47.9392 },
+            lastUpdate: new Date().toLocaleString('pt-BR'),
+            isMoving: true
+          },
+          {
+            id: 3,
+            name: 'Moto 03',
+            plate: 'GHI9012',
+            type: 'motorcycle',
+            lat: -15.7701,
+            lng: -47.9192,
+            speed: 40,
+            heading: 270,
+            ignition: true,
+            is_moving: true,
+            status: 'online',
+            last_update: new Date().toISOString(),
+            battery: 65,
+            satellites: 8,
+            direction: 'Oeste',
+            location: { lat: -15.7701, lng: -47.9192 },
+            lastUpdate: new Date().toLocaleString('pt-BR'),
+            isMoving: true
+          },
+        ];
         
         setVehicles(mockVehicles);
-        setEvents(mockEvents);
-        setTrips(mockTrips);
-        
-        if (mockVehicles.length > 0) {
-          setSelectedVehicle(mockVehicles[0]);
-        }
-      } catch (error) {
-        setError('Erro ao carregar dados dos veículos');
-        console.error('Erro ao carregar dados:', error);
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (err) {
+      console.error('Erro ao buscar veículos:', err);
+      setError('Falha ao carregar veículos. Tente novamente mais tarde.');
+      
+      // Usar dados mock mesmo em caso de erro
+      const mockVehicles: Vehicle[] = [
+        {
+          id: 1,
+          name: 'Caminhão 01',
+          plate: 'ABC1234',
+          type: 'truck',
+          lat: -15.7801,
+          lng: -47.9292,
+          speed: 0,
+          heading: 90,
+          ignition: false,
+          is_moving: false,
+          status: 'online',
+          last_update: new Date().toISOString(),
+          battery: 78,
+          satellites: 9,
+          direction: 'Leste',
+          location: { lat: -15.7801, lng: -47.9292 },
+          lastUpdate: new Date().toLocaleString('pt-BR'),
+          isMoving: false
+        },
+        {
+          id: 2,
+          name: 'Carro 02',
+          plate: 'DEF5678',
+          type: 'car',
+          lat: -15.7901,
+          lng: -47.9392,
+          speed: 60,
+          heading: 180,
+          ignition: true,
+          is_moving: true,
+          status: 'online',
+          last_update: new Date().toISOString(),
+          battery: 92,
+          satellites: 10,
+          direction: 'Sul',
+          location: { lat: -15.7901, lng: -47.9392 },
+          lastUpdate: new Date().toLocaleString('pt-BR'),
+          isMoving: true
+        },
+        {
+          id: 3,
+          name: 'Moto 03',
+          plate: 'GHI9012',
+          type: 'motorcycle',
+          lat: -15.7701,
+          lng: -47.9192,
+          speed: 40,
+          heading: 270,
+          ignition: true,
+          is_moving: true,
+          status: 'online',
+          last_update: new Date().toISOString(),
+          battery: 65,
+          satellites: 8,
+          direction: 'Oeste',
+          location: { lat: -15.7701, lng: -47.9192 },
+          lastUpdate: new Date().toLocaleString('pt-BR'),
+          isMoving: true
+        },
+      ];
+      
+      setVehicles(mockVehicles);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-    loadInitialData();
-  });
+  // Buscar veículos ao montar o componente
+  useEffect(() => {
+    fetchVehicles();
+    
+    // Configurar atualização periódica a cada 10 segundos
+    const intervalId = setInterval(fetchVehicles, 10000);
+    
+    return () => clearInterval(intervalId);
+  }, [fetchVehicles]);
+
+  // Função para converter heading em direção textual
+  function getDirectionFromHeading(heading?: number): string {
+    if (heading === undefined) return 'N/A';
+    
+    const directions = ['Norte', 'Nordeste', 'Leste', 'Sudeste', 'Sul', 'Sudoeste', 'Oeste', 'Noroeste'];
+    const index = Math.round(heading / 45) % 8;
+    return directions[index];
+  }
 
   // Selecionar veículo
-  const selectVehicle = (id: number) => {
-    const vehicle = vehicles.find(v => v.id === id);
-    if (vehicle) {
-      setSelectedVehicle(vehicle);
-    }
+  const handleSelectVehicle = (vehicle: Vehicle | null) => {
+    setSelectedVehicle(vehicle);
   };
 
-  // Atualizar dados do veículo
-  const refreshVehicleData = async () => {
-    setIsLoading(true);
-    try {
-      // Simulação de atualização de dados
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Atualizar veículos com pequenas alterações para simular dados em tempo real
-      const updatedVehicles = vehicles.map(vehicle => {
-        if (vehicle.status === 'online') {
-          // Simular mudanças aleatórias na velocidade e posição
-          const speedChange = Math.random() > 0.5 ? 1 : -1;
-          const newSpeed = Math.max(0, vehicle.speed + speedChange * Math.floor(Math.random() * 5));
-          
-          return {
-            ...vehicle,
-            speed: newSpeed,
-            isMoving: newSpeed > 0,
-            lastUpdate: 'Agora mesmo'
-          };
-        }
-        return vehicle;
-      });
-      
-      setVehicles(updatedVehicles);
-      
-      // Atualizar veículo selecionado se existir
-      if (selectedVehicle) {
-        const updatedSelected = updatedVehicles.find(v => v.id === selectedVehicle.id);
-        if (updatedSelected) {
-          setSelectedVehicle(updatedSelected);
-        }
-      }
-    } catch (error) {
-      setError('Erro ao atualizar dados dos veículos');
-      console.error('Erro ao atualizar dados:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Enviar comando para veículo
-  const sendCommand = async (vehicleId: number, command: string): Promise<boolean> => {
-    setIsLoading(true);
-    try {
-      // Simulação de envio de comando
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Atualizar estado do veículo com base no comando
-      if (command === 'block') {
-        const updatedVehicles = vehicles.map(vehicle => {
-          if (vehicle.id === vehicleId) {
-            return {
-              ...vehicle,
-              ignition: false,
-              isMoving: false,
-              speed: 0
-            };
-          }
-          return vehicle;
-        });
-        
-        setVehicles(updatedVehicles);
-        
-        // Atualizar veículo selecionado se for o mesmo
-        if (selectedVehicle && selectedVehicle.id === vehicleId) {
-          const updatedSelected = updatedVehicles.find(v => v.id === vehicleId);
-          if (updatedSelected) {
-            setSelectedVehicle(updatedSelected);
-          }
-        }
-      }
-      
-      return true;
-    } catch (error) {
-      setError('Erro ao enviar comando para o veículo');
-      console.error('Erro ao enviar comando:', error);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Obter viagens de um veículo
-  const getVehicleTrips = (vehicleId: number): Trip[] => {
-    return trips.filter(trip => trip.vehicleId === vehicleId);
-  };
-
-  // Obter eventos de um veículo
-  const getVehicleEvents = (vehicleId: number): VehicleEvent[] => {
-    return events.filter(event => event.vehicleId === vehicleId);
-  };
-
-  const value = {
+  // Valor do contexto
+  const contextValue: VehicleContextProps = {
     vehicles,
     selectedVehicle,
-    events,
-    trips,
     isLoading,
     error,
-    selectVehicle,
-    refreshVehicleData,
-    sendCommand,
-    getVehicleTrips,
-    getVehicleEvents
+    setSelectedVehicle: handleSelectVehicle,
+    refreshVehicles: fetchVehicles
   };
 
-  return <VehicleContext.Provider value={value}>{children}</VehicleContext.Provider>;
-};
+  return (
+    <VehicleContext.Provider value={contextValue}>
+      {children}
+    </VehicleContext.Provider>
+  );
+}
+
+// Hook para usar o contexto
+export function useVehicles() {
+  const context = useContext(VehicleContext);
+  if (!context) {
+    throw new Error('useVehicles deve ser usado dentro de um VehicleProvider');
+  }
+  return context;
+}
