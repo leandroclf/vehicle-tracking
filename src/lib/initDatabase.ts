@@ -78,11 +78,29 @@ export async function initializeDatabase() {
  */
 async function applyMigrationDirectly(admin: SupabaseClient) {
   try {
-    // Lê o arquivo de migração
-    const migrationPath = path.join(process.cwd(), 'migrations', '20250427221812_initial_schema.sql');
+    // Define os possíveis caminhos para o arquivo de migração (desenvolvimento e produção)
+    const possiblePaths = [
+      path.join(process.cwd(), 'migrations', '20250427221812_initial_schema.sql'),
+      path.resolve(__dirname, '../..', 'migrations', '20250427221812_initial_schema.sql'),
+      path.resolve(__dirname, '../../..', 'migrations', '20250427221812_initial_schema.sql')
+    ];
     
-    if (!fs.existsSync(migrationPath)) {
-      throw new Error(`Arquivo de migração não encontrado: ${migrationPath}`);
+    let migrationPath = '';
+    
+    // Tenta encontrar o arquivo em um dos possíveis caminhos
+    for (const possiblePath of possiblePaths) {
+      if (fs.existsSync(possiblePath)) {
+        migrationPath = possiblePath;
+        console.log(`Arquivo de migração encontrado em: ${migrationPath}`);
+        break;
+      }
+    }
+    
+    if (!migrationPath) {
+      // Se não encontrar o arquivo, use as tabelas existentes no MCP Supabase
+      console.log('Arquivo de migração não encontrado, usando tabelas existentes...');
+      await createBasicTables(admin);
+      return true;
     }
     
     const migrationSql = fs.readFileSync(migrationPath, 'utf8');
@@ -148,6 +166,125 @@ async function applyMigrationDirectly(admin: SupabaseClient) {
 }
 
 /**
+ * Cria as tabelas básicas necessárias diretamente
+ */
+async function createBasicTables(admin: SupabaseClient) {
+  try {
+    console.log('Criando tabelas básicas via SQL direto...');
+    
+    // Criação da tabela profiles
+    const createProfilesTable = `
+      CREATE TABLE IF NOT EXISTS public.profiles (
+        id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        phone TEXT,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY IF NOT EXISTS "Public profiles are viewable by everyone." 
+        ON public.profiles FOR SELECT USING (true);
+      CREATE POLICY IF NOT EXISTS "Users can insert their own profile." 
+        ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+      CREATE POLICY IF NOT EXISTS "Users can update own profile." 
+        ON public.profiles FOR UPDATE USING (auth.uid() = id);
+    `;
+    
+    try {
+      await admin.rpc('pg_execute', { query: createProfilesTable });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn('Erro ao criar tabela profiles:', message);
+    }
+    
+    // Criação da tabela settings
+    const createSettingsTable = `
+      CREATE TABLE IF NOT EXISTS public.settings (
+        user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+        notifications_enabled BOOLEAN DEFAULT TRUE,
+        speed_alert_enabled BOOLEAN DEFAULT TRUE,
+        speed_alert_value INTEGER DEFAULT 120,
+        ignition_alert_enabled BOOLEAN DEFAULT TRUE,
+        movement_alert_enabled BOOLEAN DEFAULT TRUE,
+        panic_alert_enabled BOOLEAN DEFAULT TRUE,
+        battery_alert_enabled BOOLEAN DEFAULT TRUE,
+        geofence_alert_enabled BOOLEAN DEFAULT TRUE,
+        map_type TEXT DEFAULT 'standard',
+        dark_mode BOOLEAN DEFAULT FALSE,
+        measurement_unit TEXT DEFAULT 'km',
+        language TEXT DEFAULT 'pt-BR',
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY IF NOT EXISTS "Users can manage their own settings." 
+        ON public.settings FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+    `;
+    
+    try {
+      await admin.rpc('pg_execute', { query: createSettingsTable });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn('Erro ao criar tabela settings:', message);
+    }
+    
+    // Criação da trigger para criar settings automaticamente
+    const createProfileTrigger = `
+      CREATE OR REPLACE FUNCTION public.handle_new_profile()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        INSERT INTO public.settings (user_id)
+        VALUES (new.id);
+        RETURN new;
+      END;
+      $$ LANGUAGE plpgsql SECURITY DEFINER;
+      
+      DROP TRIGGER IF EXISTS on_profile_created ON public.profiles;
+      CREATE TRIGGER on_profile_created
+        AFTER INSERT ON public.profiles
+        FOR EACH ROW EXECUTE FUNCTION public.handle_new_profile();
+    `;
+    
+    try {
+      await admin.rpc('pg_execute', { query: createProfileTrigger });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn('Erro ao criar trigger handle_new_profile:', message);
+    }
+    
+    // Criação da função para criar perfil ao inserir usuário
+    const createUserTrigger = `
+      CREATE OR REPLACE FUNCTION public.handle_new_user() 
+      RETURNS TRIGGER AS $$
+      BEGIN
+        INSERT INTO public.profiles (id, name)
+        VALUES (new.id, COALESCE(new.raw_user_meta_data->>'name', 'New User'))
+        ON CONFLICT (id) DO NOTHING;
+        RETURN new;
+      END;
+      $$ LANGUAGE plpgsql SECURITY DEFINER;
+      
+      DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+      CREATE TRIGGER on_auth_user_created
+        AFTER INSERT ON auth.users
+        FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+    `;
+    
+    try {
+      await admin.rpc('pg_execute', { query: createUserTrigger });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn('Erro ao criar trigger handle_new_user:', message);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Erro ao criar tabelas básicas:', error);
+    throw error;
+  }
+}
+
+/**
  * Cria tabelas de teste para ambiente de desenvolvimento
  */
 export async function seedTestData() {
@@ -180,13 +317,12 @@ export async function seedTestData() {
     
     console.log('Criando usuários de teste...');
     
-    // Criar usuários de teste conforme documentação
-    
     // 1. Criar usuário padrão
     const { data: userPadrao, error: errorPadrao } = await admin
       .auth.admin.createUser({
         email: 'teste@yukz.com',
         password: 'teste123',
+        email_confirm: true,
         user_metadata: {
           name: 'Usuário Teste',
           type: 'individual'
@@ -204,6 +340,7 @@ export async function seedTestData() {
       .auth.admin.createUser({
         email: 'admin@yukz.com',
         password: 'admin123',
+        email_confirm: true,
         user_metadata: {
           name: 'Administrador',
           type: 'large_fleet'
