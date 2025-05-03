@@ -14,7 +14,7 @@ export async function initializeDatabase() {
     // Verifica se o banco já foi inicializado
     const { data: tableInfo, error: tableError } = await admin
       .from('profiles')
-      .select('count(*)')
+      .select('id')
       .limit(1)
       .maybeSingle();
     
@@ -63,9 +63,9 @@ export async function initializeDatabase() {
     
     let missingTables = [];
     
-    // Tentamos consultar cada tabela para verificar se existe
+    // Tentamos consultar cada tabela para verificar se existe - sem usar count(*)
     for (const table of requiredTables) {
-      const { error } = await admin.from(table).select('count(*)').limit(1);
+      const { error } = await admin.from(table).select('id').limit(1);
       if (error && error.message.includes(`relation "${table}" does not exist`)) {
         missingTables.push(table);
       }
@@ -97,22 +97,24 @@ export async function seedTestData() {
     
     const admin = getAdminClient();
     
-    // Verificar se já existem usuários de teste
-    const { data: existingUser, error: userError } = await admin
-      .from('auth.users')
-      .select('id')
-      .eq('email', 'admin@yukz.com')
-      .limit(1);
+    // Verificar se já existem usuários de teste via API de auth
+    console.log('Verificando se usuários de teste já existem');
+    const { data, error } = await admin.auth.admin.listUsers();
     
-    if (userError) {
-      console.error('Erro ao verificar usuário de teste:', userError);
-      return;
+    if (error) {
+      console.error('Erro ao listar usuários existentes:', error);
+      return false;
     }
     
-    if (existingUser && existingUser.length > 0) {
+    // Verificar se o usuário administrador já existe
+    const adminExists = data?.users?.some(user => user.email === 'admin@yukz.com');
+    
+    if (adminExists) {
       console.log('Dados de teste já existem, pulando seed');
-      return;
+      return true;
     }
+    
+    console.log('Criando usuários de teste...');
     
     // Criar usuários de teste conforme documentação
     

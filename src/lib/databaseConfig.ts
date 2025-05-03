@@ -34,7 +34,7 @@ export const ensureDatabaseStructure = async () => {
     
     // Tentamos consultar cada tabela para verificar se existe
     for (const table of requiredTables) {
-      const { error } = await admin.from(table).select('count(*)').limit(1);
+      const { error } = await admin.from(table).select('id').limit(1);
       if (error && error.message.includes(`relation "${table}" does not exist`)) {
         missingTables.push(table);
       }

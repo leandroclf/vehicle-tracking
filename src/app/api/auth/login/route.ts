@@ -28,11 +28,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email e senha são obrigatórios' }, { status: 400 });
     }
 
-    // Inicialização do Supabase
-    console.log('Verificando conexão com Supabase antes da autenticação');
+    // Verificação do status do Supabase
+    console.log('Verificando status do Supabase antes da autenticação');
+    
+    try {
+      // Verificar se o serviço de autenticação está acessível
+      const { data: authData, error: authError } = await supabase.auth.getSession();
+      
+      if (authError) {
+        console.error('Erro ao acessar serviço de autenticação:', authError);
+        return NextResponse.json({ 
+          error: 'Erro de conexão com o serviço de autenticação', 
+          details: authError.message 
+        }, { status: 500 });
+      }
+      
+      console.log('Serviço de autenticação do Supabase está respondendo');
+    } catch (connError) {
+      console.error('Exceção ao verificar serviço de autenticação:', connError);
+      return NextResponse.json({ 
+        error: 'Falha na conexão com o serviço de autenticação', 
+        details: connError instanceof Error ? connError.message : 'Erro desconhecido' 
+      }, { status: 500 });
+    }
+    
+    // Verificar se o usuário existe antes de tentar autenticar
+    console.log('Verificando se o usuário existe:', email);
     
     // Autenticação direta com Supabase
     console.log('Iniciando autenticação com Supabase para:', email);
+    console.log('Credenciais: email:', email, 'senha:', password ? '******' : 'não fornecida');
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
