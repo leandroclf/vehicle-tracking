@@ -31,6 +31,9 @@ services:
     build:
       context: ./tracker-server
       dockerfile: Dockerfile
+      args:
+        - SUPABASE_URL=${SUPABASE_URL}
+        - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
     container_name: yukz-tracker-server
     restart: unless-stopped
     ports:
@@ -50,4 +53,4 @@ services:
 
 networks:
   default:
-    name: yukz-network 
+    name: yukz-network

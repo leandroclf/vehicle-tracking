@@ -20,11 +20,12 @@ WORKDIR /app
 # Copiar arquivos de configuração e dependências
 COPY package.json package-lock.json ./
 
-# Instalar dependências
-RUN npm ci
+# Instalar dependências (apenas as necessárias para produção)
+RUN npm ci --only=production && \
+    npm cache clean --force
 
-# Copiar o restante do código-fonte
-COPY . .
+# Copiar o restante do código-fonte (excluindo arquivos desnecessários)
+COPY --chown=nextjs:nodejs . .
 
 # Gerar build de produção com ESLint ignorado
 RUN DISABLE_ESLINT_PLUGIN=true npm run build
@@ -48,6 +49,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/next.config.js ./
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+
+# Configurar permissões corretas para diretórios
+RUN mkdir -p /app/.next && \
+    chown -R nextjs:nodejs /app/.next
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # Mudar para usuário não-root
@@ -57,4 +62,4 @@ USER nextjs
 EXPOSE 3000
 
 # Comando para iniciar a aplicação
-CMD ["npm", "start"] 
+CMD ["npm", "start"]
