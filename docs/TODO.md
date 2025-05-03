@@ -37,17 +37,17 @@ Este documento lista as tarefas planejadas para o desenvolvimento e melhoria do 
    - ✔ Dependências: Integração com dados reais  
 
 ### 3. Melhorias no Servidor de Rastreamento
-6. **Implementar protocolos adicionais para rastreadores** – Prioridade: Alta  
-   - Adicionar suporte para protocolo Queclink  
-   - Adicionar suporte para protocolo Concox  
-   - Melhorar o decodificador Teltonika existente  
-   - Dependências: Conhecimento da documentação dos protocolos  
+6. **✔ Implementar protocolos adicionais para rastreadores** – Prioridade: Alta  
+   - ✔ Adicionar suporte para protocolo Queclink  
+   - ✔ Adicionar suporte para protocolo Concox  
+   - ✔ Melhorar o decodificador Teltonika existente  
+   - ✔ Dependências: Conhecimento da documentação dos protocolos  
 
-7. **Implementar servidor UDP no tracker-server** – Prioridade: Alta  
-   - Criar servidor UDP paralelo ao TCP existente  
-   - Compartilhar lógica de processamento entre servidores TCP/UDP  
-   - Implementar tratamento de pacotes UDP específicos  
-   - Dependências: Configuração de porta UDP no arquivo `.env`  
+7. **✔ Implementar servidor UDP no tracker-server** – Prioridade: Alta  
+   - ✔ Criar servidor UDP paralelo ao TCP existente  
+   - ✔ Compartilhar lógica de processamento entre servidores TCP/UDP  
+   - ✔ Implementar tratamento de pacotes UDP específicos  
+   - ✔ Dependências: Configuração de porta UDP no arquivo `.env`  
 
 8. **Desenvolver lógica de alertas no tracker-server** – Prioridade: Média  
    - Implementar detecção de excesso de velocidade  
@@ -92,20 +92,20 @@ Este documento lista as tarefas planejadas para o desenvolvimento e melhoria do 
 ## Priorização e Estimativas
 
 ### Prioridade Alta (Implementar primeiro)
-- Substituir dados simulados por dados reais (1–2 semanas)  
-- Implementar protocolos adicionais para rastreadores (2–3 semanas)  
-- Implementar servidor UDP no tracker-server (1 semana)  
-- Criar Dockerfile para o tracker-server (3–5 dias)  
-- Configurar docker-compose completo (3–5 dias)  
+- ✔ Substituir dados simulados por dados reais (1–2 semanas)  
+- ✔ Implementar protocolos adicionais para rastreadores (2–3 semanas)  
+- ✔ Implementar servidor UDP no tracker-server (1 semana)  
+- ✔ Criar Dockerfile para o tracker-server (3–5 dias)  
+- ✔ Configurar docker-compose completo (3–5 dias)  
 
 ### Prioridade Média (Segunda fase)
-- Implementar visualização de geocercas no mapa (1–2 semanas)  
-- Desenvolver sistema de commands para veículos (1–2 semanas)  
-- Aprimorar interface do dashboard (2–3 semanas)  
-- Melhorar sistema de relatórios (2–3 semanas)  
+- ✔ Implementar visualização de geocercas no mapa (1–2 semanas)  
+- ✔ Desenvolver sistema de commands para veículos (1–2 semanas)  
+- ✔ Aprimorar interface do dashboard (2–3 semanas)  
+- ✔ Melhorar sistema de relatórios (2–3 semanas)  
 - Desenvolver lógica de alertas no tracker-server (1–2 semanas)  
-- Implementar testes automatizados (contínuo)  
-- Melhorar segurança e desempenho (contínuo)  
+- ✔ Implementar testes automatizados (contínuo)  
+- ✔ Melhorar segurança e desempenho (contínuo)  
 
 ### Prioridade Baixa (Fase final)
-- Desenvolver aplicativo móvel (1–2 meses)
+- ✔ Desenvolver aplicativo móvel (1–2 meses)

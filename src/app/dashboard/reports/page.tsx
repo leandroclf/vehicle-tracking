@@ -13,6 +13,7 @@ import ReportSummary from '@/components/dashboard/ReportSummary';
 import CustomReportForm from '@/components/dashboard/CustomReportForm';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useAuth } from '@/lib/auth';
 
 interface Vehicle {
   id: string;
@@ -96,17 +97,24 @@ export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showCustomForm, setShowCustomForm] = useState(false);
   const { getReportTypes } = useReports();
+  const { token } = useAuth();
   
   const limit = 10;
   
   useEffect(() => {
     fetchVehicles();
     fetchReports();
-  }, [currentPage]);
+  }, [currentPage, token]);
   
   const fetchVehicles = async () => {
+    if (!token) return;
+    
     try {
-      const response = await fetch('/api/vehicles');
+      const response = await fetch('/api/vehicles', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json() as { vehicles: Vehicle[], error?: string };
       
       if (response.ok) {
@@ -120,10 +128,16 @@ export default function ReportsPage() {
   };
   
   const fetchReports = async () => {
+    if (!token) return;
+    
     setLoading(true);
     try {
       const offset = (currentPage - 1) * limit;
-      const response = await fetch(`/api/reports?limit=${limit}&offset=${offset}`);
+      const response = await fetch(`/api/reports?limit=${limit}&offset=${offset}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json() as ApiReportsResponse;
       
       if (response.ok) {
@@ -145,7 +159,7 @@ export default function ReportsPage() {
     setSubmitting(true);
     setError('');
     
-    if (!reportType || !startDate || !endDate || selectedVehicles.length === 0) {
+    if (!reportType || !startDate || !endDate || selectedVehicles.length === 0 || !token) {
       setError('Todos os campos são obrigatórios');
       setSubmitting(false);
       return;
@@ -156,6 +170,7 @@ export default function ReportsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           reportType,
@@ -220,6 +235,11 @@ export default function ReportsPage() {
       value: string | number;
     }[];
   }) => {
+    if (!token) {
+      setError('Usuário não autenticado');
+      return;
+    }
+    
     setSubmitting(true);
     setError('');
     
@@ -228,6 +248,7 @@ export default function ReportsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           title: data.title,

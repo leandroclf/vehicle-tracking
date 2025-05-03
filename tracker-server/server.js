@@ -4,6 +4,8 @@ const dgram = require("dgram"); // Adicionar suporte a UDP
 const { createClient } = require("@supabase/supabase-js");
 const winston = require('winston');
 const { decodeTeltonikaCodec8, createTeltonikaResponse } = require("./teltonika-decoder");
+const { decodeQueclinkData, createQueclinkResponse } = require("./queclink-decoder");
+const { decodeConcoxData, createConcoxResponse } = require("./concox-decoder");
 
 // Configurar o logger
 const logger = winston.createLogger({
@@ -23,6 +25,8 @@ const logger = winston.createLogger({
 // Configurações
 const TCP_PORT = process.env.TRACKER_TCP_PORT || 5027; // Porta padrão para Teltonika
 const UDP_PORT = process.env.TRACKER_UDP_PORT || 5028; // Porta UDP para dispositivos que usam UDP
+const QUECLINK_TCP_PORT = process.env.QUECLINK_TCP_PORT || 5029; // Porta TCP para Queclink
+const CONCOX_TCP_PORT = process.env.CONCOX_TCP_PORT || 5030; // Porta TCP para Concox
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // Usar chave de serviço para operações no backend
 const RECONNECT_INTERVAL = 5000; // Intervalo de reconexão ao Supabase em ms
@@ -52,10 +56,10 @@ function reconnectSupabase() {
 }
 
 // Armazenar IMEI por conexão TCP
-const tcpConnections = new Map(); // socket -> { imei: string | null }
+const tcpConnections = new Map(); // socket -> { imei: string | null, protocol: string | null }
 
 // Armazenar IMEI para clientes UDP (usando endereço como chave)
-const udpClients = new Map(); // "ip:port" -> { imei: string | null, lastSeen: Date }
+const udpClients = new Map(); // "ip:port" -> { imei: string | null, lastSeen: Date, protocol: string | null }
 
 // Função para limpar clientes UDP inativos
 function cleanupIdleUdpClients() {
@@ -504,24 +508,116 @@ async function updateVehicleStatusInSupabase(imei, record) {
 
 // Função para processar dados de qualquer fonte (TCP ou UDP)
 async function processData(data, connectionInfo, sendResponse) {
-  const decodedData = decodeTeltonikaCodec8(data);
+  // Tentar decodificar o pacote com os diferentes decodificadores
+  let decodedData = null;
+  
+  // Se já conhecemos o protocolo do dispositivo, use o decodificador apropriado
+  if (connectionInfo.protocol) {
+    switch (connectionInfo.protocol) {
+      case 'teltonika':
+        decodedData = decodeTeltonikaCodec8(data);
+        break;
+      case 'queclink':
+        decodedData = decodeQueclinkData(data);
+        break;
+      case 'concox':
+        decodedData = decodeConcoxData(data);
+        break;
+    }
+  } else {
+    // Se não conhecemos o protocolo, tentamos detectar automaticamente
+    
+    // 1. Tentar Teltonika primeiro
+    decodedData = decodeTeltonikaCodec8(data);
+    if (decodedData) {
+      connectionInfo.protocol = 'teltonika';
+      logger.info(`Protocolo detectado: Teltonika para ${connectionInfo.imei || 'dispositivo desconhecido'}`);
+    }
+    
+    // 2. Se falhar, tentar Queclink
+    if (!decodedData) {
+      decodedData = decodeQueclinkData(data);
+      if (decodedData) {
+        connectionInfo.protocol = 'queclink';
+        logger.info(`Protocolo detectado: Queclink para ${connectionInfo.imei || 'dispositivo desconhecido'}`);
+      }
+    }
+    
+    // 3. Se ainda falhar, tentar Concox
+    if (!decodedData) {
+      decodedData = decodeConcoxData(data);
+      if (decodedData) {
+        connectionInfo.protocol = 'concox';
+        logger.info(`Protocolo detectado: Concox para ${connectionInfo.imei || 'dispositivo desconhecido'}`);
+      }
+    }
+  }
 
   if (!decodedData) {
-    logger.error("Falha ao decodificar dados");
+    logger.error("Falha ao decodificar dados com qualquer protocolo suportado");
     return;
   }
 
+  // Processar pacote IMEI (login)
   if (decodedData.type === "imei") {
     // Recebeu pacote IMEI
-    logger.info(`IMEI ${decodedData.imei} recebido`);
+    logger.info(`IMEI ${decodedData.imei} recebido (protocolo: ${connectionInfo.protocol})`);
     connectionInfo.imei = decodedData.imei;
     
-    // Enviar confirmação de aceitação (0x01)
+    // Enviar confirmação de aceitação baseada no protocolo
     if (sendResponse) {
-      sendResponse(Buffer.from([0x01]));
+      let response;
+      
+      switch (connectionInfo.protocol) {
+        case 'teltonika':
+          response = Buffer.from([0x01]);
+          break;
+        case 'queclink':
+          response = createQueclinkResponse('imei', decodedData.imei);
+          break;
+        case 'concox':
+          response = createConcoxResponse(0x01); // Protocolo de login Concox
+          break;
+        default:
+          response = Buffer.from([0x01]); // Resposta genérica
+      }
+      
+      sendResponse(response);
       logger.debug(`Confirmação de IMEI enviada para ${decodedData.imei}`);
     }
-  } else if (decodedData.type === "avl_data") {
+  } 
+  // Processar pacotes de heartbeat/status
+  else if (decodedData.type === "heartbeat" || decodedData.type === "status") {
+    const imei = connectionInfo?.imei;
+    if (!imei) {
+      logger.error("Recebido pacote heartbeat/status antes do IMEI. Ignorando.");
+      return;
+    }
+    
+    logger.info(`Heartbeat/status recebido de ${imei} (protocolo: ${connectionInfo.protocol})`);
+    
+    // Enviar confirmação baseada no protocolo
+    if (sendResponse) {
+      let response;
+      
+      switch (connectionInfo.protocol) {
+        case 'queclink':
+          response = createQueclinkResponse('heartbeat', imei);
+          break;
+        case 'concox':
+          response = createConcoxResponse(0x13); // Protocolo de heartbeat Concox
+          break;
+        default:
+          // Teltonika não tem heartbeat específico, ignorar
+          return;
+      }
+      
+      sendResponse(response);
+      logger.debug(`Confirmação de heartbeat enviada para ${imei}`);
+    }
+  } 
+  // Processar pacotes de dados AVL
+  else if (decodedData.type === "avl_data") {
     // Recebeu pacote de dados AVL
     const imei = connectionInfo?.imei;
     if (!imei) {
@@ -529,7 +625,7 @@ async function processData(data, connectionInfo, sendResponse) {
       return;
     }
 
-    logger.info(`Recebido ${decodedData.recordCount} registro(s) AVL de ${imei}`);
+    logger.info(`Recebido ${decodedData.recordCount} registro(s) AVL de ${imei} (protocolo: ${connectionInfo.protocol})`);
     logger.debug(`Detalhes dos registros: ${JSON.stringify(decodedData.records.map(r => ({
       timestamp: r.timestamp,
       lat: r.latitude,
@@ -542,20 +638,71 @@ async function processData(data, connectionInfo, sendResponse) {
       await updateVehicleStatusInSupabase(imei, record);
     }
 
-    // Enviar confirmação com o número de registros recebidos
+    // Enviar confirmação com o número de registros recebidos baseada no protocolo
     if (sendResponse) {
-      const confirmation = createTeltonikaResponse(decodedData.recordCount);
-      sendResponse(confirmation);
-      logger.debug(`Confirmação AVL (${decodedData.recordCount} registros) enviada para ${imei}`);
+      let response;
+      
+      switch (connectionInfo.protocol) {
+        case 'teltonika':
+          response = createTeltonikaResponse(decodedData.recordCount);
+          break;
+        case 'queclink':
+          response = createQueclinkResponse('avl_data', imei);
+          break;
+        case 'concox':
+          // Determinar o tipo de pacote GPS Concox (0x10, 0x11, 0x12)
+          // e criar resposta apropriada
+          let protocolId = 0x10; // Padrão
+          if (decodedData.protocolId) {
+            protocolId = decodedData.protocolId;
+          }
+          response = createConcoxResponse(protocolId);
+          break;
+        default:
+          response = Buffer.from([0x01]); // Resposta genérica
+      }
+      
+      sendResponse(response);
+      logger.debug(`Confirmação AVL enviada para ${imei}`);
+    }
+  }
+  // Processar outros tipos de pacotes (comando, alarme, etc.)
+  else if (decodedData.type === "command_response") {
+    const imei = connectionInfo?.imei;
+    if (!imei) {
+      logger.error("Recebido pacote de comando antes do IMEI. Ignorando.");
+      return;
+    }
+    
+    logger.info(`Resposta de comando recebida de ${imei} (protocolo: ${connectionInfo.protocol})`);
+    
+    // Enviar confirmação baseada no protocolo
+    if (sendResponse) {
+      let response;
+      
+      switch (connectionInfo.protocol) {
+        case 'queclink':
+          response = createQueclinkResponse('command_response', imei);
+          break;
+        case 'concox':
+          response = createConcoxResponse(0x15); // Protocolo de comando Concox
+          break;
+        default:
+          // Teltonika não tem comando específico, ignorar
+          return;
+      }
+      
+      sendResponse(response);
+      logger.debug(`Confirmação de comando enviada para ${imei}`);
     }
   }
 }
 
-// Criar servidor TCP
-const tcpServer = net.createServer((socket) => {
+// Criar servidor TCP (Teltonika)
+const teltonikaServer = net.createServer((socket) => {
   const clientAddress = `${socket.remoteAddress}:${socket.remotePort}`;
-  logger.info(`Cliente TCP conectado: ${clientAddress}`);
-  tcpConnections.set(socket, { imei: null });
+  logger.info(`Cliente TCP (Teltonika) conectado: ${clientAddress}`);
+  tcpConnections.set(socket, { imei: null, protocol: 'teltonika' });
 
   // Handler para recebimento de dados
   socket.on("data", async (data) => {
@@ -569,13 +716,71 @@ const tcpServer = net.createServer((socket) => {
 
   // Handler para fechamento da conexão
   socket.on("close", () => {
-    logger.info(`Cliente TCP desconectado: ${clientAddress}`);
+    logger.info(`Cliente TCP (Teltonika) desconectado: ${clientAddress}`);
     tcpConnections.delete(socket);
   });
 
   // Handler para erros na conexão
   socket.on("error", (err) => {
-    logger.error(`Erro na conexão TCP com ${clientAddress}: ${err.message}`);
+    logger.error(`Erro na conexão TCP (Teltonika) com ${clientAddress}: ${err.message}`);
+    tcpConnections.delete(socket); // Remover conexão em caso de erro
+  });
+});
+
+// Criar servidor TCP para Queclink
+const queclinkServer = net.createServer((socket) => {
+  const clientAddress = `${socket.remoteAddress}:${socket.remotePort}`;
+  logger.info(`Cliente TCP (Queclink) conectado: ${clientAddress}`);
+  tcpConnections.set(socket, { imei: null, protocol: 'queclink' });
+
+  // Handler para recebimento de dados
+  socket.on("data", async (data) => {
+    logger.debug(`Dados TCP (Queclink) recebidos de ${clientAddress}: ${data.toString("hex").substring(0, 50)}...`);
+
+    const connectionInfo = tcpConnections.get(socket);
+    await processData(data, connectionInfo, (response) => {
+      socket.write(response);
+    });
+  });
+
+  // Handler para fechamento da conexão
+  socket.on("close", () => {
+    logger.info(`Cliente TCP (Queclink) desconectado: ${clientAddress}`);
+    tcpConnections.delete(socket);
+  });
+
+  // Handler para erros na conexão
+  socket.on("error", (err) => {
+    logger.error(`Erro na conexão TCP (Queclink) com ${clientAddress}: ${err.message}`);
+    tcpConnections.delete(socket); // Remover conexão em caso de erro
+  });
+});
+
+// Criar servidor TCP para Concox
+const concoxServer = net.createServer((socket) => {
+  const clientAddress = `${socket.remoteAddress}:${socket.remotePort}`;
+  logger.info(`Cliente TCP (Concox) conectado: ${clientAddress}`);
+  tcpConnections.set(socket, { imei: null, protocol: 'concox' });
+
+  // Handler para recebimento de dados
+  socket.on("data", async (data) => {
+    logger.debug(`Dados TCP (Concox) recebidos de ${clientAddress}: ${data.toString("hex").substring(0, 50)}...`);
+
+    const connectionInfo = tcpConnections.get(socket);
+    await processData(data, connectionInfo, (response) => {
+      socket.write(response);
+    });
+  });
+
+  // Handler para fechamento da conexão
+  socket.on("close", () => {
+    logger.info(`Cliente TCP (Concox) desconectado: ${clientAddress}`);
+    tcpConnections.delete(socket);
+  });
+
+  // Handler para erros na conexão
+  socket.on("error", (err) => {
+    logger.error(`Erro na conexão TCP (Concox) com ${clientAddress}: ${err.message}`);
     tcpConnections.delete(socket); // Remover conexão em caso de erro
   });
 });
@@ -593,7 +798,11 @@ udpServer.on('message', async (data, rinfo) => {
   
   // Obter ou criar informações do cliente
   if (!udpClients.has(clientAddress)) {
-    udpClients.set(clientAddress, { imei: null, lastSeen: new Date() });
+    udpClients.set(clientAddress, { 
+      imei: null, 
+      lastSeen: new Date(),
+      protocol: null // Vamos detectar o protocolo
+    });
     logger.info(`Novo cliente UDP: ${clientAddress}`);
   }
   
@@ -615,31 +824,55 @@ udpServer.on('listening', () => {
 });
 
 // Iniciar servidores
-tcpServer.listen(TCP_PORT, "0.0.0.0", () => {
+teltonikaServer.listen(TCP_PORT, "0.0.0.0", () => {
   logger.info(`Servidor TCP de rastreadores (Teltonika) ouvindo na porta ${TCP_PORT}`);
+});
+
+queclinkServer.listen(QUECLINK_TCP_PORT, "0.0.0.0", () => {
+  logger.info(`Servidor TCP de rastreadores (Queclink) ouvindo na porta ${QUECLINK_TCP_PORT}`);
+});
+
+concoxServer.listen(CONCOX_TCP_PORT, "0.0.0.0", () => {
+  logger.info(`Servidor TCP de rastreadores (Concox) ouvindo na porta ${CONCOX_TCP_PORT}`);
 });
 
 udpServer.bind(UDP_PORT, "0.0.0.0");
 
-// Lidar com erros do servidor TCP
-tcpServer.on("error", (err) => {
-  logger.error(`Erro no servidor TCP: ${err.message}`);
+// Lidar com erros dos servidores TCP
+teltonikaServer.on("error", (err) => {
+  logger.error(`Erro no servidor TCP (Teltonika): ${err.message}`);
+});
+
+queclinkServer.on("error", (err) => {
+  logger.error(`Erro no servidor TCP (Queclink): ${err.message}`);
+});
+
+concoxServer.on("error", (err) => {
+  logger.error(`Erro no servidor TCP (Concox): ${err.message}`);
 });
 
 // Lidar com sinais de término do processo
 process.on('SIGINT', () => {
   logger.info("Recebido sinal SIGINT. Encerrando servidores...");
-  tcpServer.close();
+  teltonikaServer.close();
+  queclinkServer.close();
+  concoxServer.close();
   udpServer.close();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
   logger.info("Recebido sinal SIGTERM. Encerrando servidores...");
-  tcpServer.close();
+  teltonikaServer.close();
+  queclinkServer.close();
+  concoxServer.close();
   udpServer.close();
   process.exit(0);
 });
 
-logger.info(`Servidor de rastreamento iniciado. TCP: ${TCP_PORT}, UDP: ${UDP_PORT}`);
+logger.info(`Servidores de rastreamento iniciados:
+- Teltonika (TCP): ${TCP_PORT}
+- Queclink (TCP): ${QUECLINK_TCP_PORT}
+- Concox (TCP): ${CONCOX_TCP_PORT}
+- Todos os protocolos (UDP): ${UDP_PORT}`);
 

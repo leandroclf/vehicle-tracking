@@ -1,5 +1,5 @@
 // Módulo para decodificação do protocolo Teltonika Codec8
-// Baseado na documentação oficial do protocolo Teltonika Codec8/Codec8 Extended
+// Baseado na documentação oficial do protocolo Teltonika Codec8/Codec8 Extended/Codec16
 
 /**
  * Decodifica um pacote de dados Teltonika Codec8
@@ -51,7 +51,7 @@ function decodeTeltonikaCodec8(data) {
       return null;
     }
     
-    // Ler o codec ID (8 para Codec8, 8E para Codec8 Extended)
+    // Ler o codec ID (8 para Codec8, 8E para Codec8 Extended, 10 para Codec16)
     const codecId = data[offset];
     offset += 1;
     
@@ -62,7 +62,7 @@ function decodeTeltonikaCodec8(data) {
     // Preparar o objeto de resposta
     const result = {
       type: 'avl_data',
-      codec: codecId === 0x08 ? 'codec8' : (codecId === 0x8E ? 'codec8_extended' : 'unknown'),
+      codec: getCodecName(codecId),
       recordCount: recordCount,
       records: []
     };
@@ -109,66 +109,159 @@ function decodeTeltonikaCodec8(data) {
       offset += 2;
       
       // Ler eventos IO
-      // Número de eventos IO (1 byte)
-      const ioEventCount = data[offset];
-      offset += 1;
-      
       const ioEvents = {};
       
+      // Número de eventos IO (1 byte para Codec8/Codec8 Extended, 2 bytes para Codec16)
+      let ioEventCount = 0;
+      if (codecId === 0x10) { // Codec16
+        ioEventCount = data.readUInt16BE(offset);
+        offset += 2;
+      } else {
+        ioEventCount = data[offset];
+        offset += 1;
+      }
+      
       // Processar eventos IO de 1 byte
-      const io1ByteCount = data[offset];
-      offset += 1;
+      let io1ByteCount = 0;
+      if (codecId === 0x10) { // Codec16
+        io1ByteCount = data.readUInt16BE(offset);
+        offset += 2;
+      } else {
+        io1ByteCount = data[offset];
+        offset += 1;
+      }
       
       for (let j = 0; j < io1ByteCount; j++) {
-        const ioId = data.readUInt16BE(offset);
+        // Ler ID do evento (2 bytes para Codec16, 2 bytes para Codec8/Codec8 Extended)
+        let ioId = 0;
+        if (codecId === 0x10) { // Codec16
+          ioId = data.readUInt16BE(offset);
+        } else {
+          ioId = data.readUInt16BE(offset);
+        }
         offset += 2;
+        
+        // Ler valor do evento (1 byte)
         const ioValue = data[offset];
         offset += 1;
         ioEvents[ioId] = ioValue;
       }
       
       // Processar eventos IO de 2 bytes
-      const io2ByteCount = data[offset];
-      offset += 1;
+      let io2ByteCount = 0;
+      if (codecId === 0x10) { // Codec16
+        io2ByteCount = data.readUInt16BE(offset);
+        offset += 2;
+      } else {
+        io2ByteCount = data[offset];
+        offset += 1;
+      }
       
       for (let j = 0; j < io2ByteCount; j++) {
-        const ioId = data.readUInt16BE(offset);
+        // Ler ID do evento
+        let ioId = 0;
+        if (codecId === 0x10) { // Codec16
+          ioId = data.readUInt16BE(offset);
+        } else {
+          ioId = data.readUInt16BE(offset);
+        }
         offset += 2;
+        
+        // Ler valor do evento (2 bytes)
         const ioValue = data.readUInt16BE(offset);
         offset += 2;
         ioEvents[ioId] = ioValue;
       }
       
       // Processar eventos IO de 4 bytes
-      const io4ByteCount = data[offset];
-      offset += 1;
+      let io4ByteCount = 0;
+      if (codecId === 0x10) { // Codec16
+        io4ByteCount = data.readUInt16BE(offset);
+        offset += 2;
+      } else {
+        io4ByteCount = data[offset];
+        offset += 1;
+      }
       
       for (let j = 0; j < io4ByteCount; j++) {
-        const ioId = data.readUInt16BE(offset);
+        // Ler ID do evento
+        let ioId = 0;
+        if (codecId === 0x10) { // Codec16
+          ioId = data.readUInt16BE(offset);
+        } else {
+          ioId = data.readUInt16BE(offset);
+        }
         offset += 2;
+        
+        // Ler valor do evento (4 bytes)
         const ioValue = data.readUInt32BE(offset);
         offset += 4;
         ioEvents[ioId] = ioValue;
       }
       
-      // Processar eventos IO de 8 bytes (se for Codec8 Extended)
+      // Processar eventos IO de 8 bytes (se for Codec8 Extended ou Codec16)
       let io8ByteCount = 0;
-      if (codecId === 0x8E) {
-        io8ByteCount = data[offset];
-        offset += 1;
+      if (codecId === 0x8E || codecId === 0x10) {
+        if (codecId === 0x10) { // Codec16
+          io8ByteCount = data.readUInt16BE(offset);
+          offset += 2;
+        } else {
+          io8ByteCount = data[offset];
+          offset += 1;
+        }
         
         for (let j = 0; j < io8ByteCount; j++) {
-          const ioId = data.readUInt16BE(offset);
+          // Ler ID do evento
+          let ioId = 0;
+          if (codecId === 0x10) { // Codec16
+            ioId = data.readUInt16BE(offset);
+          } else {
+            ioId = data.readUInt16BE(offset);
+          }
           offset += 2;
+          
+          // Ler valor do evento (8 bytes)
           const ioValue = data.readBigUInt64BE(offset);
           offset += 8;
           ioEvents[ioId] = Number(ioValue);
         }
       }
       
+      // Processar eventos IO de X bytes (específico do Codec16)
+      let ioXByteCount = 0;
+      if (codecId === 0x10) {
+        ioXByteCount = data.readUInt16BE(offset);
+        offset += 2;
+        
+        for (let j = 0; j < ioXByteCount; j++) {
+          // Ler ID do evento
+          const ioId = data.readUInt16BE(offset);
+          offset += 2;
+          
+          // Ler tamanho do valor
+          const valueLength = data.readUInt16BE(offset);
+          offset += 2;
+          
+          // Ler valor como array de bytes
+          const valueBytes = data.slice(offset, offset + valueLength);
+          offset += valueLength;
+          
+          // Tentar converter para string se for ASCII válido, senão manter como hex
+          const isAscii = valueBytes.every(byte => byte >= 32 && byte <= 126);
+          ioEvents[ioId] = isAscii ? valueBytes.toString('ascii') : valueBytes.toString('hex');
+        }
+      }
+      
       // Mapear IDs de IO para nomes mais amigáveis
       // Baseado na documentação Teltonika
       const mappedIoEvents = mapIoEvents(ioEvents);
+      
+      // Extrair informações de status do veículo
+      const ignitionStatus = mappedIoEvents.ignition_status || 
+                           (mappedIoEvents.ignition !== undefined ? Boolean(mappedIoEvents.ignition) : undefined);
+      
+      const movementStatus = mappedIoEvents.movement_status || 
+                           (mappedIoEvents.movement !== undefined ? Boolean(mappedIoEvents.movement) : speed > 0);
       
       // Adicionar o registro ao resultado
       result.records.push({
@@ -180,12 +273,20 @@ function decodeTeltonikaCodec8(data) {
         angle: angle,
         satellites: satellites,
         speed: speed,
-        ioEvents: mappedIoEvents
+        ioEvents: mappedIoEvents,
+        ignition: ignitionStatus,
+        moving: movementStatus
       });
     }
     
     // Verificar CRC (4 bytes no final)
     const crc = data.readUInt32BE(data.length - 4);
+    const calculatedCrc = calculateCrc(data.slice(8, data.length - 4));
+    
+    // Validar CRC
+    if (crc !== calculatedCrc) {
+      console.warn(`Aviso: CRC não corresponde. Recebido: ${crc}, Calculado: ${calculatedCrc}`);
+    }
     
     // Retornar o resultado
     return result;
@@ -193,6 +294,37 @@ function decodeTeltonikaCodec8(data) {
   } catch (error) {
     console.error('Erro ao decodificar pacote Teltonika:', error);
     return null;
+  }
+}
+
+/**
+ * Calcula o CRC para um buffer de dados Teltonika
+ * @param {Buffer} data - Buffer de dados para calcular o CRC
+ * @returns {number} - CRC calculado
+ */
+function calculateCrc(data) {
+  let crc = 0;
+  for (let i = 0; i < data.length; i++) {
+    crc ^= data[i];
+  }
+  return crc;
+}
+
+/**
+ * Retorna o nome do codec baseado no ID
+ * @param {number} codecId - ID do codec
+ * @returns {string} - Nome do codec
+ */
+function getCodecName(codecId) {
+  switch (codecId) {
+    case 0x08:
+      return 'codec8';
+    case 0x8E:
+      return 'codec8_extended';
+    case 0x10:
+      return 'codec16';
+    default:
+      return 'unknown';
   }
 }
 
@@ -206,24 +338,62 @@ function mapIoEvents(ioEvents) {
     // Mapeamento baseado na documentação Teltonika
     // https://wiki.teltonika-gps.com/view/FMB_AVL_ID
     1: 'ignition',
+    2: 'movement',
+    3: 'pedal',
+    4: 'trip_odometer',
     9: 'movement',
     10: 'total_distance',
+    11: 'acceleration',
     12: 'external_voltage',
+    13: 'gps_power',
     16: 'gsm_signal',
+    19: 'temperature',
+    20: 'seatbelt',
+    21: 'power_switch',
+    22: 'door_status',
     24: 'speed',
+    25: 'overcurrent',
+    26: 'gsm_status',
+    27: 'panic_button',
+    30: 'analogue_input1',
+    31: 'analogue_input2',
+    32: 'analogue_input3',
+    33: 'analogue_input4',
+    50: 'jamming',
     66: 'external_power_voltage',
     67: 'battery_voltage',
     68: 'battery_current',
+    69: 'gnss_status',
+    73: 'wakeup_event',
     78: 'ibutton',
+    79: 'gps_pdop',
     80: 'data_mode',
+    81: 'hardware_version',
+    82: 'firmware_version',
+    89: 'crash_detection',
+    155: 'geofence_zone_01',
+    156: 'geofence_zone_02',
+    157: 'geofence_zone_03',
+    158: 'geofence_zone_04',
+    159: 'geofence_zone_05',
+    175: 'auto_geofence',
     181: 'gsm_operator',
     182: 'sleep_mode',
+    183: 'gsm_area_code',
+    184: 'gsm_cell_id',
     199: 'trip_odometer',
     200: 'sleep_mode_status',
     205: 'gsm_cell_id',
     206: 'gsm_area_code',
     239: 'ignition_status',
     240: 'movement_status',
+    241: 'active_gps_profile',
+    246: 'towing_detection',
+    247: 'crash_detection',
+    249: 'jamming_detection',
+    250: 'immobilizer',
+    253: 'green_driving_event',
+    254: 'track_trigger',
     // Adicionar mais mapeamentos conforme necessário
   };
   

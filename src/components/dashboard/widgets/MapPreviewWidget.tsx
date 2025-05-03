@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Map } from 'lucide-react';
 import DashboardWidget from '../DashboardWidget';

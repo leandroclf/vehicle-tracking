@@ -1,3 +1,5 @@
+"use client";
+
 import React, { ReactNode } from 'react';
 import { twMerge } from 'tailwind-merge';
 import Card from '@/components/ui/Card';

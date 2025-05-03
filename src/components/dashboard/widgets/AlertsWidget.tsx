@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { Bell, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import DashboardWidget from '../DashboardWidget';

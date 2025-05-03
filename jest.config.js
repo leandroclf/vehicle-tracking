@@ -18,6 +18,12 @@ const config = {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
+  // Configuração para lidar com o ESM no node-fetch
+  transformIgnorePatterns: [
+    "/node_modules/(?!(node-fetch)/)"
+  ],
+  // Configurar para não verificar erros de tipo durante importação
+  resolver: undefined
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

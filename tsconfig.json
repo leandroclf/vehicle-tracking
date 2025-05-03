@@ -2,7 +2,9 @@
   "compilerOptions": {
     "target": "ES2017",
     "types": [
-      "@cloudflare/workers-types/2023-07-01"
+      "@cloudflare/workers-types/2023-07-01",
+      "jest",
+      "node"
     ],
     "lib": [
       "dom",
@@ -38,7 +40,9 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "next.config.mjs",
-    "src/types/**/*.d.ts"
+    "src/types/**/*.d.ts",
+    "jest.setup.js",
+    "jest.config.js"
   ],
   "exclude": [
     "node_modules"
