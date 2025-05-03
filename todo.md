@@ -40,7 +40,7 @@ Este documento contém o plano sequencial de tarefas a serem executadas para a c
 
 ## 3. Implantação e DevOps
 
-12.  **Refinar Processo de Deploy com Docker** - *Prioridade: Alta*  
+12. ✔ **Refinar Processo de Deploy com Docker** - *Prioridade: Alta*  
       Gerar os scripts de implantação Docker, incluindo solução para o servidor de rastreamento. (Docker files individuais, aplicaçao e servidor de rastreamento)
       Adotar multi-stage builds para reduzir tamanho da imagem.
       Consolidar variáveis de ambiente e segredos via ARG e ENV.

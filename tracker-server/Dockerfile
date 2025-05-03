@@ -1,13 +1,21 @@
 # Estágio de build
 FROM node:18-alpine AS builder
 
+# Definir variáveis de ambiente para build
+ARG SUPABASE_URL
+ARG SUPABASE_SERVICE_ROLE_KEY
+
+# Definir variáveis de ambiente
+ENV SUPABASE_URL=${SUPABASE_URL}
+ENV SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+
 WORKDIR /app
 
 # Copiar arquivos de configuração e dependências
 COPY package.json ./
 
-# Instalar dependências
-RUN npm install
+# Instalar dependências com npm ci para instalações determinísticas
+RUN npm ci --only=production
 
 # Copiar o código-fonte
 COPY . .
@@ -20,10 +28,13 @@ WORKDIR /app
 # Definir variáveis de ambiente para runtime
 ENV NODE_ENV=production
 ENV PORT=8090
+ENV SUPABASE_URL=${SUPABASE_URL}
+ENV SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
 
 # Criar usuário não-root
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nodeapp && \
+    mkdir -p /app/node_modules && \
     chown -R nodeapp:nodejs /app
 
 # Copiar apenas os arquivos necessários
@@ -39,4 +50,4 @@ USER nodeapp
 EXPOSE 8090
 
 # Comando para iniciar o servidor
-CMD ["node", "server.js"] 
+CMD ["node", "server.js"]
