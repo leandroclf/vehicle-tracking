@@ -176,12 +176,12 @@ export default function MapPage() {
       icon: <Clock size={16} />,
       content: (
         <div className="p-4">
-          <h2 className="text-xl font-semibold mb-4">Histórico de Rotas</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Histórico de Rotas</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Veículo</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Veículo</label>
               <select
-                className="w-full p-2 border rounded-md"
+                className="w-full p-2 border rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600"
                 value={routeHistoryVehicleId || ''}
                 onChange={(e) => setRouteHistoryVehicleId(Number(e.target.value) || null)}
               >
@@ -194,11 +194,11 @@ export default function MapPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Período</label>
+              <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Período</label>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="date"
-                  className="p-2 border rounded-md"
+                  className="p-2 border rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600"
                   onChange={(e) => {
                     const date = e.target.value ? new Date(e.target.value) : null;
                     setRouteHistoryStartDate(date);
@@ -206,7 +206,7 @@ export default function MapPage() {
                 />
                 <input
                   type="date"
-                  className="p-2 border rounded-md"
+                  className="p-2 border rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600"
                   onChange={(e) => {
                     const date = e.target.value ? new Date(e.target.value) : null;
                     setRouteHistoryEndDate(date);
@@ -216,17 +216,17 @@ export default function MapPage() {
             </div>
           </div>
           <button
-            className="bg-blue-600 text-white px-4 py-2 rounded-md"
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
             onClick={() => setShowRouteHistory(true)}
             disabled={!routeHistoryVehicleId}
           >
             Mostrar Histórico
           </button>
-          <div className="bg-yellow-50 border-yellow-200 border p-3 rounded-md mt-4">
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700 border p-3 rounded-md mt-4">
             <div className="flex items-start">
-              <AlertTriangle size={18} className="text-yellow-500 mt-0.5 mr-2" />
+              <AlertTriangle size={18} className="text-yellow-500 dark:text-yellow-400 mt-0.5 mr-2" />
               <div>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-gray-700 dark:text-gray-200">
                   O histórico de rotas está disponível apenas para assinantes do plano &quot;Premium&quot; ou superior.
                 </p>
               </div>
@@ -242,7 +242,7 @@ export default function MapPage() {
       content: (
         <div className="p-4">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Gerenciamento de Geocercas</h2>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Gerenciamento de Geocercas</h2>
             <button
               className={`px-4 py-2 rounded-md ${
                 editableGeofences
@@ -256,8 +256,8 @@ export default function MapPage() {
           </div>
           
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-4">
-            <h3 className="font-medium mb-2">Instruções:</h3>
-            <ul className="list-disc pl-5 space-y-1 text-sm">
+            <h3 className="font-medium mb-2 text-gray-800 dark:text-gray-100">Instruções:</h3>
+            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700 dark:text-gray-200">
               <li>Clique no botão "Editar Geocercas" para entrar no modo de edição</li>
               <li>Use as ferramentas do mapa para desenhar polígonos ou círculos</li>
               <li>Clique em uma geocerca existente para editá-la</li>
@@ -266,9 +266,9 @@ export default function MapPage() {
           </div>
           
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-4">
-            <h3 className="font-medium mb-2">Geocercas Existentes:</h3>
+            <h3 className="font-medium mb-2 text-gray-800 dark:text-gray-100">Geocercas Existentes:</h3>
             {geofences.length === 0 ? (
-              <p className="text-gray-500">Nenhuma geocerca cadastrada</p>
+              <p className="text-gray-500 dark:text-gray-400">Nenhuma geocerca cadastrada</p>
             ) : (
               <ul className="divide-y">
                 {geofences.map((geofence) => (
@@ -284,8 +284,8 @@ export default function MapPage() {
                         className="w-4 h-4 rounded-full mr-2" 
                         style={{ backgroundColor: geofence.color }}
                       />
-                      <span className="flex-1">{geofence.name}</span>
-                      <Badge variant="outline">
+                      <span className="flex-1 text-gray-800 dark:text-gray-200">{geofence.name}</span>
+                      <Badge variant="default" outline>
                         {geofence.type === 'circle' ? 'Círculo' : 'Polígono'}
                       </Badge>
                     </div>
@@ -297,40 +297,42 @@ export default function MapPage() {
           
           {selectedGeofence && (
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-              <h3 className="font-medium mb-2">Geocerca Selecionada:</h3>
+              <h3 className="font-medium mb-2 text-gray-800 dark:text-gray-100">Geocerca Selecionada:</h3>
               <div className="space-y-2">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Nome</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Nome</label>
                   <input
                     type="text"
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2 border rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600"
                     value={selectedGeofence.name}
                     onChange={(e) => setSelectedGeofence({ ...selectedGeofence, name: e.target.value })}
                     disabled={!editableGeofences}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Descrição</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Descrição</label>
                   <textarea
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2 border rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600"
                     value={selectedGeofence.description || ''}
                     onChange={(e) => setSelectedGeofence({ ...selectedGeofence, description: e.target.value })}
                     disabled={!editableGeofences}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Tipo</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Tipo</label>
                   <Badge
                     variant="primary"
-                    style={{ backgroundColor: selectedGeofence.color, color: 'white' }}
+                    className={`${selectedGeofence.color ? 'bg-opacity-0' : ''}`}
                   >
-                    {selectedGeofence.type === 'circle' ? 'Círculo' : 'Polígono'}
+                    <span style={{color: selectedGeofence.color}} className="font-medium">
+                      {selectedGeofence.type === 'circle' ? 'Círculo' : 'Polígono'}
+                    </span>
                   </Badge>
                 </div>
                 {selectedGeofence.type === 'circle' && selectedGeofence.radius && (
                   <div>
-                    <label className="block text-sm font-medium mb-1">Raio</label>
-                    <p>{(selectedGeofence.radius / 1000).toFixed(2)} km</p>
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Raio</label>
+                    <p className="text-gray-800 dark:text-gray-200">{(selectedGeofence.radius / 1000).toFixed(2)} km</p>
                   </div>
                 )}
               </div>
@@ -361,14 +363,14 @@ export default function MapPage() {
       icon: <Settings size={16} />,
       content: (
         <div className="p-4">
-          <h2 className="text-xl font-semibold mb-4">Configurações do Mapa</h2>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Configurações do Mapa</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-              <h3 className="font-medium mb-3">Aparência do Mapa</h3>
+              <h3 className="font-medium mb-3 text-gray-800 dark:text-gray-100">Aparência do Mapa</h3>
               
               <div className="mb-3">
-                <label className="block text-sm font-medium mb-1">Tipo de Mapa</label>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Tipo de Mapa</label>
                 <div className="flex flex-wrap gap-2">
                   {mapTypeOptions.map((option) => (
                     <button
@@ -396,7 +398,7 @@ export default function MapPage() {
                     onChange={() => setShowTraffic(!showTraffic)}
                     className="mr-2"
                   />
-                  <label htmlFor="showTraffic" className="text-sm">
+                  <label htmlFor="showTraffic" className="text-sm text-gray-700 dark:text-gray-200">
                     Mostrar tráfego
                   </label>
                 </div>
@@ -411,7 +413,7 @@ export default function MapPage() {
                     onChange={() => setShowGeofences(!showGeofences)}
                     className="mr-2"
                   />
-                  <label htmlFor="showGeofences" className="text-sm">
+                  <label htmlFor="showGeofences" className="text-sm text-gray-700 dark:text-gray-200">
                     Mostrar geocercas
                   </label>
                 </div>
@@ -419,8 +421,8 @@ export default function MapPage() {
             </div>
             
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-              <h3 className="font-medium mb-3">Atualizações</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+              <h3 className="font-medium mb-3 text-gray-800 dark:text-gray-100">Atualizações</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                 O mapa é atualizado automaticamente a cada 10 segundos para mostrar a posição mais recente dos veículos.
               </p>
               <button
@@ -438,7 +440,7 @@ export default function MapPage() {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Monitoramento</h1>
+      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Monitoramento</h1>
       <Tabs items={tabItems} />
     </div>
   );

@@ -42,12 +42,12 @@ function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
       <Container className="max-w-md">
-        <Card className="border-t-4 border-t-[#00315c]">
+        <Card className="border-t-4 border-t-[#00315c] dark:bg-gray-800">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-[#00315c]">Yukz</h1>
-            <p className="text-gray-700 mt-2">Crie sua conta</p>
+            <h1 className="text-2xl font-bold text-[#00315c] dark:text-blue-400">Yukz</h1>
+            <p className="text-gray-700 dark:text-gray-300 mt-2">Crie sua conta</p>
           </div>
           
           {error && (
@@ -58,7 +58,7 @@ function RegisterForm() {
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-700">
+              <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Nome
               </label>
               <Input
@@ -72,7 +72,7 @@ function RegisterForm() {
             </div>
             
             <div>
-              <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email
               </label>
               <Input
@@ -86,7 +86,7 @@ function RegisterForm() {
             </div>
             
             <div>
-              <label htmlFor="phone" className="block mb-2 text-sm font-medium text-gray-700">
+              <label htmlFor="phone" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Telefone
               </label>
               <Input
@@ -99,7 +99,7 @@ function RegisterForm() {
             </div>
             
             <div>
-              <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Senha
               </label>
               <Input
@@ -122,9 +122,9 @@ function RegisterForm() {
             </Button>
             
             <div className="mt-6 text-center">
-              <p className="text-gray-700">
+              <p className="text-gray-700 dark:text-gray-300">
                 Já tem uma conta?{' '}
-                <Link href="/login" className="text-[#007db8] hover:underline">
+                <Link href="/login" className="text-[#007db8] dark:text-blue-400 hover:underline">
                   Fazer login
                 </Link>
               </p>

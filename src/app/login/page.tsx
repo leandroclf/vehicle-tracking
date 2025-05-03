@@ -48,7 +48,7 @@ function LoginForm() {
         console.log('Login bem-sucedido, redirecionando para dashboard');
         // Adicionar pequeno delay para garantir que o token seja armazenado
         await new Promise(resolve => setTimeout(resolve, 300));
-        router.push('/dashboard');
+        router.push('/dashboard/dashboard');
       } else {
         console.error('Falha no login:', result.error);
         setError(result.error || 'Erro ao fazer login');
@@ -62,12 +62,12 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
       <Container className="max-w-md">
-        <Card className="border-t-4 border-t-[#00315c]">
+        <Card className="border-t-4 border-t-[#00315c] dark:bg-gray-800">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-[#00315c]">Yukz</h1>
-            <p className="text-gray-700 mt-2">Acesse sua conta</p>
+            <h1 className="text-2xl font-bold text-[#00315c] dark:text-blue-400">Yukz</h1>
+            <p className="text-gray-700 dark:text-gray-300 mt-2">Acesse sua conta</p>
           </div>
           
           {error && (
@@ -84,7 +84,7 @@ function LoginForm() {
           
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email
               </label>
               <Input
@@ -97,7 +97,7 @@ function LoginForm() {
               />
             </div>
             <div className="mb-6">
-              <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-700">
+              <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Senha
               </label>
               <Input
@@ -109,7 +109,7 @@ function LoginForm() {
                 required
               />
               <div className="mt-2 text-right">
-                <Link href="/forgot-password" className="text-sm text-[#007db8] hover:underline">
+                <Link href="/forgot-password" className="text-sm text-[#007db8] dark:text-blue-400 hover:underline">
                   Esqueceu a senha?
                 </Link>
               </div>
@@ -124,9 +124,9 @@ function LoginForm() {
             </Button>
             
             <div className="mt-6 text-center">
-              <p className="text-gray-700">
+              <p className="text-gray-700 dark:text-gray-300">
                 Não tem uma conta?{' '}
-                <Link href="/register" className="text-[#007db8] hover:underline">
+                <Link href="/register" className="text-[#007db8] dark:text-blue-400 hover:underline">
                   Registre-se
                 </Link>
               </p>

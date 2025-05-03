@@ -28,7 +28,7 @@ export default function DashboardPage() {
 
   return (
     <Container>
-      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Dashboard</h1>
       <Stats 
         items={statsItems}
         columns={3}

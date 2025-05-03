@@ -49,7 +49,7 @@ export default function GeofencesPage() {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Geocercas</h1>
+      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Geocercas</h1>
       
       <div className="flex justify-between items-center mb-6">
         <div className="relative">
