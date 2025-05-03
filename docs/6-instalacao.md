@@ -150,37 +150,110 @@ cd vehicle-tracking
 
 ## 6.5 Implantação com Docker
 
-### 6.5.1 Construir Imagem Docker
+### 6.5.1 Visão Geral da Arquitetura Docker
 
-```bash
-# Na pasta raiz do projeto
-docker build -t yukz-vehicle-tracking .
-```
+O sistema Yukz utiliza uma arquitetura de containerização baseada em multi-stage builds para otimizar tamanho, segurança e performance. A implantação consiste em dois contêineres principais:
 
-### 6.5.2 Executar Container
+- **Aplicação Web (Next.js)**: Interface do usuário e API backend
+- **Servidor de Rastreamento**: Serviço dedicado para processamento de dados GPS
 
-```bash
-docker run -p 3000:3000 \
-  -e SUPABASE_URL=<sua-url> \
-  -e SUPABASE_ANON_KEY=<sua-chave> \
-  -e GOOGLE_MAPS_API_KEY=<sua-chave> \
-  -e JWT_SECRET=<sua-chave-secreta> \
-  yukz-vehicle-tracking
-```
+Ambos os contêineres executam como usuários não-root para maior segurança e incluem healthchecks para monitoramento.
 
-### 6.5.3 Implantação Automatizada
+### 6.5.2 Pré-requisitos para Implantação Docker
 
-O projeto inclui scripts para implantação automatizada:
+- Docker Engine 20.10 ou superior
+- Docker Compose 2.0 ou superior
+- Arquivo `.env` configurado com todas as variáveis necessárias
+- Portas 3000 e 8090 disponíveis no servidor
 
-- **Windows**: Execute `deploy-docker.ps1`
+### 6.5.3 Implantação com Docker Compose (Recomendado)
+
+1. **Preparar arquivo de variáveis de ambiente**:
+   ```bash
+   cp .env.example .env
+   # Edite o arquivo .env com suas credenciais
+   ```
+
+2. **Construir e iniciar os serviços**:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Verificar status e logs dos serviços**:
+   ```bash
+   docker-compose ps
+   docker-compose logs -f
+   ```
+
+### 6.5.4 Implantação Manual dos Contêineres
+
+#### Aplicação Web:
+
+1. **Construir a imagem**:
+   ```bash
+   docker build -t yukz-app \
+     --build-arg NEXT_PUBLIC_SUPABASE_URL=sua_url_supabase \
+     --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anon_supabase \
+     --build-arg NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=sua_chave_api_google_maps \
+     .
+   ```
+
+2. **Executar o contêiner**:
+   ```bash
+   docker run -d -p 3000:3000 \
+     -e SUPABASE_URL=sua_url_supabase \
+     -e SUPABASE_ANON_KEY=sua_chave_anon_supabase \
+     -e SUPABASE_SERVICE_ROLE_KEY=sua_chave_service_role_supabase \
+     -e JWT_SECRET=sua_chave_secreta_jwt \
+     -e GOOGLE_MAPS_API_KEY=sua_chave_api_google_maps \
+     --name yukz-app \
+     yukz-app
+   ```
+
+#### Servidor de Rastreamento:
+
+1. **Construir a imagem**:
+   ```bash
+   cd tracker-server
+   docker build -t yukz-tracker-server .
+   ```
+
+2. **Executar o contêiner**:
+   ```bash
+   docker run -d -p 8090:8090 \
+     -e SUPABASE_URL=sua_url_supabase \
+     -e SUPABASE_SERVICE_ROLE_KEY=sua_chave_service_role_supabase \
+     --name yukz-tracker-server \
+     yukz-tracker-server
+   ```
+
+### 6.5.5 Otimizações Implementadas
+
+- **Multi-stage builds**: Reduz significativamente o tamanho das imagens finais
+- **Usuários não-root**: Aumenta a segurança dos contêineres
+- **Healthchecks**: Monitora automaticamente a disponibilidade dos serviços 
+- **Rede isolada**: Limita exposição dos serviços apenas ao necessário
+
+### 6.5.6 Gerenciamento dos Contêineres
+
+- **Atualização da aplicação**:
+  ```bash
+  docker-compose build
+  docker-compose up -d
   ```
-  .\deploy-docker.ps1
+
+- **Visualização de logs**:
+  ```bash
+  docker-compose logs -f app        # Logs da aplicação web
+  docker-compose logs -f tracker-server  # Logs do servidor de rastreamento
   ```
 
-- **Linux/Mac**: Execute `deploy-docker.sh`
+- **Parada dos serviços**:
+  ```bash
+  docker-compose down  # Para parar os serviços
   ```
-  ./deploy-docker.sh
-  ```
+
+Para uma documentação mais detalhada sobre a implantação com Docker, consulte o documento específico [Deploy com Docker](docker-deployment.md).
 
 ## 6.6 Acessando a Aplicação
 

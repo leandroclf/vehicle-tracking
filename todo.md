@@ -40,7 +40,7 @@ Este documento contém o plano sequencial de tarefas a serem executadas para a c
 
 ## 3. Implantação e DevOps
 
-12. ✔ **Refinar Processo de Deploy com Docker** - *Prioridade: Alta*  
+12.  **Refinar Processo de Deploy com Docker** - *Prioridade: Alta*  
       Gerar os scripts de implantação Docker, incluindo solução para o servidor de rastreamento. (Docker files individuais, aplicaçao e servidor de rastreamento)
       Adotar multi-stage builds para reduzir tamanho da imagem.
       Consolidar variáveis de ambiente e segredos via ARG e ENV.
@@ -52,9 +52,9 @@ Este documento contém o plano sequencial de tarefas a serem executadas para a c
 
 ## 5. Documentação e Finalização
 
-14. **Atualizar Documentação Técnica** - *Prioridade: Média*  
+14. ✔ **Atualizar Documentação Técnica** - *Prioridade: Média*  
     Revisar e atualizar a documentação técnica conforme o desenvolvimento avança, garantindo precisão e completude.
 
-15. **Criar Guia do Usuário** - *Prioridade: Baixa*  
+15. **Criar Guia do Usuário completo** - *Prioridade: Baixa*  
     Desenvolver documentação voltada para usuários finais, com tutoriais e casos de uso comuns.
 

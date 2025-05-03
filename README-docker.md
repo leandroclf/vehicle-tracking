@@ -9,113 +9,106 @@ Este documento fornece instruções para implantar o sistema de rastreamento vei
 
 ## Pré-requisitos
 
-- Docker e Docker Compose instalados no servidor de implantação
+- Docker Engine 20.10+ e Docker Compose 2.0+
 - Credenciais do Supabase configuradas
 - Chave de API do Google Maps (para funcionalidades de mapa)
+- Portas 3000 e 8090 disponíveis no servidor
 
-## Arquivos de Configuração Docker
+## Implantação Rápida
 
-### Dockerfile (Aplicação Principal)
-O Dockerfile principal foi configurado para construir a aplicação Next.js em dois estágios:
-1. **Estágio de Build**: Compila a aplicação Next.js
-2. **Estágio de Runtime**: Executa a aplicação compilada com permissões de usuário não-root
+Para uma implantação rápida do sistema, siga estes passos:
 
-### tracker-server/Dockerfile
-O Dockerfile do servidor de rastreamento também utiliza multi-stage build:
-1. **Estágio de Build**: Instala as dependências necessárias
-2. **Estágio de Runtime**: Executa o servidor com configurações de segurança
+1. **Clone o repositório**:
+   ```bash
+   git clone https://github.com/yukz/vehicle-tracking.git
+   cd vehicle-tracking
+   ```
 
-### docker-compose.yml
-Este arquivo orquestra a execução dos dois serviços em conjunto, configurando redes, variáveis de ambiente e healthchecks.
-
-## Variáveis de Ambiente
-
-Crie um arquivo `.env` na raiz do projeto com as seguintes variáveis:
-
-```
-# Variáveis públicas (acessíveis no frontend)
-NEXT_PUBLIC_SUPABASE_URL=sua_url_supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anon_supabase
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=sua_chave_api_google_maps
-
-# Variáveis privadas (somente para uso no backend)
-SUPABASE_URL=sua_url_supabase
-SUPABASE_ANON_KEY=sua_chave_anon_supabase
-SUPABASE_SERVICE_ROLE_KEY=sua_chave_service_role_supabase
-JWT_SECRET=sua_chave_secreta_jwt
-GOOGLE_MAPS_API_KEY=sua_chave_api_google_maps
-```
-
-## Instruções de Implantação
-
-### Opção 1: Usando Docker Compose (Recomendado)
-
-1. **Configurar variáveis de ambiente**:
+2. **Crie um arquivo .env com as variáveis necessárias**:
    ```bash
    cp .env.example .env
    # Edite o arquivo .env com suas credenciais
    ```
 
-2. **Construir e iniciar os serviços**:
+3. **Inicie os serviços com Docker Compose**:
    ```bash
    docker-compose up -d
    ```
 
-3. **Verificar logs dos serviços**:
+4. **Verifique o status dos serviços**:
    ```bash
-   docker-compose logs -f
+   docker-compose ps
    ```
 
-### Opção 2: Usando Docker diretamente
+5. **Acesse a aplicação em**:
+   - Aplicação Web: `http://localhost:3000`
+   - Servidor de Rastreamento: `tcp://localhost:8090`
 
-#### Para a aplicação principal:
+## Características da Solução Docker
 
-1. **Construir a imagem**:
-   ```bash
-   docker build -t yukz-app \
-     --build-arg NEXT_PUBLIC_SUPABASE_URL=sua_url_supabase \
-     --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anon_supabase \
-     --build-arg NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=sua_chave_api_google_maps \
-     .
-   ```
+- **Multi-stage builds** para redução do tamanho das imagens
+- **Usuários não-root** para maior segurança
+- **Healthchecks** para monitoramento de disponibilidade
+- **Rede isolada** para comunicação segura entre serviços
+- **Configuração simplificada** via variáveis de ambiente
+- **Containers autossuficientes** sem necessidade de volumes persistentes
 
-2. **Executar o contêiner**:
-   ```bash
-   docker run -d -p 3000:3000 \
-     -e SUPABASE_URL=sua_url_supabase \
-     -e SUPABASE_ANON_KEY=sua_chave_anon_supabase \
-     -e SUPABASE_SERVICE_ROLE_KEY=sua_chave_service_role_supabase \
-     -e JWT_SECRET=sua_chave_secreta_jwt \
-     -e GOOGLE_MAPS_API_KEY=sua_chave_api_google_maps \
-     --name yukz-app \
-     yukz-app
-   ```
+## Comandos Úteis para Gerenciamento
 
-#### Para o servidor de rastreamento:
+### Visualização de Logs
+```bash
+# Todos os serviços
+docker-compose logs -f
 
-1. **Construir a imagem**:
-   ```bash
-   cd tracker-server
-   docker build -t yukz-tracker-server .
-   ```
+# Aplicação web
+docker-compose logs -f app
 
-2. **Executar o contêiner**:
-   ```bash
-   docker run -d -p 8090:8090 \
-     -e SUPABASE_URL=sua_url_supabase \
-     -e SUPABASE_SERVICE_ROLE_KEY=sua_chave_service_role_supabase \
-     --name yukz-tracker-server \
-     yukz-tracker-server
-   ```
+# Servidor de rastreamento
+docker-compose logs -f tracker-server
+```
 
-## Acessando a Aplicação
+### Reiniciar Serviços
+```bash
+# Reiniciar todos os serviços
+docker-compose restart
 
-- Aplicação Web: `http://seu-servidor:3000`
-- Servidor de Rastreamento: `tcp://seu-servidor:8090`
+# Reiniciar apenas a aplicação web
+docker-compose restart app
 
-## Solução de Problemas
+# Reiniciar apenas o servidor de rastreamento
+docker-compose restart tracker-server
+```
 
-- **Erro de dependências**: Verifique os logs dos contêineres com `docker logs yukz-app` ou `docker logs yukz-tracker-server`
-- **Erro de conexão com Supabase**: Confirme se as credenciais do Supabase estão configuradas corretamente
-- **Erro no servidor de rastreamento**: Verifique os logs com `docker logs yukz-tracker-server`
-- **Problemas de permissão**: As imagens estão configuradas para executar como usuários não-root; confirme que os caminhos de volume têm permissões adequadas
+### Atualizar após Alterações
+```bash
+# Reconstruir imagens e reiniciar serviços
+docker-compose up -d --build
+```
+
+### Parar Serviços
+```bash
+# Parar todos os serviços
+docker-compose down
+```
+
+## Variáveis de Ambiente
+
+O sistema requer as seguintes variáveis de ambiente:
+
+| Variável | Descrição | Serviço |
+|----------|-----------|---------|
+| NEXT_PUBLIC_SUPABASE_URL | URL do projeto Supabase | App |
+| NEXT_PUBLIC_SUPABASE_ANON_KEY | Chave anônima do Supabase | App |
+| NEXT_PUBLIC_GOOGLE_MAPS_API_KEY | Chave da API Google Maps | App |
+| SUPABASE_URL | URL do projeto Supabase | App + Tracker |
+| SUPABASE_ANON_KEY | Chave anônima do Supabase | App |
+| SUPABASE_SERVICE_ROLE_KEY | Chave de serviço do Supabase | App + Tracker |
+| JWT_SECRET | Segredo para assinatura de tokens JWT | App |
+| GOOGLE_MAPS_API_KEY | Chave da API Google Maps | App |
+
+## Documentação Detalhada
+
+Para informações mais detalhadas sobre a implementação Docker, consulte o documento completo em:
+
+- [docs/docker-deployment.md](docs/docker-deployment.md)
+- [docs/6-instalacao.md](docs/6-instalacao.md) (Seção 6.5)
