@@ -14,8 +14,9 @@ WORKDIR /app
 # Copiar arquivos de configuração e dependências
 COPY package.json ./
 
-# Instalar dependências com npm ci para instalações determinísticas
-RUN npm ci --only=production
+# Instalar dependências apenas de produção
+RUN npm install --only=production && \
+    npm cache clean --force
 
 # Copiar o código-fonte
 COPY . .
