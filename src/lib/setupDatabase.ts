@@ -21,9 +21,16 @@ export async function setupDatabase() {
     // Inicializa o banco de dados (aplica migrações se necessário)
     await initializeDatabase();
     
-    // Em desenvolvimento, cria dados de teste
-    if (process.env.NODE_ENV === 'development') {
+    // Tentar criar dados de teste sempre, independente do ambiente
+    // Isso garante que os usuários de teste estejam disponíveis
+    console.log('Garantindo criação dos usuários de teste...');
+    
+    try {
       await seedTestData();
+      console.log('Usuários de teste verificados com sucesso');
+    } catch (seedError) {
+      console.warn('Aviso: Falha ao criar usuários de teste:', seedError);
+      // Continua a execução mesmo com falha no seed
     }
     
     console.log('Configuração do banco de dados concluída com sucesso');
