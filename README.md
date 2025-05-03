@@ -2,6 +2,10 @@
 
 Este repositório contém o código-fonte da aplicação Yukz, uma plataforma de rastreamento veicular desenvolvida com Next.js, Supabase, Google Maps e um servidor dedicado para comunicação com dispositivos rastreadores.
 
+## Acesso para Teste
+
+Para acessar o sistema com usuários de teste, consulte a documentação em [docs/acesso-teste.md](docs/acesso-teste.md).
+
 ## Estrutura do Projeto
 
 O projeto está organizado em duas partes principais:

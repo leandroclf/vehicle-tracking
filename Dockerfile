@@ -21,7 +21,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Instalar TODAS as dependências (incluindo devDependencies necessárias para o build)
-RUN npm ci && \
+RUN npm install && \
     npm cache clean --force
 
 # Copiar o restante do código-fonte
@@ -47,9 +47,10 @@ ENV PORT=3000
 COPY --from=builder --chown=nextjs:nodejs /app/next.config.js ./
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/package-lock.json ./package-lock.json
 
 # Instalar apenas dependências de produção no estágio de execução
-RUN npm ci --only=production && \
+RUN npm install --production && \
     npm cache clean --force
 
 # Copiar build do Next.js
