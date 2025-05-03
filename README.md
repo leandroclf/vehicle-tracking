@@ -88,6 +88,34 @@ O projeto está organizado em duas partes principais:
     *   Execute o servidor: `node server.js`
     *   O servidor começará a ouvir conexões TCP na porta especificada no `.env` (padrão 5027).
 
+## Testes
+
+### Testes de API
+
+O projeto inclui uma suíte de testes para verificar se todos os endpoints da API estão adequadamente protegidos e validam os tokens corretamente.
+
+Para executar os testes de API:
+
+```bash
+# Executar todos os testes de API
+npm run test:api
+
+# Testar apenas a proteção dos endpoints
+npm run test:api:protection
+
+# Testar apenas a validação de tokens JWT
+npm run test:api:auth
+```
+
+Estes testes verificam:
+
+1. Se todos os endpoints protegidos exigem um token válido
+2. Se os endpoints rejeitam tokens inválidos ou expirados
+3. Se os endpoints aceitam tokens válidos
+4. Se a validação de dados de entrada está funcionando corretamente
+
+Para adicionar novos endpoints à suíte de testes, edite o arquivo `__tests__/api/api-endpoints-protection.test.ts`.
+
 ## Docker
 
 A aplicação principal (`yukz-app`) possui um `Dockerfile` que pode ser usado para criar uma imagem Docker. O servidor de rastreadores (`tracker-server`) ainda não possui um Dockerfile dedicado, mas pode ser adicionado.

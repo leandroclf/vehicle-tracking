@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { Truck, TrendingUp, TrendingDown } from 'lucide-react';
 import DashboardWidget from '../DashboardWidget';
@@ -22,13 +24,13 @@ export default function VehicleSummaryWidget() {
   const [isLoading, setIsLoading] = useState(true);
   const [widgetSize, setWidgetSize] = useState<'small' | 'medium' | 'large' | 'full'>('medium');
   
-  const { vehicles, refreshVehicleData } = useVehicles();
+  const { vehicles, refreshVehicles } = useVehicles();
   
   useEffect(() => {
     if (vehicles) {
       const activeVehicles = vehicles.filter(v => v.status === 'online');
-      const movingVehicles = vehicles.filter(v => v.status === 'online' && v.motion);
-      const stoppedVehicles = vehicles.filter(v => v.status === 'online' && !v.motion);
+      const movingVehicles = vehicles.filter(v => v.status === 'online' && v.isMoving);
+      const stoppedVehicles = vehicles.filter(v => v.status === 'online' && !v.isMoving);
       const inactiveVehicles = vehicles.filter(v => v.status === 'offline');
       
       setStats({
@@ -45,7 +47,7 @@ export default function VehicleSummaryWidget() {
   
   const handleRefresh = () => {
     setIsLoading(true);
-    refreshVehicleData().finally(() => {
+    refreshVehicles().finally(() => {
       setIsLoading(false);
     });
   };
