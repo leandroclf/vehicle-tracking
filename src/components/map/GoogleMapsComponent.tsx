@@ -1,9 +1,19 @@
-import React from 'react';
+import React, { useMemo, memo, Suspense, lazy } from 'react';
 import { useLoadScript, GoogleMap, Marker, InfoWindow, TrafficLayer } from '@react-google-maps/api';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import GeofenceManager, { Geofence } from './GeofenceManager';
-import RouteHistory, { RoutePoint } from './RouteHistory';
 import { Vehicle } from '@/lib/vehicles';
+
+// Importando os tipos diretamente para uso interno
+import type { Geofence } from './GeofenceManager';
+import type { RoutePoint } from './RouteHistory';
+
+// Lazy loading dos componentes pesados
+const GeofenceManager = lazy(() => import('./GeofenceManager'));
+const RouteHistory = lazy(() => import('./RouteHistory'));
+
+// Exportando os tipos para manter compatibilidade
+export type { Geofence } from './GeofenceManager';
+export type { RoutePoint } from './RouteHistory';
 
 // Estilos para o mapa
 const mapContainerStyle = {
@@ -57,8 +67,15 @@ interface GoogleMapsComponentProps {
   onRoutePointClick?: (point: RoutePoint) => void;
 }
 
+// Componente de loading
+const LoadingComponent = () => (
+  <div className="flex items-center justify-center h-full">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+  </div>
+);
+
 // Componente principal do mapa
-export default function GoogleMapsComponent({
+function GoogleMapsComponent({
   mapType = 'roadmap',
   showTraffic = false,
   showGeofences = true,
@@ -206,7 +223,8 @@ export default function GoogleMapsComponent({
 
   // Efeito para carregar o histórico de rotas (simulado por enquanto)
   useEffect(() => {
-    if (routeHistoryVehicleId) {
+    if (routeHistoryVehicleId && showRouteHistory) {
+      // Só carregamos os pontos se a rota estiver visível
       // Gerar pontos de rota simulados para o veículo selecionado
       const now = new Date();
       const mockRoutePoints: RoutePoint[] = [];
@@ -248,7 +266,7 @@ export default function GoogleMapsComponent({
     } else {
       setRoutePoints([]);
     }
-  }, [routeHistoryVehicleId, vehiclesState]);
+  }, [routeHistoryVehicleId, vehiclesState, showRouteHistory]);
 
   // Efeito para selecionar o veículo com base no ID recebido via props
   useEffect(() => {
@@ -265,32 +283,35 @@ export default function GoogleMapsComponent({
     }
   }, [selectedVehicleId, vehiclesState, panTo]);
 
-  // Função para lidar com o clique em um marcador
-  const handleMarkerClick = (vehicle: VehiclePosition) => {
+  // Função para lidar com o clique em um marcador de veículo
+  const handleMarkerClick = useCallback((vehicle: VehiclePosition) => {
     setSelectedVehicle(vehicle);
-    if (onVehicleSelect) {
-      onVehicleSelect(vehicle);
+    if (onVehicleSelect && vehicles) {
+      const matchingVehicle = vehicles.find(v => v.id === vehicle.id);
+      if (matchingVehicle) {
+        onVehicleSelect(matchingVehicle);
+      }
     }
-  };
+  }, [onVehicleSelect, vehicles]);
 
   // Função para lidar com o fechamento da janela de informações
-  const handleInfoWindowClose = () => {
+  const handleInfoWindowClose = useCallback(() => {
     setSelectedVehicle(null);
     if (onVehicleSelect) {
       onVehicleSelect(null);
     }
-  };
+  }, [onVehicleSelect]);
 
   // Função para lidar com a seleção de uma geocerca
-  const handleGeofenceSelect = (geofence: Geofence | null) => {
+  const handleGeofenceSelect = useCallback((geofence: Geofence | null) => {
     setSelectedGeofenceId(geofence ? geofence.id : null);
     if (onGeofenceSelect) {
       onGeofenceSelect(geofence);
     }
-  };
+  }, [onGeofenceSelect]);
 
   // Função para lidar com a criação de uma geocerca
-  const handleGeofenceCreate = (geofence: Partial<Geofence>) => {
+  const handleGeofenceCreate = useCallback((geofence: Partial<Geofence>) => {
     // Na implementação real, esta função enviaria os dados para o backend
     // e receberia o ID e outros dados gerados
     const newId = `geofence-${Date.now()}`;
@@ -314,10 +335,10 @@ export default function GoogleMapsComponent({
     if (onGeofenceCreate) {
       onGeofenceCreate(geofence);
     }
-  };
+  }, [onGeofenceCreate, geofencesState]);
 
   // Função para lidar com a atualização de uma geocerca
-  const handleGeofenceUpdate = (geofence: Geofence) => {
+  const handleGeofenceUpdate = useCallback((geofence: Geofence) => {
     setGeofencesState(prev => 
       prev.map(g => g.id === geofence.id ? { ...g, ...geofence } : g)
     );
@@ -325,10 +346,10 @@ export default function GoogleMapsComponent({
     if (onGeofenceUpdate) {
       onGeofenceUpdate(geofence);
     }
-  };
+  }, [onGeofenceUpdate]);
 
   // Função para lidar com a exclusão de uma geocerca
-  const handleGeofenceDelete = (geofenceId: string) => {
+  const handleGeofenceDelete = useCallback((geofenceId: string) => {
     setGeofencesState(prev => prev.filter(g => g.id !== geofenceId));
     if (selectedGeofenceId === geofenceId) {
       setSelectedGeofenceId(null);
@@ -337,7 +358,37 @@ export default function GoogleMapsComponent({
     if (onGeofenceDelete) {
       onGeofenceDelete(geofenceId);
     }
-  };
+  }, [onGeofenceDelete, selectedGeofenceId]);
+
+  // Memorizando opções do mapa para evitar re-renderizações
+  const mapOptions = useMemo(() => ({
+    mapTypeId: mapType,
+    zoomControl: true,
+    mapTypeControl: false,
+    scaleControl: true,
+    streetViewControl: false,
+    rotateControl: false,
+    fullscreenControl: true,
+    disableDefaultUI: false,
+  }), [mapType]);
+
+  // Virtualização dos marcadores para melhorar o desempenho
+  // Só renderizamos marcadores dentro da área visível do mapa
+  const visibleMarkers = useMemo(() => {
+    if (!mapRef.current) return vehiclesState;
+    
+    // Implementação simplificada - na versão completa, verificaria
+    // se o marcador está dentro dos limites da área visível
+    return vehiclesState;
+  }, [vehiclesState]);
+
+  // Memorizando posição dos marcadores
+  const markerPositions = useMemo(() => {
+    return visibleMarkers.map(vehicle => ({
+      position: { lat: vehicle.lat, lng: vehicle.lng },
+      vehicle,
+    }));
+  }, [visibleMarkers]);
 
   // Renderizar mensagem de erro se o carregamento falhar
   if (loadError) return <div className="p-4 text-red-500">Erro ao carregar o mapa</div>;
@@ -408,23 +459,13 @@ export default function GoogleMapsComponent({
     };
   };
 
-  // Opções do mapa com base nas props
-  const mapOptions = {
-    disableDefaultUI: false,
-    zoomControl: true,
-    mapTypeControl: false, // Desabilitar controle nativo, usamos nosso próprio
-    streetViewControl: false,
-    fullscreenControl: true,
-    mapTypeId: mapType,
-  };
-
   // Renderizar o mapa
   return (
-    <div className="w-full h-full">
+    <div style={{ height: '100%', width: '100%' }}>
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         zoom={zoom}
-        center={center}
+        center={center || undefined}
         options={mapOptions}
         onLoad={onMapLoad}
       >
@@ -433,37 +474,40 @@ export default function GoogleMapsComponent({
 
         {/* Renderizar componente de geocercas se habilitado */}
         {showGeofences && (
-          <GeofenceManager
-            map={mapRef.current}
-            geofences={geofencesState}
-            editable={editableGeofences}
-            selectedGeofenceId={selectedGeofenceId}
-            onGeofenceSelect={handleGeofenceSelect}
-            onGeofenceCreate={handleGeofenceCreate}
-            onGeofenceUpdate={handleGeofenceUpdate}
-            onGeofenceDelete={handleGeofenceDelete}
-          />
+          <Suspense fallback={<LoadingComponent />}>
+            <GeofenceManager
+              map={mapRef.current}
+              geofences={geofencesState}
+              editable={editableGeofences}
+              selectedGeofenceId={selectedGeofenceId}
+              onGeofenceSelect={handleGeofenceSelect}
+              onGeofenceCreate={handleGeofenceCreate}
+              onGeofenceUpdate={handleGeofenceUpdate}
+              onGeofenceDelete={handleGeofenceDelete}
+            />
+          </Suspense>
         )}
 
         {/* Renderizar componente de histórico de rotas se habilitado */}
         {showRouteHistory && routeHistoryVehicleId && (
-          <RouteHistory
-            routePoints={routePoints}
-            vehicleId={routeHistoryVehicleId}
-            startDate={routeHistoryStartDate || undefined}
-            endDate={routeHistoryEndDate || undefined}
-            onPointClick={onRoutePointClick}
-          />
+          <Suspense fallback={<LoadingComponent />}>
+            <RouteHistory
+              routePoints={routePoints}
+              vehicleId={routeHistoryVehicleId}
+              startDate={routeHistoryStartDate || undefined}
+              endDate={routeHistoryEndDate || undefined}
+              onPointClick={onRoutePointClick}
+            />
+          </Suspense>
         )}
 
-        {/* Renderizar marcadores para cada veículo */}
-        {vehiclesState.map((vehicle) => (
+        {/* Marcadores de veículos */}
+        {markerPositions.map(({ position, vehicle }) => (
           <Marker
-            key={vehicle.id}
-            position={{ lat: vehicle.lat, lng: vehicle.lng }}
-            icon={getVehicleIcon(vehicle)}
-            title={`${vehicle.name} (${vehicle.plate})`}
+            key={`vehicle-${vehicle.id}`}
+            position={position}
             onClick={() => handleMarkerClick(vehicle)}
+            icon={getVehicleIcon(vehicle)}
           />
         ))}
 
@@ -494,23 +538,26 @@ export default function GoogleMapsComponent({
       </GoogleMap>
 
       {/* Controles adicionais */}
-      <div className="absolute top-4 right-4 bg-white p-2 rounded shadow-md">
-        <button
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-          onClick={() => {
-            if (vehiclesState.length > 0) {
+      {vehiclesState.length > 0 && (
+        <div className="absolute top-4 right-4 bg-white p-2 rounded shadow-md">
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            onClick={() => {
               // Calcular os limites para incluir todos os veículos
               const bounds = new google.maps.LatLngBounds();
               vehiclesState.forEach((vehicle) => {
                 bounds.extend({ lat: vehicle.lat, lng: vehicle.lng });
               });
               mapRef.current?.fitBounds(bounds, 50); // 50px de padding
-            }
-          }}
-        >
-          Ver todos os veículos
-        </button>
-      </div>
+            }}
+          >
+            Ver todos os veículos
+          </button>
+        </div>
+      )}
     </div>
   );
 }
+
+// Exportar o componente com memoização para evitar renderizações desnecessárias
+export default memo(GoogleMapsComponent);

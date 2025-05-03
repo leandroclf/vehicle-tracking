@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS reports (
   end_date DATE NOT NULL,
   vehicle_ids TEXT[] NOT NULL,
   status TEXT NOT NULL DEFAULT 'processing',
+  format TEXT NOT NULL DEFAULT 'pdf',
   file_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()

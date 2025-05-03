@@ -24,26 +24,6 @@ const geofenceSchema = z.object({
   vehicle_ids: z.array(z.string()).optional()
 });
 
-// Interface para a geocerca vinda do Supabase
-interface DbGeofence {
-  id: string;
-  user_id: string;
-  name: string;
-  description: string | null;
-  type: 'circle' | 'polygon' | 'rectangle';
-  coordinates: string;
-  radius: number | null;
-  color: string | null;
-  status: 'active' | 'inactive';
-  created_at: string;
-  updated_at: string;
-  vehicles?: {
-    id: string;
-    name: string;
-    license_plate: string;
-  }[];
-}
-
 // Handler para listar geocercas (GET)
 export async function GET(request: NextRequest) {
   try {

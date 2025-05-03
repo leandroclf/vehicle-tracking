@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Polyline, Marker, InfoWindow } from '@react-google-maps/api';
 
 export interface RoutePoint {
@@ -25,6 +25,34 @@ interface RouteHistoryProps {
   onPointClick?: (point: RoutePoint) => void;
 }
 
+// Função para simplificar uma rota (algoritmo Douglas-Peucker simplificado)
+const simplifyRoute = (points: RoutePoint[], tolerance: number): RoutePoint[] => {
+  if (points.length <= 2) return points;
+  
+  // Versão simplificada do algoritmo para demonstração
+  const simplified: RoutePoint[] = [points[0]];
+  let prevLat = points[0].lat;
+  let prevLng = points[0].lng;
+  
+  for (let i = 1; i < points.length - 1; i++) {
+    const dist = Math.sqrt(
+      Math.pow(points[i].lat - prevLat, 2) + 
+      Math.pow(points[i].lng - prevLng, 2)
+    );
+    
+    if (dist > tolerance || points[i].event) {
+      simplified.push(points[i]);
+      prevLat = points[i].lat;
+      prevLng = points[i].lng;
+    }
+  }
+  
+  // Sempre incluir o último ponto
+  simplified.push(points[points.length - 1]);
+  
+  return simplified;
+};
+
 const RouteHistory: React.FC<RouteHistoryProps> = ({
   routePoints,
   vehicleId,
@@ -38,6 +66,25 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
 }) => {
   // Estado para o ponto selecionado
   const [selectedPoint, setSelectedPoint] = useState<RoutePoint | null>(null);
+  
+  // Estado para o nível de zoom atual
+  const [zoomLevel, setZoomLevel] = useState<number>(12);
+  
+  // Estado para simplificação adaptativa com base no zoom
+  const [simplificationTolerance, setSimplificationTolerance] = useState<number>(0.0001);
+  
+  // Detectar mudanças no zoom para ajustar a simplificação
+  useEffect(() => {
+    // Ajuste de tolerância baseado no zoom
+    // Valores menores (ex: 0.00001) para zooms altos, valores maiores (ex: 0.001) para zooms baixos
+    if (zoomLevel > 15) {
+      setSimplificationTolerance(0.00001);
+    } else if (zoomLevel > 10) {
+      setSimplificationTolerance(0.0001);
+    } else {
+      setSimplificationTolerance(0.001);
+    }
+  }, [zoomLevel]);
 
   // Filtrar pontos da rota com base nas datas e no veículo
   const filteredRoutePoints = useMemo(() => {
@@ -55,14 +102,19 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
       return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
     });
   }, [filteredRoutePoints]);
+  
+  // Aplicar simplificação à rota para melhorar performance
+  const simplifiedRoutePoints = useMemo(() => {
+    return simplifyRoute(sortedRoutePoints, simplificationTolerance);
+  }, [sortedRoutePoints, simplificationTolerance]);
 
   // Extrair coordenadas para a polyline
   const routePath = useMemo(() => {
-    return sortedRoutePoints.map(point => ({
+    return simplifiedRoutePoints.map(point => ({
       lat: point.lat,
       lng: point.lng,
     }));
-  }, [sortedRoutePoints]);
+  }, [simplifiedRoutePoints]);
 
   // Extrair pontos de eventos para mostrar marcadores especiais
   const eventPoints = useMemo(() => {
@@ -78,6 +130,14 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
   const endPoint = useMemo(() => {
     return sortedRoutePoints.length > 0 ? sortedRoutePoints[sortedRoutePoints.length - 1] : null;
   }, [sortedRoutePoints]);
+  
+  // Callback para lidar com cliques em pontos
+  const handlePointClick = useCallback((point: RoutePoint) => {
+    setSelectedPoint(point);
+    if (onPointClick) {
+      onPointClick(point);
+    }
+  }, [onPointClick]);
 
   // Fechar a janela de informações quando mudar o veículo ou as datas
   useEffect(() => {
@@ -145,6 +205,29 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
   if (sortedRoutePoints.length === 0) {
     return null;
   }
+  
+  // Seleção dinâmica de pontos intermediários com base no tamanho da rota
+  const getVisibleIntermediatePoints = () => {
+    if (!showMarkers || simplifiedRoutePoints.length <= 2) return [];
+    
+    const points = simplifiedRoutePoints.slice(1, -1);
+    if (points.length === 0) return [];
+    
+    // Filtrar pontos que já são marcados como eventos
+    const nonEventPoints = points.filter(point => !point.event || !showEvents);
+    
+    // Adaptar a amostragem com base no número de pontos
+    let samplingRate = 1;
+    if (nonEventPoints.length > 200) {
+      samplingRate = Math.floor(nonEventPoints.length / 50); // Mostrar cerca de 50 pontos
+    } else if (nonEventPoints.length > 100) {
+      samplingRate = Math.floor(nonEventPoints.length / 30); // Mostrar cerca de 30 pontos
+    } else if (nonEventPoints.length > 50) {
+      samplingRate = Math.floor(nonEventPoints.length / 20); // Mostrar cerca de 20 pontos
+    }
+    
+    return nonEventPoints.filter((_, index) => index % samplingRate === 0);
+  };
 
   return (
     <>
@@ -158,6 +241,18 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
           clickable: false,
           geodesic: true,
         }}
+        onMouseOver={() => {
+          // Pode-se adicionar um efeito de hover aqui se necessário
+        }}
+        onLoad={(polyline) => {
+          // Podemos acessar o mapa e detectar mudanças de zoom
+          const map = polyline.getMap();
+          if (map) {
+            map.addListener('zoom_changed', () => {
+              setZoomLevel(map.getZoom() || 12);
+            });
+          }
+        }}
       />
 
       {/* Marcador do ponto inicial */}
@@ -170,12 +265,7 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
             anchor: new google.maps.Point(12, 12),
           }}
           title="Início da rota"
-          onClick={() => {
-            setSelectedPoint(startPoint);
-            if (onPointClick) {
-              onPointClick(startPoint);
-            }
-          }}
+          onClick={() => handlePointClick(startPoint)}
         />
       )}
 
@@ -189,12 +279,7 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
             anchor: new google.maps.Point(12, 12),
           }}
           title="Fim da rota"
-          onClick={() => {
-            setSelectedPoint(endPoint);
-            if (onPointClick) {
-              onPointClick(endPoint);
-            }
-          }}
+          onClick={() => handlePointClick(endPoint)}
         />
       )}
 
@@ -209,52 +294,27 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
             anchor: new google.maps.Point(12, 12),
           }}
           title={`Evento: ${point.event}`}
-          onClick={() => {
-            setSelectedPoint(point);
-            if (onPointClick) {
-              onPointClick(point);
-            }
-          }}
+          onClick={() => handlePointClick(point)}
         />
       ))}
 
-      {/* Marcadores intermediários (opcional) */}
-      {showMarkers && sortedRoutePoints.length > 2 && sortedRoutePoints.slice(1, -1).map((point, index) => {
-        // Pular pontos com eventos, pois já têm marcadores próprios
-        if (point.event && showEvents) {
-          return null;
-        }
-        
-        // Mostrar apenas alguns pontos intermediários para não sobrecarregar o mapa
-        // A lógica depende da densidade de pontos que você quer mostrar
-        if (sortedRoutePoints.length > 100 && index % 10 !== 0) {
-          return null;
-        } else if (sortedRoutePoints.length > 50 && index % 5 !== 0) {
-          return null;
-        }
-        
-        return (
-          <Marker
-            key={point.id}
-            position={{ lat: point.lat, lng: point.lng }}
-            icon={{
-              path: google.maps.SymbolPath.CIRCLE,
-              scale: 4,
-              fillColor: lineColor,
-              fillOpacity: 0.8,
-              strokeColor: getDarkerColor(lineColor),
-              strokeWeight: 1,
-            }}
-            title={`Ponto de rota: ${formatDate(point.timestamp)}`}
-            onClick={() => {
-              setSelectedPoint(point);
-              if (onPointClick) {
-                onPointClick(point);
-              }
-            }}
-          />
-        );
-      })}
+      {/* Marcadores intermediários selecionados dinamicamente */}
+      {getVisibleIntermediatePoints().map((point) => (
+        <Marker
+          key={point.id}
+          position={{ lat: point.lat, lng: point.lng }}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 4,
+            fillColor: lineColor,
+            fillOpacity: 0.8,
+            strokeColor: getDarkerColor(lineColor),
+            strokeWeight: 1,
+          }}
+          title={`Ponto de rota: ${formatDate(point.timestamp)}`}
+          onClick={() => handlePointClick(point)}
+        />
+      ))}
 
       {/* Janela de informações para o ponto selecionado */}
       {selectedPoint && (
@@ -292,4 +352,4 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
   );
 };
 
-export default RouteHistory; 
+export default React.memo(RouteHistory); 
