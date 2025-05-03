@@ -139,22 +139,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         credentials: 'include'
       });
 
-      const data = await response.json() as LoginResponse;
-
+      // Verificar se a resposta foi recebida
       if (!response.ok) {
-        console.error('Erro na resposta do login:', data);
-        return { success: false, error: data.error || 'Falha no login' };
+        console.error('Erro na resposta HTTP:', response.status, response.statusText);
+        
+        try {
+          const errorData = await response.json() as { error?: string };
+          console.error('Detalhes do erro:', errorData);
+          return { success: false, error: errorData.error || `Erro ${response.status}: ${response.statusText}` };
+        } catch (parseError) {
+          console.error('Erro ao processar resposta de erro:', parseError);
+          return { success: false, error: `Erro ${response.status}: ${response.statusText}` };
+        }
+      }
+      
+      // Tentar processar a resposta JSON
+      let data: LoginResponse;
+      try {
+        data = await response.json() as LoginResponse;
+        console.log('Resposta do login processada:', data ? 'Sucesso' : 'Vazia');
+      } catch (jsonError) {
+        console.error('Erro ao processar resposta JSON:', jsonError);
+        return { success: false, error: 'Erro ao processar resposta do servidor' };
+      }
+      
+      // Verificar se a resposta contém os dados esperados
+      if (!data || !data.user || !data.token) {
+        console.error('Resposta incompleta do login:', data);
+        return { success: false, error: 'Resposta incompleta do servidor' };
       }
 
       // Login bem-sucedido, armazenar token e dados do usuário
       const { user: userData, token: userToken } = data;
       console.log('Login bem-sucedido:', { userData, tokenLength: userToken?.length });
-      
-      // Verificar se o token foi recebido corretamente
-      if (!userToken) {
-        console.error('Token não recebido do servidor');
-        return { success: false, error: 'Erro de autenticação: token não recebido' };
-      }
       
       // Verificar se o token é válido antes de armazenar
       const decodedUser = verifyToken(userToken);

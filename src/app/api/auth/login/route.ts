@@ -77,34 +77,60 @@ export async function POST(request: NextRequest) {
 
     console.log('Autenticação bem-sucedida, buscando dados do usuário');
 
-    // Buscar dados adicionais do usuário
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id, name, email, phone, user_type')
-      .eq('email', email)
+    // Buscar dados adicionais do usuário na tabela profiles
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, name, phone')
+      .eq('id', data.user.id)
       .single();
 
-    if (userError) {
-      console.error('Erro ao buscar dados do usuário:', userError);
+    // Se não encontrar ou ocorrer erro ao buscar o perfil, criar um objeto de usuário a partir dos dados da autenticação
+    if (profileError || !profileData) {
+      console.log('Perfil não encontrado ou erro, usando dados da autenticação:', profileError?.message);
       
-      // Fallback: Se não encontrar na tabela users, usar os dados da autenticação
-      console.log('Usando dados do usuário da autenticação como fallback');
-      const token = generateToken({
+      // Criar perfil automaticamente se não existir
+      if (profileError && profileError.message.includes('não encontrada')) {
+        console.log('Tentando criar perfil automaticamente para o usuário');
+        try {
+          await supabase.from('profiles').insert({
+            id: data.user.id,
+            name: data.user.user_metadata?.name || email.split('@')[0] || 'Usuário',
+            updated_at: new Date().toISOString()
+          });
+        } catch (createProfileError) {
+          console.error('Erro ao criar perfil automaticamente:', createProfileError);
+        }
+      }
+      
+      // Usar dados do usuário autenticado
+      const userData = {
         id: data.user.id,
         email: data.user.email || email,
-        name: data.user?.user_metadata?.name || 'Usuário'
-      });
+        name: data.user.user_metadata?.name || email.split('@')[0] || 'Usuário'
+      };
+      
+      // Gerar token com os dados disponíveis
+      const token = generateToken(userData);
+      
+      console.log('Token gerado com dados da autenticação:', token ? 'Sucesso' : 'Falha');
       
       return NextResponse.json({
         user: {
-          id: data.user.id,
-          email: data.user.email || email,
-          name: data.user?.user_metadata?.name || 'Usuário',
-          role: 'user'
+          id: userData.id,
+          email: userData.email,
+          name: userData.name
         },
         token
       }, { status: 200 });
     }
+
+    // Combinar dados do perfil com dados da autenticação
+    const userData = {
+      id: data.user.id,
+      email: data.user.email || email,
+      name: profileData.name || data.user.user_metadata?.name || 'Usuário',
+      phone: profileData.phone
+    };
 
     // Gerar token JWT com dados do usuário
     const token = generateToken({
@@ -118,13 +144,7 @@ export async function POST(request: NextRequest) {
     console.log('Token gerado com sucesso, comprimento:', token.length);
     
     return NextResponse.json({
-      user: {
-        id: userData.id,
-        email: userData.email,
-        name: userData.name,
-        phone: userData.phone,
-        role: userData.user_type
-      },
+      user: userData,
       token
     }, { status: 200 });
 
