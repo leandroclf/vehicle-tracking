@@ -10,6 +10,7 @@ import Layout from '@/components/layout/Layout'
 import { AccessibleNotificationsProvider } from '@/components/ui/AccessibleNotifications'
 import { KeyboardNavigationProvider } from '@/components/ui/KeyboardNavigationProvider'
 import NotificationsProvider from '@/components/notifications/NotificationsProvider'
+import React from 'react'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -50,10 +51,11 @@ export default function RootLayout({
                       <SidebarProvider>
                         <Layout>
                           {children}
-                      </Layout>
-                    </SidebarProvider>
-                  </KeyboardNavigationProvider>
-                </NotificationProvider>
+                        </Layout>
+                      </SidebarProvider>
+                    </KeyboardNavigationProvider>
+                  </NotificationProvider>
+                </NotificationsProvider>
               </AuthProvider>
             </AccessibleNotificationsProvider>
           </HighContrastProvider>
