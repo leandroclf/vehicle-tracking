@@ -2,6 +2,7 @@
 
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import React from 'react';
 
 /**
  * Combina classes CSS de forma condicional utilizando clsx e tailwind-merge
@@ -124,4 +125,55 @@ export function getFromStorage<T>(key: string, defaultValue: T): T {
     console.error('Erro ao recuperar do localStorage:', error);
     return defaultValue;
   }
+}
+
+/**
+ * Função para compor refs de forma segura, evitando loops de atualização
+ * Baseada na implementação do @radix-ui/react-compose-refs, mas com proteção contra loops
+ */
+export function composeRefs<T>(...refs: (React.Ref<T> | undefined)[]) {
+  // Já estamos no meio de uma atualização de ref
+  let isUpdating = false;
+  
+  return (node: T) => {
+    // Prevenir chamadas recursivas durante uma atualização
+    if (isUpdating) return;
+    
+    // Filtrar refs vazios
+    const validRefs = refs.filter(Boolean);
+    
+    // Se não houver refs válidos, não fazer nada
+    if (validRefs.length === 0) return;
+    
+    try {
+      isUpdating = true;
+      
+      // Aplicar cada ref com segurança
+      validRefs.forEach((ref) => {
+        if (typeof ref === 'function') {
+          ref(node);
+        } else if (ref && typeof ref === 'object') {
+          // Atribuir o node apenas se for diferente para evitar loops
+          const mutableRef = ref as React.MutableRefObject<T>;
+          if (mutableRef.current !== node) {
+            mutableRef.current = node;
+          }
+        }
+      });
+    } finally {
+      isUpdating = false;
+    }
+  };
+}
+
+// Sobrescrever a implementação do Radix para componentes que a usem diretamente
+if (typeof window !== 'undefined') {
+  // @ts-ignore - Sobrescrever módulo global para interceptar chamadas diretas
+  window.__RADIX_COMPOSE_REFS__ = {
+    composeRefs: composeRefs,
+    useComposedRefs: function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]) {
+      // eslint-disable-next-line react-hooks/rules-of-hooks
+      return React.useCallback(composeRefs(...refs), refs);
+    }
+  };
 } 

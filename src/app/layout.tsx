@@ -11,6 +11,7 @@ import { KeyboardNavigationProvider } from '@/components/ui/KeyboardNavigationPr
 import NotificationsProvider from '@/components/notifications/NotificationsProvider'
 import React from 'react'
 import { RealtimeIntegration } from '@/components/realtime/RealtimeIntegration'
+import { RadixPatchProvider } from '@/components/ui/RadixPatchProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -36,30 +37,32 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <HighContrastProvider>
-            <AccessibleNotificationsProvider>
-              <AuthProvider>
-                <NotificationsProvider>
-                  <NotificationProvider>
-                    <KeyboardNavigationProvider>
-                      <SidebarProvider>
-                        <RealtimeIntegration>
-                          {children}
-                        </RealtimeIntegration>
-                      </SidebarProvider>
-                    </KeyboardNavigationProvider>
-                  </NotificationProvider>
-                </NotificationsProvider>
-              </AuthProvider>
-            </AccessibleNotificationsProvider>
-          </HighContrastProvider>
-        </ThemeProvider>
+        <RadixPatchProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <HighContrastProvider>
+              <AccessibleNotificationsProvider>
+                <AuthProvider>
+                  <NotificationsProvider>
+                    <NotificationProvider>
+                      <KeyboardNavigationProvider>
+                        <SidebarProvider>
+                          <RealtimeIntegration>
+                            {children}
+                          </RealtimeIntegration>
+                        </SidebarProvider>
+                      </KeyboardNavigationProvider>
+                    </NotificationProvider>
+                  </NotificationsProvider>
+                </AuthProvider>
+              </AccessibleNotificationsProvider>
+            </HighContrastProvider>
+          </ThemeProvider>
+        </RadixPatchProvider>
       </body>
     </html>
   )

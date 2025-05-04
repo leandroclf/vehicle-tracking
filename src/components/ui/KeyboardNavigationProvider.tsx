@@ -33,25 +33,61 @@ export function KeyboardNavigationProvider({ children }: KeyboardNavigationProvi
     if (isKeyboardMode) {
       document.body.classList.add('keyboard-navigation');
       
-      // Aplicar estilos de foco mais evidentes
+      // Aplicar estilos de foco mais evidentes e consistentes em todos os temas
       const styleElement = document.createElement('style');
       styleElement.id = 'keyboard-navigation-styles';
       styleElement.innerHTML = `
+        /* Estilos de foco padrão para todos os elementos */
         .keyboard-navigation *:focus {
-          outline: 3px solid #3b82f6 !important;
+          outline: 3px solid var(--focus-outline-color, #3b82f6) !important;
           outline-offset: 3px !important;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5) !important;
+          box-shadow: 0 0 0 3px var(--focus-shadow-color, rgba(59, 130, 246, 0.5)) !important;
+          transition: all 0.2s ease-in-out !important;
         }
         
+        /* Estilos específicos para elementos interativos */
         .keyboard-navigation button:focus,
         .keyboard-navigation a:focus,
         .keyboard-navigation [role="button"]:focus,
         .keyboard-navigation input:focus,
         .keyboard-navigation select:focus,
-        .keyboard-navigation textarea:focus {
-          border-color: #3b82f6 !important;
-          box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5) !important;
-          transition: all 0.2s ease-in-out !important;
+        .keyboard-navigation textarea:focus,
+        .keyboard-navigation [tabindex]:focus {
+          border-color: var(--focus-outline-color, #3b82f6) !important;
+          box-shadow: 0 0 0 4px var(--focus-shadow-color, rgba(59, 130, 246, 0.5)) !important;
+          position: relative;
+          z-index: 1;
+        }
+        
+        /* Estilos para modo claro */
+        :root:not(.dark) .keyboard-navigation *:focus {
+          --focus-outline-color: #2563eb;
+          --focus-shadow-color: rgba(37, 99, 235, 0.5);
+        }
+        
+        /* Estilos para modo escuro */
+        .dark .keyboard-navigation *:focus {
+          --focus-outline-color: #60a5fa;
+          --focus-shadow-color: rgba(96, 165, 250, 0.6);
+        }
+        
+        /* Estilos para modo de alto contraste */
+        .high-contrast-mode .keyboard-navigation *:focus {
+          --focus-outline-color: #ffff00;
+          --focus-shadow-color: rgba(255, 255, 0, 0.7);
+          outline-width: 4px !important;
+          outline-style: dashed !important;
+        }
+        
+        /* Animação sutil para melhorar a percepção do foco */
+        @keyframes focus-pulse {
+          0% { outline-offset: 3px; }
+          50% { outline-offset: 5px; }
+          100% { outline-offset: 3px; }
+        }
+        
+        .keyboard-navigation *:focus {
+          animation: focus-pulse 2s ease-in-out infinite;
         }
       `;
       document.head.appendChild(styleElement);
@@ -148,4 +184,4 @@ export function KeyboardNavigationProvider({ children }: KeyboardNavigationProvi
       )}
     </KeyboardNavigationContext.Provider>
   );
-} 
+}

@@ -57,31 +57,32 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 209 100% 20%;
+    --primary: 209 100% 35%; /* Azul mais claro para melhor contraste no modo escuro */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 35 91% 59%;
+    --secondary: 35 91% 65%; /* Amarelo mais claro para melhor contraste no modo escuro */
     --secondary-foreground: 0 0% 0%;
 
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted-foreground: 210 40% 90%; /* Texto mais claro para melhor legibilidade */
 
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 217.2 32.6% 25%; /* Mais claro para melhor contraste */
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 70% 45%; /* Vermelho mais visível */
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 26%; /* Bordas mais visíveis */
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
     
     /* Ajustes para modo escuro */
     --focus-ring-color: 209 100% 70%;
+    --focus-ring-width: 3px;
   }
 
-  /* Alto contraste */
-  .high-contrast {
+  /* Alto contraste - melhorado para atender WCAG 2.1 AA */
+  .high-contrast-mode {
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
 
@@ -91,11 +92,31 @@
     --popover: 0 0% 0%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 60 100% 50%; /* Amarelo mais visível para alto contraste */
+    --primary: 55 100% 60%; /* Amarelo mais visível para alto contraste - relação 7:1 */
     --primary-foreground: 0 0% 0%;
 
-    --secondary: 180 100% 50%; /* Ciano para alto contraste */
+    --secondary: 196 100% 60%; /* Ciano para alto contraste - relação 7:1 */
     --secondary-foreground: 0 0% 0%;
+    
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 90%;
+    
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 0 0% 40%;
+    --input: 0 0% 20%;
+    --ring: 55 100% 60%;
+    
+    /* Aumentar espessura das bordas para melhor visualização */
+    --border-width: 2px;
+    
+    /* Aumentar contraste de foco */
+    --focus-ring-color: 55 100% 60%;
+    --focus-ring-width: 4px;
 
     --muted: 0 0% 15%;
     --muted-foreground: 0 0% 90%;
