@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Card from './Card';
 import { Button } from './Button';
 import { Tooltip } from './Tooltip';
 import { Switch } from './Switch';
 import { Slider } from './Slider';
-import { Eye, EyeOff, Type, ZoomIn, Contrast, Moon, Sun, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Eye, EyeOff, Type, ZoomIn, Contrast, Moon, Sun, PanelLeftClose, PanelLeftOpen, HelpCircle, Accessibility } from 'lucide-react';
+import { useKeyboardNavigation } from './KeyboardNavigationProvider';
 
 interface AccessibilityPanelProps {
   onClose?: () => void;
@@ -20,6 +21,9 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
   const [textSpacing, setTextSpacing] = useState(false);
   const [focusIndicators, setFocusIndicators] = useState(true);
   const [fontScale, setFontScale] = useState(100);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const { registerShortcut, unregisterShortcut } = useKeyboardNavigation();
+  const tutorialRef = useRef<HTMLDivElement>(null);
   
   // Aplicar configurações de acessibilidade
   useEffect(() => {
@@ -35,15 +39,55 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
       setFontScale(settings.fontScale || 100);
     }
     
+    // Verificar se o tutorial já foi exibido antes
+    const tutorialShown = localStorage.getItem('accessibility-tutorial-shown');
+    if (!tutorialShown) {
+      setShowTutorial(true);
+      localStorage.setItem('accessibility-tutorial-shown', 'true');
+    }
+    
+    // Registrar atalho de teclado Alt+A
+    const handleAltA = (e: KeyboardEvent) => {
+      if (e.altKey && e.key === 'a') {
+        e.preventDefault();
+        setIsOpen(prev => !prev);
+      }
+    };
+    
+    window.addEventListener('keydown', handleAltA);
+    registerShortcut('a', () => setIsOpen(prev => !prev), 'Abrir painel de acessibilidade');
+    
     // Aplicar configurações ao carregar
     applyAccessibilitySettings();
-  }, []);
+    
+    return () => {
+      window.removeEventListener('keydown', handleAltA);
+      unregisterShortcut('a');
+    };
+  }, [registerShortcut, unregisterShortcut]);
   
   // Aplicar configurações quando alteradas
   useEffect(() => {
     applyAccessibilitySettings();
     saveSettings();
   }, [highContrast, largeText, reducedMotion, textSpacing, focusIndicators, fontScale]);
+  
+  // Fechar tutorial ao clicar fora dele
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tutorialRef.current && !tutorialRef.current.contains(event.target as Node)) {
+        setShowTutorial(false);
+      }
+    };
+
+    if (showTutorial) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTutorial]);
   
   // Salvar configurações no localStorage
   const saveSettings = () => {
@@ -124,14 +168,67 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
 
   return (
     <>
-      {/* Botão flutuante de acessibilidade */}
-      <button
-        onClick={togglePanel}
-        className="fixed bottom-20 right-4 z-50 p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
-        aria-label="Abrir configurações de acessibilidade"
-      >
-        <Eye className="h-6 w-6" />
-      </button>
+      {/* Botão flutuante de acessibilidade - reposicionado para ficar mais visível */}
+      <Tooltip content="Acessibilidade (Alt+A)">
+        <button
+          onClick={togglePanel}
+          className="fixed bottom-4 right-4 z-50 p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+          aria-label="Abrir configurações de acessibilidade (Alt+A)"
+        >
+          <Accessibility className="h-6 w-6" />
+        </button>
+      </Tooltip>
+      
+      {/* Tutorial de primeira utilização */}
+      {showTutorial && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[51] flex items-center justify-center p-4">
+          <div 
+            ref={tutorialRef}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 animate-fade-in"
+            role="dialog"
+            aria-labelledby="tutorial-title"
+          >
+            <div className="flex items-center mb-4">
+              <HelpCircle className="h-8 w-8 text-blue-500 mr-2" />
+              <h2 id="tutorial-title" className="text-xl font-semibold">Recursos de Acessibilidade</h2>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <p>Bem-vindo aos recursos de acessibilidade do sistema! Aqui você pode:</p>
+              
+              <ul className="list-disc pl-5 space-y-2">
+                <li>Ativar alto contraste para melhor visualização</li>
+                <li>Aumentar o tamanho do texto</li>
+                <li>Reduzir animações</li>
+                <li>Ajustar espaçamento de texto</li>
+                <li>Personalizar indicadores de foco</li>
+              </ul>
+              
+              <p className="font-semibold">Dica: Use o atalho Alt+A para abrir o painel a qualquer momento.</p>
+            </div>
+            
+            <div className="flex justify-between">
+              <Button 
+                variant="secondary" 
+                onClick={() => setShowTutorial(false)}
+                className="w-full"
+              >
+                Fechar
+              </Button>
+              <Button 
+                variant="primary" 
+                onClick={() => {
+                  setShowTutorial(false);
+                  setIsOpen(true);
+                }}
+                className="w-full ml-2"
+              >
+                Abrir Painel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Painel de acessibilidade */}
       <div 
@@ -143,7 +240,7 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
         <Card className="h-full flex flex-col overflow-hidden border-l border-gray-200 dark:border-gray-700">
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
             <h2 id="accessibility-title" className="text-lg font-medium text-gray-800 dark:text-gray-200 flex items-center">
-              <Eye className="mr-2 h-5 w-5 text-blue-500" />
+              <Accessibility className="mr-2 h-5 w-5 text-blue-500" />
               Acessibilidade
             </h2>
             <Button 
@@ -283,6 +380,12 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
                 Destaca visualmente o elemento em foco ao navegar pelo teclado.
               </p>
             </div>
+            
+            <div className="pt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                <span className="font-semibold">Dica:</span> Pressione Alt+A para abrir ou fechar este painel a qualquer momento.
+              </p>
+            </div>
           </div>
           
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
@@ -363,6 +466,16 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
         .focus-visible :focus-visible {
           outline: 3px solid var(--primary) !important;
           outline-offset: 2px !important;
+        }
+        
+        /* Animação de fade-in para o tutorial */
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out;
         }
       `}</style>
     </>
