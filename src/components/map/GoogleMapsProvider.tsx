@@ -2,7 +2,8 @@ import React, { useState, useEffect, memo } from 'react';
 import { LoadScriptProps, LoadScript } from '@react-google-maps/api';
 
 // Bibliotecas do Google Maps que queremos carregar
-const libraries: LoadScriptProps['libraries'] = ['places', 'geometry', 'drawing'];
+// Definindo tipo explícito usando a interface correta do LoadScriptProps
+export const libraries: LoadScriptProps['libraries'] = ['places', 'geometry', 'drawing'];
 
 // Verificar se a API do Google Maps está carregada
 const isGoogleMapsLoaded = (): boolean => {
