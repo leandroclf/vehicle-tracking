@@ -2,7 +2,8 @@ import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 /**
- * Combine class names with clsx and tailwind-merge
+ * Combina classes CSS de forma condicional utilizando clsx e tailwind-merge
+ * Útil para componentes que precisam combinar classes estáticas, dinâmicas e condicionais
  */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -80,4 +81,45 @@ export function throttle<T extends (...args: any[]) => any>(func: T, limit: numb
     lastCall = now;
     return func.apply(this, args);
   } as T;
+}
+
+/**
+ * Trunca um texto para o tamanho especificado e adiciona reticências se necessário
+ */
+export function truncateText(text: string, maxLength: number): string {
+  if (!text || text.length <= maxLength) return text || '';
+  return `${text.substring(0, maxLength)}...`;
+}
+
+/**
+ * Gera um ID único baseado em timestamp e número aleatório
+ */
+export function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Salva um valor no localStorage com suporte a objetos
+ */
+export function saveToStorage<T>(key: string, value: T): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error('Erro ao salvar no localStorage:', error);
+  }
+}
+
+/**
+ * Recupera um valor do localStorage com suporte a objetos
+ */
+export function getFromStorage<T>(key: string, defaultValue: T): T {
+  if (typeof window === 'undefined') return defaultValue;
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.error('Erro ao recuperar do localStorage:', error);
+    return defaultValue;
+  }
 } 

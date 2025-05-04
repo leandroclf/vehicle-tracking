@@ -2,91 +2,248 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-  
-  /* Cores personalizadas Yukz */
-  --primary: 0, 49, 92;       /* Azul escuro Yukz - #00315c */
-  --primary-dark: 0, 35, 66;  /* Versão mais escura - #002342 */
-  --secondary: 250, 166, 49;  /* Laranja Yukz - #faa631 */
-  --accent: 0, 125, 184;      /* Azul médio Yukz - #007db8 */
-  --background: 249, 250, 251; /* gray-50 */
-  
-  /* Variáveis usadas pelo shadcn/ui */
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 210 100% 18%;     /* Azul escuro Yukz */
-  --primary-foreground: 210 40% 98%;
-  --secondary: 35 100% 59%;     /* Laranja Yukz */
-  --secondary-foreground: 210 40% 98%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 200 100% 36%;       /* Azul médio Yukz */
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 200 100% 36%;         /* Azul médio Yukz */
-  --radius: 0.5rem;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 209 100% 18%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 35 91% 59%;
+    --secondary-foreground: 222.2 84% 4.9%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 84% 4.9%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 209 100% 20%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 35 91% 59%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+
+  /* Alto contraste */
+  .high-contrast {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 210 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 60 100% 50%;
+    --secondary-foreground: 0 0% 0%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 90%;
+
+    --accent: 210 100% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 80%;
+    --input: 0 0% 80%;
+    --ring: 210 100% 50%;
   }
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Melhorias de acessibilidade para foco */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-blue-500 dark:outline-blue-400;
+  }
+
+  /* Estilos para pular para o conteúdo */
+  .skip-to-content {
+    @apply sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-3 focus:bg-white focus:text-black;
+    @apply dark:focus:bg-gray-900 dark:focus:text-white;
+    @apply focus:top-2 focus:left-2 focus:outline-none focus:ring-2 focus:ring-blue-500;
+  }
 }
 
 @layer components {
-  .btn-primary {
-    @apply bg-[#00315c] hover:bg-[#002342] text-white font-medium py-2 px-4 rounded-md transition-colors shadow-sm;
-  }
-  
-  .btn-secondary {
-    @apply bg-[#faa631] hover:bg-[#d69028] text-white font-medium py-2 px-4 rounded-md transition-colors shadow-sm;
-  }
-  
-  .btn-outline {
-    @apply border border-[#00315c] hover:bg-[#f1f5f9] text-[#00315c] font-medium py-2 px-4 rounded-md transition-colors;
-  }
-  
-  .input-field {
-    @apply w-full px-3 py-2 bg-white text-gray-800 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#007db8] focus:border-transparent;
-  }
-  
-  .card {
-    @apply bg-white rounded-lg shadow-md p-4 border-t-4 border-t-[#00315c];
-  }
-  
-  .card-accent {
-    @apply bg-white rounded-lg shadow-md p-4 border-t-4 border-t-[#faa631];
-  }
-  
-  .nav-link {
-    @apply text-gray-700 hover:text-[#007db8] transition-colors;
-  }
-  
-  .nav-link-active {
-    @apply text-[#00315c] font-medium;
-  }
-  
-  .yukz-gradient {
-    @apply bg-gradient-to-b from-[#00315c] to-[#007db8];
-  }
-  
+  /* Layout responsivo */
   .yukz-container {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+    @apply mx-auto px-4 w-full max-w-7xl;
+  }
+
+  /* Animações e transições */
+  .animation-fade {
+    @apply transition-opacity duration-200;
+  }
+
+  .animation-slide {
+    @apply transition-transform duration-200;
+  }
+
+  /* Container de layout */
+  .layout-container {
+    @apply grid min-h-screen;
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "header header"
+      "sidebar main"
+      "footer footer";
+  }
+
+  .layout-container.sidebar-collapsed {
+    grid-template-columns: auto 1fr;
+  }
+
+  .layout-header {
+    grid-area: header;
+  }
+
+  .layout-sidebar {
+    grid-area: sidebar;
+  }
+
+  .layout-main {
+    grid-area: main;
+    @apply overflow-auto;
+  }
+
+  .layout-footer {
+    grid-area: footer;
+  }
+
+  /* Estilos específicos para modo de alto contraste */
+  .high-contrast button:not(.unstyled) {
+    @apply border-2 border-current;
+  }
+
+  .high-contrast input:not(.unstyled),
+  .high-contrast select:not(.unstyled),
+  .high-contrast textarea:not(.unstyled) {
+    @apply border-2 border-current bg-black text-white;
+  }
+
+  .high-contrast a:not(.unstyled) {
+    @apply underline text-blue-400;
+  }
+
+  .high-contrast .border-subtle {
+    @apply border-2 border-white;
+  }
+  
+  /* Melhorias adicionais para alto contraste */
+  .high-contrast :focus {
+    @apply outline-2 outline-offset-4 outline-yellow-400;
+  }
+  
+  .high-contrast table {
+    @apply border-2 border-white;
+  }
+  
+  .high-contrast th,
+  .high-contrast td {
+    @apply border border-white;
+  }
+  
+  .high-contrast .bg-gray-50,
+  .high-contrast .bg-gray-100,
+  .high-contrast .bg-gray-200 {
+    @apply bg-black;
+  }
+  
+  .high-contrast .text-gray-500,
+  .high-contrast .text-gray-600,
+  .high-contrast .text-gray-700 {
+    @apply text-white;
+  }
+}
+
+/* Melhorias de animação e transição */
+@layer utilities {
+  .animate-in {
+    animation-duration: 0.3s;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+  }
+
+  .fade-in {
+    animation-name: fadeIn;
+  }
+
+  .slide-in-from-right-5 {
+    animation-name: slideInFromRight;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideInFromRight {
+    from {
+      transform: translateX(1.25rem);
+    }
+    to {
+      transform: translateX(0);
+    }
   }
 }
