@@ -1,27 +1,32 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAuth } from '@/lib/auth';
 
 // Definição do tipo de configurações
 export interface Settings {
   notifications: {
     enabled: boolean;
-    speedAlert: {
-      enabled: boolean;
-      value: number;
+    email_notifications: boolean;
+    push_notifications: boolean;
+    sms_notifications: boolean;
+    notification_types: string[];
+    time_threshold: number;
+  };
+  preferences: {
+    theme: 'light' | 'dark' | 'system';
+    sidebar_collapsed: boolean;
+    dashboard_layout: 'compact' | 'detailed' | 'grid';
+    favorite_vehicles: string[];
+    default_page: 'dashboard' | 'map' | 'vehicles' | 'reports';
+    distance_unit?: 'km' | 'mi';
+    language?: 'pt-BR' | 'en-US' | 'es';
+    map_settings: {
+      default_zoom: number;
+      show_traffic: boolean;
+      show_weather: boolean;
+      style: 'standard' | 'satellite' | 'terrain' | 'night';
     };
-    ignitionAlert: boolean;
-    movementAlert: boolean;
-    panicAlert: boolean;
-    batteryAlert: boolean;
-  };
-  map: {
-    type: 'standard' | 'satellite' | 'hybrid';
-  };
-  appearance: {
-    darkMode: boolean;
-    measurementUnit: 'km' | 'mi';
-    language: 'pt-BR' | 'en-US' | 'es';
   };
 }
 
@@ -31,6 +36,8 @@ interface SettingsContextType {
   isLoading: boolean;
   error: string | null;
   updateSettings: (newSettings: Partial<Settings>) => Promise<void>;
+  updateNotifications: (notifications: Settings['notifications']) => Promise<void>;
+  updatePreferences: (preferences: Settings['preferences']) => Promise<void>;
   resetSettings: () => Promise<void>;
 }
 
@@ -38,22 +45,26 @@ interface SettingsContextType {
 const defaultSettings: Settings = {
   notifications: {
     enabled: true,
-    speedAlert: {
-      enabled: true,
-      value: 120
-    },
-    ignitionAlert: true,
-    movementAlert: true,
-    panicAlert: true,
-    batteryAlert: true
+    email_notifications: true,
+    push_notifications: true,
+    sms_notifications: false,
+    notification_types: ['geocerca', 'velocidade', 'bateria'],
+    time_threshold: 15
   },
-  map: {
-    type: 'standard'
-  },
-  appearance: {
-    darkMode: false,
-    measurementUnit: 'km',
-    language: 'pt-BR'
+  preferences: {
+    theme: 'system',
+    sidebar_collapsed: false,
+    dashboard_layout: 'detailed',
+    favorite_vehicles: [],
+    default_page: 'dashboard',
+    distance_unit: 'km',
+    language: 'pt-BR',
+    map_settings: {
+      default_zoom: 13,
+      show_traffic: true,
+      show_weather: false,
+      style: 'standard'
+    }
   }
 };
 
@@ -75,78 +86,165 @@ const mergeSettings = (oldSettings: Settings, newSettings: Partial<Settings>): S
     ...oldSettings,
     notifications: {
       ...oldSettings.notifications,
-      ...(newSettings.notifications || {}),
-      speedAlert: {
-        ...oldSettings.notifications.speedAlert,
-        ...(newSettings.notifications?.speedAlert || {})
+      ...(newSettings.notifications || {})
+    },
+    preferences: {
+      ...oldSettings.preferences,
+      ...(newSettings.preferences || {}),
+      map_settings: {
+        ...oldSettings.preferences.map_settings,
+        ...(newSettings.preferences?.map_settings || {})
       }
-    },
-    map: {
-      ...oldSettings.map,
-      ...(newSettings.map || {})
-    },
-    appearance: {
-      ...oldSettings.appearance,
-      ...(newSettings.appearance || {})
     }
   };
 };
 
 // Provedor de configurações
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
-  const [settings, setSettings] = useState<Settings>(() => {
-    // Tentar carregar configurações do localStorage
-    if (typeof window !== 'undefined') {
-      const savedSettings = localStorage.getItem('yukz_settings');
-      if (savedSettings) {
-        try {
-          return JSON.parse(savedSettings);
-        } catch (error) {
-          console.error('Erro ao carregar configurações:', error);
-        }
-      }
-    }
-    return defaultSettings;
-  });
-  
+  const { token, isAuthenticated } = useAuth();
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Atualizar configurações
+  // Função para buscar configurações
+  const fetchSettings = async () => {
+    if (!token || !isAuthenticated) return;
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Buscar preferências
+      const preferencesResponse = await fetch('/api/settings/preferences', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // Buscar configurações de notificações
+      const notificationsResponse = await fetch('/api/settings/notifications', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!preferencesResponse.ok || !notificationsResponse.ok) {
+        throw new Error('Falha ao buscar configurações');
+      }
+      
+      const preferencesData = await preferencesResponse.json() as { data?: { preferences?: Settings['preferences'] } };
+      const notificationsData = await notificationsResponse.json() as { data?: { settings?: { notifications?: Settings['notifications'] } } };
+      
+      const loadedSettings: Settings = {
+        preferences: preferencesData.data?.preferences || defaultSettings.preferences,
+        notifications: notificationsData.data?.settings?.notifications || defaultSettings.notifications
+      };
+      
+      setSettings(loadedSettings);
+    } catch (error) {
+      console.error('Erro ao buscar configurações:', error);
+      setError('Erro ao carregar configurações');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Buscar configurações quando o token estiver disponível
+  useEffect(() => {
+    if (token && isAuthenticated) {
+      fetchSettings();
+    }
+  }, [token, isAuthenticated]);
+
+  // Atualizar todas as configurações
   const updateSettings = async (newSettings: Partial<Settings>): Promise<void> => {
+    if (!token) return;
+    
     setIsLoading(true);
     try {
-      // Simulação de atualização de configurações
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       const updatedSettings = mergeSettings(settings, newSettings);
-      setSettings(updatedSettings);
       
-      // Salvar no localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('yukz_settings', JSON.stringify(updatedSettings));
+      if (newSettings.preferences) {
+        await updatePreferences(updatedSettings.preferences);
       }
+      
+      if (newSettings.notifications) {
+        await updateNotifications(updatedSettings.notifications);
+      }
+      
+      setSettings(updatedSettings);
     } catch (error) {
       setError('Erro ao atualizar configurações');
       console.error('Erro ao atualizar configurações:', error);
+      throw error;
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  // Atualizar apenas as configurações de notificações
+  const updateNotifications = async (notifications: Settings['notifications']): Promise<void> => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch('/api/settings/notifications', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(notifications)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Falha ao atualizar configurações de notificações');
+      }
+      
+      setSettings({
+        ...settings,
+        notifications
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar notificações:', error);
+      throw error;
+    }
+  };
+  
+  // Atualizar apenas as preferências
+  const updatePreferences = async (preferences: Settings['preferences']): Promise<void> => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch('/api/settings/preferences', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(preferences)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Falha ao atualizar preferências');
+      }
+      
+      setSettings({
+        ...settings,
+        preferences
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar preferências:', error);
+      throw error;
     }
   };
 
   // Resetar configurações para o padrão
   const resetSettings = async (): Promise<void> => {
+    if (!token) return;
+    
     setIsLoading(true);
     try {
-      // Simulação de reset de configurações
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setSettings(defaultSettings);
-      
-      // Salvar no localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('yukz_settings', JSON.stringify(defaultSettings));
-      }
+      await updateSettings(defaultSettings);
     } catch (error) {
       setError('Erro ao resetar configurações');
       console.error('Erro ao resetar configurações:', error);
@@ -160,6 +258,8 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     isLoading,
     error,
     updateSettings,
+    updateNotifications,
+    updatePreferences,
     resetSettings
   };
 

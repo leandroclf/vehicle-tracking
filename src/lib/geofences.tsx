@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase';
 import { getGeofenceColor } from '@/lib/google-maps';
 import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from '@/lib/auth';
 
 // Definição do tipo de geocerca
 export interface Geofence {
@@ -16,34 +16,40 @@ export interface Geofence {
   paths?: google.maps.LatLngLiteral[];
   color: string;
   fillColor: string;
-  clientId: string;
-  createdAt: string;
-  updatedAt: string;
+  clientId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export function useGeofences() {
   const [geofences, setGeofences] = useState<Geofence[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { token } = useAuth();
 
-  // Buscar geocercas do Supabase
+  // Buscar geocercas da API
   const fetchGeofences = useCallback(async () => {
+    if (!token) return;
+    
     setLoading(true);
     setError(null);
 
     try {
-      const supabase = createClient();
+      const response = await fetch('/api/geofences', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
-      // Tentar buscar do Supabase
-      const { data, error } = await supabase
-        .from('geofences')
-        .select('*');
+      if (!response.ok) {
+        throw new Error('Falha ao buscar geocercas');
+      }
       
-      if (error) throw error;
+      const data = await response.json();
       
-      if (data && data.length > 0) {
-        // Transformar dados do Supabase para o formato esperado
-        const formattedGeofences = data.map(geofence => {
+      if (data.geofences && data.geofences.length > 0) {
+        // Transformar dados da API para o formato esperado
+        const formattedGeofences = data.geofences.map((geofence: any) => {
           // Definir cores com base no ID
           const color = getGeofenceColor(geofence.id);
           const fillColor = color + '66'; // Adicionar transparência
@@ -52,13 +58,13 @@ export function useGeofences() {
             id: geofence.id,
             name: geofence.name,
             description: geofence.description,
-            type: geofence.type as 'polygon' | 'circle',
+            type: geofence.type,
             radius: geofence.radius,
-            center: geofence.center,
-            paths: geofence.paths,
-            color,
-            fillColor,
-            clientId: geofence.client_id,
+            center: geofence.type === 'circle' ? JSON.parse(geofence.coordinates)?.center : undefined,
+            paths: geofence.type === 'polygon' ? JSON.parse(geofence.coordinates)?.paths : undefined,
+            color: geofence.color || color,
+            fillColor: geofence.color ? geofence.color + '66' : fillColor,
+            clientId: geofence.user_id,
             createdAt: geofence.created_at,
             updatedAt: geofence.updated_at
           };
@@ -66,84 +72,20 @@ export function useGeofences() {
         
         setGeofences(formattedGeofences);
       } else {
-        // Dados de exemplo para desenvolvimento
-        const mockGeofences: Geofence[] = [
-          {
-            id: '1',
-            name: 'Base Principal',
-            type: 'polygon',
-            paths: [
-              { lat: -15.7801, lng: -47.9292 },
-              { lat: -15.7851, lng: -47.9292 },
-              { lat: -15.7851, lng: -47.9342 },
-              { lat: -15.7801, lng: -47.9342 },
-            ],
-            color: '#4285F4',
-            fillColor: '#4285F466',
-            clientId: '1',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            name: 'Área de Entrega',
-            type: 'circle',
-            center: { lat: -15.7901, lng: -47.9392 },
-            radius: 500,
-            color: '#0F9D58',
-            fillColor: '#0F9D5866',
-            clientId: '1',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ];
-        
-        setGeofences(mockGeofences);
+        setGeofences([]);
       }
     } catch (err) {
       console.error('Erro ao buscar geocercas:', err);
       setError('Falha ao carregar geocercas. Tente novamente mais tarde.');
-      
-      // Usar dados mock mesmo em caso de erro
-      const mockGeofences: Geofence[] = [
-        {
-          id: '1',
-          name: 'Base Principal',
-          type: 'polygon',
-          paths: [
-            { lat: -15.7801, lng: -47.9292 },
-            { lat: -15.7851, lng: -47.9292 },
-            { lat: -15.7851, lng: -47.9342 },
-            { lat: -15.7801, lng: -47.9342 },
-          ],
-          color: '#4285F4',
-          fillColor: '#4285F466',
-          clientId: '1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          name: 'Área de Entrega',
-          type: 'circle',
-          center: { lat: -15.7901, lng: -47.9392 },
-          radius: 500,
-          color: '#0F9D58',
-          fillColor: '#0F9D5866',
-          clientId: '1',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ];
-      
-      setGeofences(mockGeofences);
+      setGeofences([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
   // Função para criar uma nova geocerca
   const createGeofence = useCallback(async (geofence: Partial<Geofence>): Promise<boolean> => {
+    if (!token) return false;
     if (!geofence.type) {
       console.error('Tipo de geocerca não especificado');
       setError('O tipo de geocerca é obrigatório');
@@ -154,117 +96,87 @@ export function useGeofences() {
     setError(null);
 
     try {
-      const supabase = createClient();
-      
-      // Gerar um ID único
-      const id = uuidv4();
-      
       // Gerar cores
-      const color = getGeofenceColor(id);
-      const fillColor = color + '66'; // Adicionar transparência
+      const color = geofence.color || getGeofenceColor(uuidv4());
       
-      // Preparar dados para inserção
-      const newGeofence = {
-        id,
+      // Preparar dados para a API
+      const coordinates = geofence.type === 'circle' 
+        ? JSON.stringify({ center: geofence.center, radius: geofence.radius })
+        : JSON.stringify({ paths: geofence.paths });
+      
+      const apiGeofence = {
         name: geofence.name || `Nova Área ${geofences.length + 1}`,
         description: geofence.description || '',
         type: geofence.type,
+        coordinates,
         radius: geofence.radius,
-        center: geofence.center,
-        paths: geofence.paths,
         color,
-        fillColor,
-        client_id: '1', // ID do cliente atual
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        status: 'active',
+        vehicle_ids: []
       };
       
-      // Inserir no Supabase
-      const { error } = await supabase
-        .from('geofences')
-        .insert(newGeofence);
+      const response = await fetch('/api/geofences', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(apiGeofence)
+      });
       
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Falha ao criar geocerca');
+      }
       
-      // Atualizar estado local
-      const formattedGeofence: Geofence = {
-        id,
-        name: newGeofence.name,
-        description: newGeofence.description,
-        type: newGeofence.type,
-        radius: newGeofence.radius,
-        center: newGeofence.center,
-        paths: newGeofence.paths,
-        color: newGeofence.color,
-        fillColor: newGeofence.fillColor,
-        clientId: newGeofence.client_id,
-        createdAt: newGeofence.created_at,
-        updatedAt: newGeofence.updated_at
-      };
-      
-      setGeofences([...geofences, formattedGeofence]);
+      // Atualizar a lista completa de geocercas
+      await fetchGeofences();
       
       return true;
     } catch (err) {
       console.error('Erro ao criar geocerca:', err);
       setError('Falha ao criar geocerca. Tente novamente mais tarde.');
-      
-      // Adicionar à lista local mesmo em caso de erro (modo offline)
-      const id = uuidv4();
-      const color = getGeofenceColor(id);
-      const fillColor = color + '66';
-      
-      const newGeofence: Geofence = {
-        id,
-        name: geofence.name || `Nova Área ${geofences.length + 1}`,
-        description: geofence.description || '',
-        type: geofence.type,
-        radius: geofence.radius,
-        center: geofence.center,
-        paths: geofence.paths,
-        color,
-        fillColor,
-        clientId: '1',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-      setGeofences([...geofences, newGeofence]);
-      
       return false;
     } finally {
       setLoading(false);
     }
-  }, [geofences]);
+  }, [geofences, token, fetchGeofences]);
 
   // Função para atualizar uma geocerca existente
   const updateGeofence = useCallback(async (geofence: Geofence): Promise<boolean> => {
+    if (!token) return false;
+    
     setLoading(true);
     setError(null);
 
     try {
-      const supabase = createClient();
+      // Preparar dados para a API
+      const coordinates = geofence.type === 'circle' 
+        ? JSON.stringify({ center: geofence.center, radius: geofence.radius })
+        : JSON.stringify({ paths: geofence.paths });
       
-      // Preparar dados para atualização
-      const updatedGeofence = {
+      const apiGeofence = {
+        id: geofence.id,
         name: geofence.name,
-        description: geofence.description,
+        description: geofence.description || '',
         type: geofence.type,
+        coordinates,
         radius: geofence.radius,
-        center: geofence.center,
-        paths: geofence.paths,
         color: geofence.color,
-        fill_color: geofence.fillColor,
-        updated_at: new Date().toISOString()
+        status: 'active'
       };
       
-      // Atualizar no Supabase
-      const { error } = await supabase
-        .from('geofences')
-        .update(updatedGeofence)
-        .eq('id', geofence.id);
+      const response = await fetch('/api/geofences', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(apiGeofence)
+      });
       
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Falha ao atualizar geocerca');
+      }
       
       // Atualizar estado local
       setGeofences(
@@ -279,37 +191,30 @@ export function useGeofences() {
     } catch (err) {
       console.error('Erro ao atualizar geocerca:', err);
       setError('Falha ao atualizar geocerca. Tente novamente mais tarde.');
-      
-      // Atualizar na lista local mesmo em caso de erro (modo offline)
-      setGeofences(
-        geofences.map(g => 
-          g.id === geofence.id 
-            ? { ...geofence, updatedAt: new Date().toISOString() } 
-            : g
-        )
-      );
-      
       return false;
     } finally {
       setLoading(false);
     }
-  }, [geofences]);
+  }, [geofences, token]);
 
   // Função para excluir uma geocerca
   const deleteGeofence = useCallback(async (geofenceId: string): Promise<boolean> => {
+    if (!token) return false;
+    
     setLoading(true);
     setError(null);
 
     try {
-      const supabase = createClient();
+      const response = await fetch(`/api/geofences?id=${geofenceId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
-      // Excluir do Supabase
-      const { error } = await supabase
-        .from('geofences')
-        .delete()
-        .eq('id', geofenceId);
-      
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Falha ao excluir geocerca');
+      }
       
       // Atualizar estado local
       setGeofences(geofences.filter(g => g.id !== geofenceId));
@@ -318,20 +223,41 @@ export function useGeofences() {
     } catch (err) {
       console.error('Erro ao excluir geocerca:', err);
       setError('Falha ao excluir geocerca. Tente novamente mais tarde.');
-      
-      // Excluir da lista local mesmo em caso de erro (modo offline)
-      setGeofences(geofences.filter(g => g.id !== geofenceId));
-      
       return false;
     } finally {
       setLoading(false);
     }
-  }, [geofences]);
+  }, [geofences, token]);
 
-  // Buscar geocercas ao montar o componente
+  // Verificar se um veículo está dentro de uma geocerca
+  const checkGeofence = useCallback(async (vehicleId: string, lat: number, lng: number): Promise<boolean> => {
+    if (!token) return false;
+    
+    try {
+      const response = await fetch(`/api/geofences/check?vehicle_id=${vehicleId}&lat=${lat}&lng=${lng}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Falha ao verificar geocerca');
+      }
+      
+      const data = await response.json();
+      return data.inside === true;
+    } catch (err) {
+      console.error('Erro ao verificar geocerca:', err);
+      return false;
+    }
+  }, [token]);
+
+  // Buscar geocercas ao montar o componente ou quando o token mudar
   useEffect(() => {
-    fetchGeofences();
-  }, [fetchGeofences]);
+    if (token) {
+      fetchGeofences();
+    }
+  }, [token, fetchGeofences]);
 
   return {
     geofences,
@@ -340,6 +266,7 @@ export function useGeofences() {
     refreshGeofences: fetchGeofences,
     createGeofence,
     updateGeofence,
-    deleteGeofence
+    deleteGeofence,
+    checkGeofence
   };
 } 
