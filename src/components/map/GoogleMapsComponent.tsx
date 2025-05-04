@@ -3,6 +3,7 @@ import { useLoadScript, GoogleMap, Marker, InfoWindow, TrafficLayer } from '@rea
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Vehicle } from '@/lib/vehicles';
 import { calculateCenter } from '@/lib/google-maps';
+import { libraries } from './GoogleMapsProvider';
 
 // Importando os tipos diretamente para uso interno
 import type { Geofence } from './GeofenceManager';
@@ -100,7 +101,7 @@ function GoogleMapsComponent({
   // Carregar o script do Google Maps
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['places', 'drawing', 'geometry'],
+    libraries,
   });
 
   // Estado para os veículos
