@@ -8,19 +8,31 @@ const querySchema = z.object({
   limit: z.string().optional().transform(val => val ? parseInt(val, 10) : 50),
   offset: z.string().optional().transform(val => val ? parseInt(val, 10) : 0),
   status: z.enum(['active', 'inactive', 'all']).optional().default('all'),
-  sort: z.enum(['asc', 'desc']).optional().default('asc')
+  sort: z.enum(['asc', 'desc']).optional().default('asc'),
+  search: z.string().optional(),
+  license_type: z.string().optional()
 });
 
 // Esquema para validar dados de motorista
 const driverSchema = z.object({
-  name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
-  license_number: z.string().min(3, 'Número da CNH deve ter pelo menos 3 caracteres'),
-  license_type: z.string().optional(),
-  license_expiry: z.string().optional(),
-  phone: z.string().optional(),
+  name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100, 'Nome não pode exceder 100 caracteres'),
+  license_number: z
+    .string()
+    .min(9, 'Número da CNH deve ter pelo menos 9 caracteres')
+    .max(11, 'Número da CNH não pode exceder 11 caracteres')
+    .regex(/^[0-9]+$/, 'O número da CNH deve conter apenas dígitos'),
+  license_type: z.enum(['A', 'B', 'C', 'D', 'E', 'AB', 'AC', 'AD', 'AE']).optional(),
+  license_expiry: z.string().optional()
+    .refine(val => !val || /^\d{4}-\d{2}-\d{2}$/.test(val), {
+      message: 'Data de validade deve estar no formato YYYY-MM-DD',
+    }),
+  phone: z.string().optional()
+    .refine(val => !val || /^(\+\d{1,3})?\s?\(?\d{2,3}\)?[\s.-]?\d{4,5}[\s.-]?\d{4}$/.test(val), {
+      message: 'Formato de telefone inválido',
+    }),
   email: z.string().email('Email inválido').optional(),
   status: z.enum(['active', 'inactive']).default('active'),
-  notes: z.string().optional()
+  notes: z.string().max(500, 'Observações não podem exceder 500 caracteres').optional()
 });
 
 // Interfaces para tipagem
@@ -47,15 +59,35 @@ interface Driver {
   driver_vehicles?: VehicleAssignment[];
 }
 
+// Função para estruturar respostas de erro de forma consistente
+function errorResponse(message: string, details?: any, status: number = 400) {
+  return NextResponse.json({ 
+    success: false,
+    error: message,
+    details: details || undefined
+  }, { status });
+}
+
+// Função para estruturar respostas de sucesso de forma consistente
+function successResponse(data: any, message?: string, status: number = 200) {
+  return NextResponse.json({ 
+    success: true,
+    message,
+    data
+  }, { status });
+}
+
 // Handler para listar motoristas (GET)
 export async function GET(request: NextRequest) {
   try {
     // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ 
-        error: authResult.error || 'Não autorizado' 
-      }, { status: authResult.status || 401 });
+      return errorResponse(
+        authResult.error || 'Não autorizado',
+        undefined,
+        authResult.status || 401
+      );
     }
     
     const userId = authResult.user.id;
@@ -65,13 +97,13 @@ export async function GET(request: NextRequest) {
     const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
     
     if (!queryResult.success) {
-      return NextResponse.json({ 
-        error: 'Parâmetros de consulta inválidos', 
-        details: queryResult.error.format() 
-      }, { status: 400 });
+      return errorResponse(
+        'Parâmetros de consulta inválidos', 
+        queryResult.error.format()
+      );
     }
     
-    const { limit, offset, status, sort } = queryResult.data;
+    const { limit, offset, status, sort, search, license_type } = queryResult.data;
     
     // Construir consulta base
     let query = supabase
@@ -91,14 +123,22 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status);
     }
     
+    // Aplicar filtro de pesquisa se fornecido
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,license_number.ilike.%${search}%,email.ilike.%${search}%`);
+    }
+    
+    // Aplicar filtro de tipo de CNH se fornecido
+    if (license_type) {
+      query = query.eq('license_type', license_type);
+    }
+    
     // Executar consulta
     const { data: drivers, error, count } = await query;
     
     if (error) {
       console.error('Erro ao buscar motoristas:', error);
-      return NextResponse.json({ 
-        error: 'Erro ao buscar motoristas' 
-      }, { status: 500 });
+      return errorResponse('Erro ao buscar motoristas', undefined, 500);
     }
     
     // Formatar os resultados
@@ -121,7 +161,7 @@ export async function GET(request: NextRequest) {
       };
     }) || [];
     
-    return NextResponse.json({
+    return successResponse({
       drivers: formattedDrivers,
       pagination: {
         total: count || 0,
@@ -132,9 +172,7 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error('Erro ao processar requisição de motoristas:', error);
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
-    }, { status: 500 });
+    return errorResponse('Erro interno do servidor', undefined, 500);
   }
 }
 
@@ -144,9 +182,11 @@ export async function POST(request: NextRequest) {
     // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ 
-        error: authResult.error || 'Não autorizado' 
-      }, { status: authResult.status || 401 });
+      return errorResponse(
+        authResult.error || 'Não autorizado',
+        undefined,
+        authResult.status || 401
+      );
     }
     
     const userId = authResult.user.id;
@@ -156,10 +196,10 @@ export async function POST(request: NextRequest) {
     const driverResult = driverSchema.safeParse(body);
     
     if (!driverResult.success) {
-      return NextResponse.json({ 
-        error: 'Dados inválidos', 
-        details: driverResult.error.format() 
-      }, { status: 400 });
+      return errorResponse(
+        'Dados inválidos', 
+        driverResult.error.format()
+      );
     }
     
     const driverData = driverResult.data;
@@ -174,15 +214,30 @@ export async function POST(request: NextRequest) {
     
     if (checkError) {
       console.error('Erro ao verificar motorista existente:', checkError);
-      return NextResponse.json({ 
-        error: 'Erro ao verificar motorista existente' 
-      }, { status: 500 });
+      return errorResponse('Erro ao verificar motorista existente', undefined, 500);
     }
     
     if (existingDriver) {
-      return NextResponse.json({ 
-        error: 'Já existe um motorista com esta CNH' 
-      }, { status: 409 });
+      return errorResponse('Já existe um motorista com esta CNH', undefined, 409);
+    }
+    
+    // Verificar se o email já está em uso (se fornecido)
+    if (driverData.email) {
+      const { data: existingEmail, error: emailCheckError } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('email', driverData.email)
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (emailCheckError) {
+        console.error('Erro ao verificar email existente:', emailCheckError);
+        return errorResponse('Erro ao verificar email existente', undefined, 500);
+      }
+      
+      if (existingEmail) {
+        return errorResponse('Este email já está associado a outro motorista', undefined, 409);
+      }
     }
     
     // Inserir novo motorista
@@ -199,19 +254,19 @@ export async function POST(request: NextRequest) {
     
     if (insertError) {
       console.error('Erro ao criar motorista:', insertError);
-      return NextResponse.json({ 
-        error: 'Erro ao criar motorista' 
-      }, { status: 500 });
+      return errorResponse('Erro ao criar motorista', undefined, 500);
     }
     
     // Retornar motorista criado
-    return NextResponse.json(newDriver, { status: 201 });
+    return successResponse(
+      newDriver, 
+      'Motorista criado com sucesso', 
+      201
+    );
     
   } catch (error) {
     console.error('Erro ao processar criação de motorista:', error);
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
-    }, { status: 500 });
+    return errorResponse('Erro interno do servidor', undefined, 500);
   }
 }
 
@@ -221,9 +276,11 @@ export async function PUT(request: NextRequest) {
     // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ 
-        error: authResult.error || 'Não autorizado' 
-      }, { status: authResult.status || 401 });
+      return errorResponse(
+        authResult.error || 'Não autorizado',
+        undefined,
+        authResult.status || 401
+      );
     }
     
     const userId = authResult.user.id;
@@ -233,46 +290,82 @@ export async function PUT(request: NextRequest) {
     const { id, ...driverData } = body;
     
     if (!id) {
-      return NextResponse.json({ 
-        error: 'ID do motorista é obrigatório' 
-      }, { status: 400 });
+      return errorResponse('ID do motorista é obrigatório');
     }
     
     const driverResult = driverSchema.partial().safeParse(driverData);
     
     if (!driverResult.success) {
-      return NextResponse.json({ 
-        error: 'Dados inválidos', 
-        details: driverResult.error.format() 
-      }, { status: 400 });
+      return errorResponse(
+        'Dados inválidos', 
+        driverResult.error.format()
+      );
     }
+    
+    const updatedData = driverResult.data;
     
     // Verificar se o motorista existe e pertence ao usuário
     const { data: existingDriver, error: checkError } = await supabase
       .from('drivers')
-      .select('id')
+      .select('id, license_number, email')
       .eq('id', id)
       .eq('user_id', userId)
       .maybeSingle();
     
     if (checkError) {
       console.error('Erro ao verificar motorista:', checkError);
-      return NextResponse.json({ 
-        error: 'Erro ao verificar motorista' 
-      }, { status: 500 });
+      return errorResponse('Erro ao verificar motorista', undefined, 500);
     }
     
     if (!existingDriver) {
-      return NextResponse.json({ 
-        error: 'Motorista não encontrado' 
-      }, { status: 404 });
+      return errorResponse('Motorista não encontrado', undefined, 404);
+    }
+    
+    // Verificar se a CNH atualizada já existe em outro motorista (se fornecida)
+    if (updatedData.license_number && updatedData.license_number !== existingDriver.license_number) {
+      const { data: duplicateLicense, error: licenseCheckError } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('license_number', updatedData.license_number)
+        .eq('user_id', userId)
+        .neq('id', id)
+        .maybeSingle();
+      
+      if (licenseCheckError) {
+        console.error('Erro ao verificar CNH existente:', licenseCheckError);
+        return errorResponse('Erro ao verificar CNH existente', undefined, 500);
+      }
+      
+      if (duplicateLicense) {
+        return errorResponse('Esta CNH já está associada a outro motorista', undefined, 409);
+      }
+    }
+    
+    // Verificar se o email atualizado já existe em outro motorista (se fornecido)
+    if (updatedData.email && updatedData.email !== existingDriver.email) {
+      const { data: duplicateEmail, error: emailCheckError } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('email', updatedData.email)
+        .eq('user_id', userId)
+        .neq('id', id)
+        .maybeSingle();
+      
+      if (emailCheckError) {
+        console.error('Erro ao verificar email existente:', emailCheckError);
+        return errorResponse('Erro ao verificar email existente', undefined, 500);
+      }
+      
+      if (duplicateEmail) {
+        return errorResponse('Este email já está associado a outro motorista', undefined, 409);
+      }
     }
     
     // Atualizar motorista
     const { data: updatedDriver, error: updateError } = await supabase
       .from('drivers')
       .update({
-        ...driverResult.data,
+        ...updatedData,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -282,19 +375,18 @@ export async function PUT(request: NextRequest) {
     
     if (updateError) {
       console.error('Erro ao atualizar motorista:', updateError);
-      return NextResponse.json({ 
-        error: 'Erro ao atualizar motorista' 
-      }, { status: 500 });
+      return errorResponse('Erro ao atualizar motorista', undefined, 500);
     }
     
     // Retornar motorista atualizado
-    return NextResponse.json(updatedDriver);
+    return successResponse(
+      updatedDriver, 
+      'Motorista atualizado com sucesso'
+    );
     
   } catch (error) {
     console.error('Erro ao processar atualização de motorista:', error);
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
-    }, { status: 500 });
+    return errorResponse('Erro interno do servidor', undefined, 500);
   }
 }
 
@@ -304,21 +396,21 @@ export async function DELETE(request: NextRequest) {
     // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ 
-        error: authResult.error || 'Não autorizado' 
-      }, { status: authResult.status || 401 });
+      return errorResponse(
+        authResult.error || 'Não autorizado',
+        undefined,
+        authResult.status || 401
+      );
     }
     
     const userId = authResult.user.id;
     
-    // Extrair ID do motorista da URL
+    // Extrair ID do motorista
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
     
     if (!id) {
-      return NextResponse.json({ 
-        error: 'ID do motorista é obrigatório' 
-      }, { status: 400 });
+      return errorResponse('ID do motorista é obrigatório');
     }
     
     // Verificar se o motorista existe e pertence ao usuário
@@ -331,28 +423,22 @@ export async function DELETE(request: NextRequest) {
     
     if (checkError) {
       console.error('Erro ao verificar motorista:', checkError);
-      return NextResponse.json({ 
-        error: 'Erro ao verificar motorista' 
-      }, { status: 500 });
+      return errorResponse('Erro ao verificar motorista', undefined, 500);
     }
     
     if (!existingDriver) {
-      return NextResponse.json({ 
-        error: 'Motorista não encontrado' 
-      }, { status: 404 });
+      return errorResponse('Motorista não encontrado', undefined, 404);
     }
     
-    // Deletar atribuições de veículos do motorista primeiro
-    const { error: assignmentError } = await supabase
+    // Deletar todas as associações de veículos primeiro
+    const { error: deleteAssignmentsError } = await supabase
       .from('driver_vehicle_assignments')
       .delete()
       .eq('driver_id', id);
     
-    if (assignmentError) {
-      console.error('Erro ao remover atribuições de veículos:', assignmentError);
-      return NextResponse.json({ 
-        error: 'Erro ao remover atribuições de veículos do motorista' 
-      }, { status: 500 });
+    if (deleteAssignmentsError) {
+      console.error('Erro ao excluir associações de veículos:', deleteAssignmentsError);
+      return errorResponse('Erro ao excluir associações de veículos', undefined, 500);
     }
     
     // Excluir motorista
@@ -364,20 +450,17 @@ export async function DELETE(request: NextRequest) {
     
     if (deleteError) {
       console.error('Erro ao excluir motorista:', deleteError);
-      return NextResponse.json({ 
-        error: 'Erro ao excluir motorista' 
-      }, { status: 500 });
+      return errorResponse('Erro ao excluir motorista', undefined, 500);
     }
     
-    return NextResponse.json({
-      success: true,
-      message: 'Motorista excluído com sucesso'
-    });
+    // Retornar resposta de sucesso
+    return successResponse(
+      null, 
+      'Motorista excluído com sucesso'
+    );
     
   } catch (error) {
     console.error('Erro ao processar exclusão de motorista:', error);
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
-    }, { status: 500 });
+    return errorResponse('Erro interno do servidor', undefined, 500);
   }
 } 

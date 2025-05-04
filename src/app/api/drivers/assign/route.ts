@@ -3,13 +3,36 @@ import { verifyAuth } from '@/lib/auth-middleware';
 import { supabase } from '@/lib/supabaseClient';
 import { z } from 'zod';
 
-// Esquema para validar atribuição de veículo a motorista
+// Esquema para atribuição múltipla de veículos a um motorista
+const bulkAssignmentSchema = z.object({
+  driver_id: z.string().min(1, 'ID do motorista é obrigatório'),
+  vehicle_ids: z.array(z.string().min(1, 'ID do veículo inválido')).min(1, 'É necessário fornecer pelo menos um veículo')
+});
+
+// Esquema para validar atribuição individual de veículo a motorista
 const assignmentSchema = z.object({
   driver_id: z.string().min(1, 'ID do motorista é obrigatório'),
   vehicle_id: z.string().min(1, 'ID do veículo é obrigatório'),
-  start_date: z.string().optional(),
-  end_date: z.string().optional(),
+  start_date: z.string()
+    .optional()
+    .refine(val => !val || /^\d{4}-\d{2}-\d{2}$/.test(val), {
+      message: 'Data de início deve estar no formato YYYY-MM-DD',
+    }),
+  end_date: z.string()
+    .optional()
+    .refine(val => !val || /^\d{4}-\d{2}-\d{2}$/.test(val), {
+      message: 'Data de término deve estar no formato YYYY-MM-DD',
+    }),
   is_primary: z.boolean().optional().default(false)
+}).refine(data => {
+  // Se houver data de término, ela deve ser posterior à data de início
+  if (data.end_date && data.start_date) {
+    return new Date(data.end_date) > new Date(data.start_date);
+  }
+  return true;
+}, {
+  message: 'A data de término deve ser posterior à data de início',
+  path: ['end_date']
 });
 
 // Esquema para remover atribuição
@@ -78,15 +101,35 @@ type AssignmentCheck = {
   };
 };
 
+// Função para estruturar respostas de erro de forma consistente
+function errorResponse(message: string, details?: any, status: number = 400) {
+  return NextResponse.json({ 
+    success: false,
+    error: message,
+    details: details || undefined
+  }, { status });
+}
+
+// Função para estruturar respostas de sucesso de forma consistente
+function successResponse(data: any, message?: string, status: number = 200) {
+  return NextResponse.json({ 
+    success: true,
+    message,
+    data
+  }, { status });
+}
+
 // Handler para listar atribuições de veículos (GET)
 export async function GET(request: NextRequest) {
   try {
     // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ 
-        error: authResult.error || 'Não autorizado' 
-      }, { status: authResult.status || 401 });
+      return errorResponse(
+        authResult.error || 'Não autorizado',
+        undefined,
+        authResult.status || 401
+      );
     }
     
     const userId = authResult.user.id;
@@ -97,9 +140,7 @@ export async function GET(request: NextRequest) {
     const vehicleId = url.searchParams.get('vehicle_id');
     
     if (!driverId && !vehicleId) {
-      return NextResponse.json({ 
-        error: 'É necessário fornecer driver_id ou vehicle_id' 
-      }, { status: 400 });
+      return errorResponse('É necessário fornecer driver_id ou vehicle_id');
     }
     
     // Construir consulta base
@@ -136,9 +177,7 @@ export async function GET(request: NextRequest) {
         .maybeSingle();
         
       if (driverError || !driverCheck) {
-        return NextResponse.json({ 
-          error: 'Motorista não encontrado ou não pertence ao usuário' 
-        }, { status: 404 });
+        return errorResponse('Motorista não encontrado ou não pertence ao usuário', undefined, 404);
       }
     }
     
@@ -151,9 +190,7 @@ export async function GET(request: NextRequest) {
         .maybeSingle();
         
       if (vehicleError || !vehicleCheck) {
-        return NextResponse.json({ 
-          error: 'Veículo não encontrado ou não pertence ao usuário' 
-        }, { status: 404 });
+        return errorResponse('Veículo não encontrado ou não pertence ao usuário', undefined, 404);
       }
     }
     
@@ -162,9 +199,7 @@ export async function GET(request: NextRequest) {
     
     if (error) {
       console.error('Erro ao buscar atribuições:', error);
-      return NextResponse.json({ 
-        error: 'Erro ao buscar atribuições de veículos' 
-      }, { status: 500 });
+      return errorResponse('Erro ao buscar atribuições de veículos', undefined, 500);
     }
     
     // Formatar resposta com conversão segura de tipo
@@ -193,15 +228,13 @@ export async function GET(request: NextRequest) {
       };
     }) || [];
     
-    return NextResponse.json({
+    return successResponse({
       assignments: formattedAssignments
     });
     
   } catch (error) {
     console.error('Erro ao processar requisição de atribuições:', error);
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
-    }, { status: 500 });
+    return errorResponse('Erro interno do servidor', undefined, 500);
   }
 }
 
@@ -211,188 +244,279 @@ export async function POST(request: NextRequest) {
     // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ 
-        error: authResult.error || 'Não autorizado' 
-      }, { status: authResult.status || 401 });
+      return errorResponse(
+        authResult.error || 'Não autorizado',
+        undefined,
+        authResult.status || 401
+      );
     }
     
     const userId = authResult.user.id;
     
-    // Extrair e validar corpo da requisição
-    const body = await request.json();
-    const assignmentResult = assignmentSchema.safeParse(body);
+    // Extrair corpo da requisição
+    const body = await request.json() as Record<string, unknown>;
     
-    if (!assignmentResult.success) {
-      return NextResponse.json({ 
-        error: 'Dados inválidos', 
-        details: assignmentResult.error.format() 
-      }, { status: 400 });
-    }
-    
-    const assignmentData = assignmentResult.data;
-    
-    // Verificar se o motorista pertence ao usuário
-    const { data: driverCheck, error: driverError } = await supabase
-      .from('drivers')
-      .select('id')
-      .eq('id', assignmentData.driver_id)
-      .eq('user_id', userId)
-      .maybeSingle();
-    
-    if (driverError || !driverCheck) {
-      return NextResponse.json({ 
-        error: 'Motorista não encontrado ou não pertence ao usuário' 
-      }, { status: 404 });
-    }
-    
-    // Verificar se o veículo pertence ao usuário
-    const { data: vehicleCheck, error: vehicleError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('id', assignmentData.vehicle_id)
-      .eq('user_id', userId)
-      .maybeSingle();
-    
-    if (vehicleError || !vehicleCheck) {
-      return NextResponse.json({ 
-        error: 'Veículo não encontrado ou não pertence ao usuário' 
-      }, { status: 404 });
-    }
-    
-    // Verificar se já existe uma atribuição primária para o veículo, se a nova for primária
-    if (assignmentData.is_primary) {
-      const { data: existingPrimary, error: primaryError } = await supabase
-        .from('driver_vehicle_assignments')
-        .update({ is_primary: false })
-        .eq('vehicle_id', assignmentData.vehicle_id)
-        .eq('is_primary', true);
+    // Verificar se é uma atribuição múltipla ou individual
+    if (body.vehicle_ids && Array.isArray(body.vehicle_ids)) {
+      // Validar esquema de atribuição múltipla
+      const bulkResult = bulkAssignmentSchema.safeParse(body);
       
-      if (primaryError) {
-        console.error('Erro ao atualizar atribuições primárias existentes:', primaryError);
-        return NextResponse.json({ 
-          error: 'Erro ao atualizar atribuições primárias existentes' 
-        }, { status: 500 });
+      if (!bulkResult.success) {
+        return errorResponse(
+          'Dados inválidos para atribuição múltipla', 
+          bulkResult.error.format()
+        );
       }
+      
+      const { driver_id, vehicle_ids } = bulkResult.data;
+      
+      // Verificar se o motorista pertence ao usuário
+      const { data: driverCheck, error: driverError } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('id', driver_id)
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (driverError || !driverCheck) {
+        return errorResponse('Motorista não encontrado ou não pertence ao usuário', undefined, 404);
+      }
+      
+      // Verificar se todos os veículos pertencem ao usuário
+      const { data: vehiclesCheck, error: vehiclesError } = await supabase
+        .from('vehicles')
+        .select('id')
+        .in('id', vehicle_ids)
+        .eq('user_id', userId);
+      
+      if (vehiclesError) {
+        console.error('Erro ao verificar veículos:', vehiclesError);
+        return errorResponse('Erro ao verificar veículos', undefined, 500);
+      }
+      
+      const foundVehicleIds = vehiclesCheck?.map(v => v.id) || [];
+      if (foundVehicleIds.length !== vehicle_ids.length) {
+        return errorResponse(
+          'Um ou mais veículos não foram encontrados ou não pertencem ao usuário', 
+          {
+            requested: vehicle_ids.length,
+            found: foundVehicleIds.length
+          },
+          404
+        );
+      }
+      
+      // Primeiro, remover todas as atribuições existentes deste motorista
+      const { error: deleteError } = await supabase
+        .from('driver_vehicle_assignments')
+        .delete()
+        .eq('driver_id', driver_id);
+      
+      if (deleteError) {
+        console.error('Erro ao remover atribuições existentes:', deleteError);
+        return errorResponse('Erro ao gerenciar atribuições de veículos', undefined, 500);
+      }
+      
+      // Criar novas atribuições para cada veículo
+      const assignmentsToInsert = vehicle_ids.map(vehicle_id => ({
+        driver_id,
+        vehicle_id,
+        created_at: new Date().toISOString(),
+        is_primary: false // Por padrão, nenhum é primário
+      }));
+      
+      const { data: newAssignments, error: insertError } = await supabase
+        .from('driver_vehicle_assignments')
+        .insert(assignmentsToInsert)
+        .select();
+      
+      if (insertError) {
+        console.error('Erro ao criar atribuições em massa:', insertError);
+        return errorResponse('Erro ao criar atribuições de veículos', undefined, 500);
+      }
+      
+      return successResponse(
+        { assignments: newAssignments },
+        'Veículos atribuídos com sucesso ao motorista',
+        201
+      );
+      
+    } else {
+      // Atribuição individual
+      const assignmentResult = assignmentSchema.safeParse(body);
+      
+      if (!assignmentResult.success) {
+        return errorResponse(
+          'Dados inválidos', 
+          assignmentResult.error.format()
+        );
+      }
+      
+      const assignmentData = assignmentResult.data;
+      
+      // Verificar se o motorista pertence ao usuário
+      const { data: driverCheck, error: driverError } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('id', assignmentData.driver_id)
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (driverError || !driverCheck) {
+        return errorResponse('Motorista não encontrado ou não pertence ao usuário', undefined, 404);
+      }
+      
+      // Verificar se o veículo pertence ao usuário
+      const { data: vehicleCheck, error: vehicleError } = await supabase
+        .from('vehicles')
+        .select('id')
+        .eq('id', assignmentData.vehicle_id)
+        .eq('user_id', userId)
+        .maybeSingle();
+      
+      if (vehicleError || !vehicleCheck) {
+        return errorResponse('Veículo não encontrado ou não pertence ao usuário', undefined, 404);
+      }
+      
+      // Verificar se já existe uma atribuição para este motorista e veículo
+      const { data: existingAssignment, error: checkError } = await supabase
+        .from('driver_vehicle_assignments')
+        .select('id')
+        .eq('driver_id', assignmentData.driver_id)
+        .eq('vehicle_id', assignmentData.vehicle_id)
+        .maybeSingle();
+      
+      if (checkError) {
+        console.error('Erro ao verificar atribuição existente:', checkError);
+        return errorResponse('Erro ao verificar atribuição existente', undefined, 500);
+      }
+      
+      if (existingAssignment) {
+        return errorResponse(
+          'Este veículo já está atribuído a este motorista',
+          { assignment_id: existingAssignment.id },
+          409
+        );
+      }
+      
+      // Se for definido como primário, atualizar outras atribuições para não serem primárias
+      if (assignmentData.is_primary) {
+        const { error: updateError } = await supabase
+          .from('driver_vehicle_assignments')
+          .update({ is_primary: false })
+          .eq('driver_id', assignmentData.driver_id);
+        
+        if (updateError) {
+          console.error('Erro ao atualizar atribuições existentes:', updateError);
+          return errorResponse('Erro ao gerenciar atribuições primárias', undefined, 500);
+        }
+      }
+      
+      // Criar nova atribuição
+      const { data: newAssignment, error: insertError } = await supabase
+        .from('driver_vehicle_assignments')
+        .insert({
+          ...assignmentData,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error('Erro ao criar atribuição:', insertError);
+        return errorResponse('Erro ao criar atribuição de veículo', undefined, 500);
+      }
+      
+      return successResponse(
+        newAssignment, 
+        'Veículo atribuído com sucesso ao motorista',
+        201
+      );
     }
-    
-    // Inserir nova atribuição
-    const { data: newAssignment, error: insertError } = await supabase
-      .from('driver_vehicle_assignments')
-      .insert({
-        ...assignmentData,
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-    
-    if (insertError) {
-      console.error('Erro ao criar atribuição:', insertError);
-      return NextResponse.json({ 
-        error: 'Erro ao criar atribuição de veículo' 
-      }, { status: 500 });
-    }
-    
-    return NextResponse.json({
-      success: true,
-      message: 'Atribuição criada com sucesso',
-      assignment: newAssignment
-    }, { status: 201 });
     
   } catch (error) {
     console.error('Erro ao processar criação de atribuição:', error);
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
-    }, { status: 500 });
+    return errorResponse('Erro interno do servidor', undefined, 500);
   }
 }
 
-// Handler para remover atribuição (DELETE)
+// Handler para excluir atribuição (DELETE)
 export async function DELETE(request: NextRequest) {
   try {
     // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ 
-        error: authResult.error || 'Não autorizado' 
-      }, { status: authResult.status || 401 });
+      return errorResponse(
+        authResult.error || 'Não autorizado',
+        undefined,
+        authResult.status || 401
+      );
     }
     
     const userId = authResult.user.id;
     
-    // Extrair ID da atribuição da URL
+    // Extrair ID da atribuição dos parâmetros
     const url = new URL(request.url);
     const assignmentId = url.searchParams.get('id');
     
     if (!assignmentId) {
-      return NextResponse.json({ 
-        error: 'ID da atribuição é obrigatório' 
-      }, { status: 400 });
+      return errorResponse('ID da atribuição é obrigatório');
     }
     
-    // Verificar se a atribuição existe e pertence a um veículo/motorista do usuário
-    const { data, error: checkError } = await supabase
+    // Verificar se a atribuição existe e pertence ao usuário
+    const { data: assignment, error: checkError } = await supabase
       .from('driver_vehicle_assignments')
       .select(`
         id,
         driver_id,
         vehicle_id,
-        drivers:driver_id (user_id),
-        vehicles:vehicle_id (user_id)
+        drivers:driver_id (
+          user_id
+        ),
+        vehicles:vehicle_id (
+          user_id
+        )
       `)
       .eq('id', assignmentId)
-      .single();
+      .maybeSingle();
     
     if (checkError) {
       console.error('Erro ao verificar atribuição:', checkError);
-      return NextResponse.json({ 
-        error: 'Erro ao verificar atribuição' 
-      }, { status: 500 });
+      return errorResponse('Erro ao verificar atribuição', undefined, 500);
     }
     
-    if (!data) {
-      return NextResponse.json({ 
-        error: 'Atribuição não encontrada' 
-      }, { status: 404 });
+    if (!assignment) {
+      return errorResponse('Atribuição não encontrada', undefined, 404);
     }
     
-    // Converter para o tipo correto com cast seguro
-    const assignment = data as unknown as AssignmentCheck;
-    
-    // Verificar se o motorista ou o veículo pertence ao usuário
-    const driverUserId = assignment.drivers?.user_id;
-    const vehicleUserId = assignment.vehicles?.user_id;
+    // Confirmar que a atribuição pertence ao usuário
+    const typedAssignment = assignment as unknown as AssignmentCheck;
     
     if (
-      (driverUserId && driverUserId !== userId) &&
-      (vehicleUserId && vehicleUserId !== userId)
+      (typedAssignment.drivers?.user_id !== userId) || 
+      (typedAssignment.vehicles?.user_id !== userId)
     ) {
-      return NextResponse.json({ 
-        error: 'Não autorizado a remover esta atribuição' 
-      }, { status: 403 });
+      return errorResponse('Atribuição não pertence ao usuário', undefined, 403);
     }
     
-    // Remover atribuição
+    // Excluir atribuição
     const { error: deleteError } = await supabase
       .from('driver_vehicle_assignments')
       .delete()
       .eq('id', assignmentId);
     
     if (deleteError) {
-      console.error('Erro ao remover atribuição:', deleteError);
-      return NextResponse.json({ 
-        error: 'Erro ao remover atribuição' 
-      }, { status: 500 });
+      console.error('Erro ao excluir atribuição:', deleteError);
+      return errorResponse('Erro ao excluir atribuição', undefined, 500);
     }
     
-    return NextResponse.json({
-      success: true,
-      message: 'Atribuição removida com sucesso'
-    });
+    return successResponse(
+      null,
+      'Atribuição excluída com sucesso'
+    );
     
   } catch (error) {
-    console.error('Erro ao processar remoção de atribuição:', error);
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
-    }, { status: 500 });
+    console.error('Erro ao processar exclusão de atribuição:', error);
+    return errorResponse('Erro interno do servidor', undefined, 500);
   }
 } 

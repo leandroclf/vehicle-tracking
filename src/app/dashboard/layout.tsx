@@ -41,7 +41,7 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
             </LazyLoading>
           }
           content={
-            <main id="main-content" className="flex-1 overflow-auto p-4" tabIndex={-1}>
+            <main id="main-content" className="flex-1 overflow-auto p-4 min-h-[calc(100vh-4rem)]" tabIndex={-1}>
               <Suspense fallback={<DashboardLoading />}>
                 {children}
               </Suspense>

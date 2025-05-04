@@ -99,7 +99,7 @@ function LayoutContent({ children }: LayoutProps) {
           >
             <main 
               id="main-content" 
-              className="h-full p-6 md:p-8" 
+              className="h-full min-h-[calc(100vh-4rem)] p-6 md:p-8" 
               tabIndex={-1}
               role="main"
               aria-label="Conteúdo principal"
