@@ -12,6 +12,8 @@ import NotificationsProvider from '@/components/notifications/NotificationsProvi
 import React from 'react'
 import { RealtimeIntegration } from '@/components/realtime/RealtimeIntegration'
 import { RadixPatchProvider } from '@/components/ui/RadixPatchProvider'
+import { UpdateLoopDetector } from '@/components/ui/UpdateLoopDetector'
+import Script from 'next/script'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -35,33 +37,39 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <Script id="radix-patch-preload" strategy="beforeInteractive">{`
+          window.__RADIX_PATCH_PRELOAD__ = true;
+          console.log('[Radix Patch Preload] Inicializado');
+        `}</Script>
       </head>
       <body className={inter.className}>
         <RadixPatchProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <HighContrastProvider>
-              <AccessibleNotificationsProvider>
-                <AuthProvider>
-                  <NotificationsProvider>
-                    <NotificationProvider>
-                      <KeyboardNavigationProvider>
-                        <SidebarProvider>
-                          <RealtimeIntegration>
-                            {children}
-                          </RealtimeIntegration>
-                        </SidebarProvider>
-                      </KeyboardNavigationProvider>
-                    </NotificationProvider>
-                  </NotificationsProvider>
-                </AuthProvider>
-              </AccessibleNotificationsProvider>
-            </HighContrastProvider>
-          </ThemeProvider>
+          <UpdateLoopDetector maxUpdatesPerSecond={40}>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="light"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <HighContrastProvider>
+                <AccessibleNotificationsProvider>
+                  <AuthProvider>
+                    <NotificationsProvider>
+                      <NotificationProvider>
+                        <KeyboardNavigationProvider>
+                          <SidebarProvider>
+                            <RealtimeIntegration>
+                              {children}
+                            </RealtimeIntegration>
+                          </SidebarProvider>
+                        </KeyboardNavigationProvider>
+                      </NotificationProvider>
+                    </NotificationsProvider>
+                  </AuthProvider>
+                </AccessibleNotificationsProvider>
+              </HighContrastProvider>
+            </ThemeProvider>
+          </UpdateLoopDetector>
         </RadixPatchProvider>
       </body>
     </html>

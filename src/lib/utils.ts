@@ -132,14 +132,19 @@ export function getFromStorage<T>(key: string, defaultValue: T): T {
  * Baseada na implementação do @radix-ui/react-compose-refs, mas com proteção contra loops
  */
 export function composeRefs<T>(...refs: (React.Ref<T> | undefined)[]) {
-  // Já estamos no meio de uma atualização de ref
+  // Variável para rastrear se já estamos no meio de uma atualização
   let isUpdating = false;
+  // Último nó atribuído, para evitar atualizações redundantes
+  let lastNode: T | null = null;
   
   return (node: T) => {
+    // Se o nó for igual ao último processado, evitar reprocessamento
+    if (node === lastNode) return;
+    
     // Prevenir chamadas recursivas durante uma atualização
     if (isUpdating) return;
     
-    // Filtrar refs vazios
+    // Filtrar refs nulos ou undefined
     const validRefs = refs.filter(Boolean);
     
     // Se não houver refs válidos, não fazer nada
@@ -147,10 +152,12 @@ export function composeRefs<T>(...refs: (React.Ref<T> | undefined)[]) {
     
     try {
       isUpdating = true;
+      lastNode = node;
       
       // Aplicar cada ref com segurança
       validRefs.forEach((ref) => {
         if (typeof ref === 'function') {
+          // Chamar funções de ref diretamente
           ref(node);
         } else if (ref && typeof ref === 'object') {
           // Atribuir o node apenas se for diferente para evitar loops

@@ -14,8 +14,25 @@ interface RadixPatchProviderProps {
 export function RadixPatchProvider({ children }: RadixPatchProviderProps) {
   useEffect(() => {
     // Aplicar o patch uma vez quando o componente for montado
-    if (typeof window !== 'undefined' && !window.__RADIX_COMPOSE_REFS_PATCHED__) {
-      applyRadixComposeRefsPatch();
+    if (typeof window !== 'undefined') {
+      console.log('[RadixPatchProvider] Inicializando', {
+        jáAplicado: window.__RADIX_COMPOSE_REFS_PATCHED__
+      });
+      
+      // Verificar se o patch já foi aplicado
+      if (!window.__RADIX_COMPOSE_REFS_PATCHED__) {
+        console.log('[RadixPatchProvider] Aplicando patch');
+        applyRadixComposeRefsPatch();
+      } else {
+        console.log('[RadixPatchProvider] Patch já aplicado anteriormente');
+      }
+      
+      // Verificar se o patch foi aplicado com sucesso
+      setTimeout(() => {
+        console.log('[RadixPatchProvider] Status do patch:', {
+          aplicado: window.__RADIX_COMPOSE_REFS_PATCHED__
+        });
+      }, 100);
     }
   }, []);
 
