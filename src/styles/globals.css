@@ -414,3 +414,86 @@
 .main-sidebar ~ div aside {
   display: none !important;
 }
+
+/* Animações para UI Mobile */
+@keyframes slide-up {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Classes de utilidade para responsividade */
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Melhorias de toque para dispositivos móveis */
+@media (max-width: 640px) {
+  /* Aumentar área de toque para elementos interativos */
+  button, 
+  [role="button"],
+  a.btn,
+  .clickable {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Aumentar fonte para melhor leitura */
+  .text-mobile-adjusted {
+    font-size: 1.05rem;
+  }
+  
+  /* Ajustar espaçamentos */
+  .mobile-p {
+    padding: 1rem !important;
+  }
+  
+  .mobile-py {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+  
+  .mobile-px {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* Esconder scrollbar em dispositivos mobile mantendo funcionalidade */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
