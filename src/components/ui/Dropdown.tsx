@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
@@ -11,7 +13,7 @@ export interface DropdownItem {
 }
 
 export interface DropdownProps {
-  items: DropdownItem[];
+  items?: DropdownItem[];
   trigger?: React.ReactNode;
   label?: string;
   align?: 'left' | 'right';
@@ -21,10 +23,14 @@ export interface DropdownProps {
   buttonVariant?: 'primary' | 'secondary' | 'outline' | 'ghost';
   divider?: boolean;
   disabled?: boolean;
+  isOpen?: boolean;
+  onClose?: () => void;
+  position?: 'left' | 'right';
+  children?: React.ReactNode;
 }
 
-const Dropdown: React.FC<DropdownProps> = ({
-  items,
+const DropdownComponent: React.FC<DropdownProps> = ({
+  items = [],
   trigger,
   label = 'Opções',
   align = 'left',
@@ -34,9 +40,17 @@ const Dropdown: React.FC<DropdownProps> = ({
   buttonVariant = 'outline',
   divider = true,
   disabled = false,
+  isOpen: controlledIsOpen,
+  onClose,
+  position = 'left',
+  children,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Determinar se é controlado ou não
+  const isControlled = controlledIsOpen !== undefined;
+  const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
 
   // Variantes do botão
   const buttonVariants = {
@@ -48,7 +62,9 @@ const Dropdown: React.FC<DropdownProps> = ({
 
   const toggleDropdown = () => {
     if (!disabled) {
-      setIsOpen(!isOpen);
+      if (!isControlled) {
+        setInternalIsOpen(!internalIsOpen);
+      }
     }
   };
 
@@ -56,7 +72,11 @@ const Dropdown: React.FC<DropdownProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        if (!isControlled) {
+          setInternalIsOpen(false);
+        } else if (onClose) {
+          onClose();
+        }
       }
     };
 
@@ -64,13 +84,17 @@ const Dropdown: React.FC<DropdownProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [isControlled, onClose]);
 
   // Fechar dropdown com ESC
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setIsOpen(false);
+        if (!isControlled) {
+          setInternalIsOpen(false);
+        } else if (onClose) {
+          onClose();
+        }
       }
     };
 
@@ -81,7 +105,7 @@ const Dropdown: React.FC<DropdownProps> = ({
     return () => {
       document.removeEventListener('keydown', handleEscKey);
     };
-  }, [isOpen]);
+  }, [isOpen, isControlled, onClose]);
 
   return (
     <div ref={dropdownRef} className={`relative inline-block text-left ${className}`}>
@@ -106,43 +130,52 @@ const Dropdown: React.FC<DropdownProps> = ({
       {isOpen && (
         <div 
           className={`absolute z-10 mt-2 ${width} rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none ${
-            align === 'right' ? 'right-0' : 'left-0'
+            position === 'right' || align === 'right' ? 'right-0' : 'left-0'
           }`}
         >
-          <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
-            {items.map((item, index) => (
-              <React.Fragment key={item.id}>
-                <button
-                  type="button"
-                  className={`${
-                    item.disabled
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700'
-                  } ${
-                    item.danger ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-200'
-                  } group flex items-center w-full px-4 py-2 text-sm`}
-                  onClick={() => {
-                    if (!item.disabled && item.onClick) {
-                      item.onClick();
-                      setIsOpen(false);
-                    }
-                  }}
-                  disabled={item.disabled}
-                  role="menuitem"
-                >
-                  {item.icon && <span className="mr-3">{item.icon}</span>}
-                  {item.label}
-                </button>
-                {divider && index < items.length - 1 && (
-                  <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
+          {children ? (
+            children
+          ) : (
+            <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+              {items.map((item, index) => (
+                <React.Fragment key={item.id}>
+                  <button
+                    type="button"
+                    className={`${
+                      item.disabled
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700'
+                    } ${
+                      item.danger ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-gray-200'
+                    } group flex items-center w-full px-4 py-2 text-sm`}
+                    onClick={() => {
+                      if (!item.disabled && item.onClick) {
+                        item.onClick();
+                        if (!isControlled) {
+                          setInternalIsOpen(false);
+                        } else if (onClose) {
+                          onClose();
+                        }
+                      }
+                    }}
+                    disabled={item.disabled}
+                    role="menuitem"
+                  >
+                    {item.icon && <span className="mr-3">{item.icon}</span>}
+                    {item.label}
+                  </button>
+                  {divider && index < items.length - 1 && (
+                    <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 };
 
-export default Dropdown; 
+export const Dropdown = DropdownComponent;
+export default DropdownComponent; 

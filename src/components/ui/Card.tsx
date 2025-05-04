@@ -3,84 +3,79 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'flat' | 'bordered' | 'elevated';
-  padding?: 'none' | 'small' | 'normal' | 'large';
-  highlight?: boolean;
-  interactive?: boolean;
-  fullWidth?: boolean;
-  mobileStack?: boolean;
+export interface CardProps {
+  className?: string;
+  children: React.ReactNode;
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+  rounded?: boolean;
+  border?: boolean;
+  shadow?: 'none' | 'sm' | 'md' | 'lg';
+  hoverable?: boolean;
+  onClick?: () => void;
 }
 
-const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ 
-    className, 
-    variant = 'default', 
-    padding = 'normal', 
-    highlight = false, 
-    interactive = false,
-    fullWidth = false,
-    mobileStack = false,
-    children, 
-    ...props 
-  }, ref) => {
-    // Base classes para todos os cards
-    const baseClasses = 'rounded-lg transition-all duration-200';
-    
-    // Classes específicas para cada variante
-    const variantClasses = {
-      default: 'bg-white dark:bg-gray-800 shadow-sm',
-      flat: 'bg-gray-50 dark:bg-gray-900',
-      bordered: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700',
-      elevated: 'bg-white dark:bg-gray-800 shadow-md'
-    };
-    
-    // Adicionar highlight
-    const highlightClasses = highlight 
-      ? 'border-l-4 border-blue-500 dark:border-blue-400' 
-      : '';
-    
-    // Adicionar interatividade
-    const interactiveClasses = interactive 
-      ? 'cursor-pointer hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 active:shadow-sm' 
-      : '';
-    
-    // Espaçamento interno responsivo
-    const paddingClasses = {
-      none: 'p-0',
-      small: 'p-2 sm:p-3',
-      normal: 'p-3 sm:p-4 md:p-5',
-      large: 'p-4 sm:p-6 md:p-8'
-    };
-    
-    // Largura responsiva
-    const widthClasses = fullWidth ? 'w-full' : '';
-    
-    // Adaptações para mobile
-    const mobileClasses = mobileStack ? 'flex flex-col sm:flex-row' : '';
-    
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          baseClasses,
-          variantClasses[variant],
-          paddingClasses[padding],
-          highlightClasses,
-          interactiveClasses,
-          widthClasses,
-          mobileClasses,
-          className
-        )}
-        {...props}
-      >
+const CardComponent: React.FC<CardProps> = ({
+  className = '',
+  children,
+  header,
+  footer,
+  padding = 'md',
+  rounded = true,
+  border = true,
+  shadow = 'md',
+  hoverable = false,
+  onClick,
+}) => {
+  // Mapear tamanhos de padding
+  const paddingClasses = {
+    none: 'p-0',
+    sm: 'p-3',
+    md: 'p-4',
+    lg: 'p-6',
+  };
+
+  // Mapear tamanhos de sombra
+  const shadowClasses = {
+    none: 'shadow-none',
+    sm: 'shadow-sm',
+    md: 'shadow',
+    lg: 'shadow-lg',
+  };
+
+  return (
+    <div
+      className={cn(
+        'bg-white dark:bg-gray-800',
+        rounded && 'rounded-lg',
+        border && 'border border-gray-200 dark:border-gray-700',
+        shadowClasses[shadow],
+        hoverable && 'transition-transform duration-200 hover:scale-[1.01] cursor-pointer',
+        className
+      )}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+    >
+      {header && (
+        <div className="border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+          {header}
+        </div>
+      )}
+      <div className={paddingClasses[padding]}>
         {children}
       </div>
-    );
-  }
-);
+      {footer && (
+        <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
+          {footer}
+        </div>
+      )}
+    </div>
+  );
+};
 
-Card.displayName = "Card";
+export const Card = CardComponent;
+export default CardComponent;
 
 interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   withBorder?: boolean;
@@ -256,7 +251,6 @@ const CardActions = React.forwardRef<HTMLDivElement, CardActionsProps>(
 CardActions.displayName = "CardActions";
 
 // Exportar componentes de forma individual para evitar duplicação
-export default Card;
 export {
   CardHeader,
   CardTitle,

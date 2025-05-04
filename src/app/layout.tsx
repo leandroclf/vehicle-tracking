@@ -6,11 +6,11 @@ import { HighContrastProvider } from '@/components/ui/HighContrastProvider'
 import { AuthProvider } from '@/lib/auth'
 import NotificationProvider from '@/components/ui/NotificationProvider'
 import { SidebarProvider } from '@/lib/sidebar-context'
-import Layout from '@/components/layout/Layout'
 import { AccessibleNotificationsProvider } from '@/components/ui/AccessibleNotifications'
 import { KeyboardNavigationProvider } from '@/components/ui/KeyboardNavigationProvider'
 import NotificationsProvider from '@/components/notifications/NotificationsProvider'
 import React from 'react'
+import { RealtimeIntegration } from '@/components/realtime/RealtimeIntegration'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -49,9 +49,9 @@ export default function RootLayout({
                   <NotificationProvider>
                     <KeyboardNavigationProvider>
                       <SidebarProvider>
-                        <Layout>
+                        <RealtimeIntegration>
                           {children}
-                        </Layout>
+                        </RealtimeIntegration>
                       </SidebarProvider>
                     </KeyboardNavigationProvider>
                   </NotificationProvider>

@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -10,9 +12,11 @@ export interface BadgeProps {
   dot?: boolean;
   className?: string;
   onClick?: () => void;
+  content?: string;
+  color?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'info';
 }
 
-const Badge: React.FC<BadgeProps> = ({
+const BadgeComponent: React.FC<BadgeProps> = ({
   children,
   variant = 'default',
   size = 'md',
@@ -21,7 +25,12 @@ const Badge: React.FC<BadgeProps> = ({
   dot = false,
   className = '',
   onClick,
+  content,
+  color,
 }) => {
+  // Se color estiver definido, use-o como variant (para compatibilidade)
+  const effectiveVariant = color || variant;
+  
   // Mapeia as variantes para as cores do Tailwind com variáveis CSS
   const variantClasses = {
     default: outline
@@ -61,6 +70,9 @@ const Badge: React.FC<BadgeProps> = ({
     lg: 'text-sm px-3 py-1.5',
   };
 
+  // Se content for fornecido, usá-lo como children
+  const displayContent = content || children;
+
   return (
     <span 
       className={cn(
@@ -68,7 +80,7 @@ const Badge: React.FC<BadgeProps> = ({
         outline && 'border',
         rounded ? 'rounded-full' : 'rounded',
         sizeClasses[size],
-        variantClasses[variant],
+        variantClasses[effectiveVariant],
         onClick && 'cursor-pointer hover:opacity-80',
         className
       )}
@@ -77,13 +89,14 @@ const Badge: React.FC<BadgeProps> = ({
     >
       {dot && (
         <span 
-          className={cn('mr-1.5 inline-block h-2 w-2 flex-shrink-0 rounded-full', dotColors[variant])}
+          className={cn('mr-1.5 inline-block h-2 w-2 flex-shrink-0 rounded-full', dotColors[effectiveVariant])}
           aria-hidden="true"
         />
       )}
-      {children}
+      {displayContent}
     </span>
   );
 };
 
-export default Badge; 
+export const Badge = BadgeComponent;
+export default BadgeComponent; 

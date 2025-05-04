@@ -1,4 +1,6 @@
-import { initializeDatabase, seedTestData } from './initDatabase';
+"use client";
+
+import { initializeDatabase } from './initDatabase';
 
 /**
  * Configura o banco de dados na inicialização da aplicação
@@ -13,27 +15,16 @@ export async function setupDatabase() {
     }
     
     // Verifica se o ambiente está configurado corretamente
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
       console.error('Variáveis de ambiente do Supabase não configuradas');
       return;
     }
     
     // Inicializa o banco de dados (aplica migrações se necessário)
+    console.log('Inicializando banco de dados...');
     await initializeDatabase();
+    console.log('Banco de dados inicializado com sucesso');
     
-    // Tentar criar dados de teste sempre, independente do ambiente
-    // Isso garante que os usuários de teste estejam disponíveis
-    console.log('Garantindo criação dos usuários de teste...');
-    
-    try {
-      await seedTestData();
-      console.log('Usuários de teste verificados com sucesso');
-    } catch (seedError) {
-      console.warn('Aviso: Falha ao criar usuários de teste:', seedError);
-      // Continua a execução mesmo com falha no seed
-    }
-    
-    console.log('Configuração do banco de dados concluída com sucesso');
   } catch (error) {
     console.error('Erro ao configurar banco de dados:', error);
   }

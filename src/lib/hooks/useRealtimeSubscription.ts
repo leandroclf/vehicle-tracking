@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+'use client';
+
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient, RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { useAuth } from '@/lib/auth';
 
@@ -6,7 +8,13 @@ import { useAuth } from '@/lib/auth';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
+});
 
 type SubscriptionEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
@@ -45,51 +53,90 @@ export const useRealtimeSubscription = ({
   const [status, setStatus] = useState<'SUBSCRIBED' | 'UNSUBSCRIBED' | 'ERROR'>('UNSUBSCRIBED');
   const [error, setError] = useState<Error | null>(null);
   const { user } = useAuth();
+  
+  // Armazenar userId em uma ref para evitar re-renderizações desnecessárias
+  const userIdRef = useRef<string | null>(null);
+  
+  // Atualizar userIdRef quando o user mudar
+  useEffect(() => {
+    userIdRef.current = user?.id || null;
+  }, [user?.id]);
+  
+  // Usar uma ref para armazenar a versão mais recente do callback
+  const callbackRef = useRef(callback);
+  
+  // Atualizar a ref quando o callback mudar
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+  
+  // Criar uma versão estável do callback com useCallback
+  const stableCallback = useCallback((payload: any) => {
+    callbackRef.current(payload);
+  }, []);
+
+  // Usar uma ref para o estado do canal para evitar dependências cíclicas
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    if (!enabled || !user) return;
+    if (!enabled || !userIdRef.current) return;
 
     try {
+      // Limpar canal anterior se existir
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+      }
+      
       // Criar um canal com o nome fornecido
       const realtimeChannel = client
         .channel(channelName)
-        .on('postgres_changes', {
-          event: config.event,
-          schema: config.schema || 'public',
-          table: config.table,
-          filter: config.filter,
-        }, (payload) => {
-          callback(payload);
-        })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
+        .on(
+          'postgres_changes' as any,
+          {
+            event: config.event,
+            schema: config.schema || 'public',
+            table: config.table,
+            filter: config.filter,
+          }, 
+          stableCallback
+        )
+        .subscribe((newStatus) => {
+          if (newStatus === 'SUBSCRIBED') {
             setStatus('SUBSCRIBED');
-          } else if (status === 'CHANNEL_ERROR') {
+          } else if (newStatus === 'CHANNEL_ERROR') {
             setStatus('ERROR');
             setError(new Error('Erro ao se inscrever no canal'));
           }
         });
 
+      // Armazenar canal na ref e no estado
+      channelRef.current = realtimeChannel;
       setChannel(realtimeChannel);
 
       // Limpar inscrição ao desmontar
       return () => {
-        realtimeChannel.unsubscribe();
-        setStatus('UNSUBSCRIBED');
+        if (channelRef.current) {
+          channelRef.current.unsubscribe();
+          channelRef.current = null;
+          setStatus('UNSUBSCRIBED');
+        }
       };
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Erro desconhecido na inscrição'));
       setStatus('ERROR');
     }
-  }, [channelName, config, callback, client, enabled, user]);
+  // Remover 'user' da matriz de dependências para evitar loops
+  }, [channelName, enabled, client, stableCallback, config.event, config.schema, config.table, config.filter]);
 
   // Função para cancelar a inscrição manualmente
-  const unsubscribe = () => {
-    if (channel) {
-      channel.unsubscribe();
+  const unsubscribe = useCallback(() => {
+    if (channelRef.current) {
+      channelRef.current.unsubscribe();
+      channelRef.current = null;
+      setChannel(null);
       setStatus('UNSUBSCRIBED');
     }
-  };
+  }, []);
 
   return { status, error, unsubscribe };
 };
@@ -105,17 +152,33 @@ export const useTableSubscription = <T extends Record<string, any>>(
   enabled = true
 ) => {
   const { user } = useAuth();
-  const channelName = `${table}-${user?.id}-${event}-${Date.now()}`;
+  const userId = user?.id;
+  
+  // Usar uma string estável como nome do canal, usando userId como parte do nome
+  // Adicionar timestamp para evitar colisões em múltiplas renderizações
+  const channelNameRef = useRef(`${table}-${userId || 'anonymous'}-${event}-${Date.now()}`);
+  
+  // Estabilizar o callback usando useCallback e useRef
+  const callbackRef = useRef(callback);
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+  
+  const stableCallback = useCallback((payload: any) => {
+    if (callbackRef.current) {
+      callbackRef.current(payload.new as T);
+    }
+  }, []);
   
   return useRealtimeSubscription({
-    channelName,
+    channelName: channelNameRef.current,
     config: {
       table,
       event,
       filter
     },
-    callback: (payload) => callback(payload.new as T),
-    enabled
+    callback: stableCallback,
+    enabled: enabled && !!userId
   });
 };
 
@@ -128,13 +191,28 @@ export const useVehiclesSubscription = (
   enabled = true
 ) => {
   const { user } = useAuth();
+  const userId = user?.id;
+  
+  // Estabilizar o callback usando useRef
+  const callbackRef = useRef(callback);
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+  
+  const stableCallback = useCallback((vehicle: any) => {
+    if (callbackRef.current) {
+      callbackRef.current(vehicle);
+    }
+  }, []);
+  
+  const filter = userId ? `user_id=eq.${userId}` : undefined;
   
   return useTableSubscription(
     'vehicles',
     event,
-    callback,
-    user ? `user_id=eq.${user.id}` : undefined,
-    enabled && !!user
+    stableCallback,
+    filter,
+    enabled && !!userId
   );
 };
 
@@ -147,13 +225,28 @@ export const useAlertsSubscription = (
   enabled = true
 ) => {
   const { user } = useAuth();
+  const userId = user?.id;
+  
+  // Estabilizar o callback usando useRef
+  const callbackRef = useRef(callback);
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+  
+  const stableCallback = useCallback((alert: any) => {
+    if (callbackRef.current) {
+      callbackRef.current(alert);
+    }
+  }, []);
+  
+  const filter = userId ? `user_id=eq.${userId}` : undefined;
   
   return useTableSubscription(
     'alerts',
     event,
-    callback,
-    user ? `user_id=eq.${user.id}` : undefined,
-    enabled && !!user
+    stableCallback,
+    filter,
+    enabled && !!userId
   );
 };
 
@@ -166,13 +259,28 @@ export const useGeofencesSubscription = (
   enabled = true
 ) => {
   const { user } = useAuth();
+  const userId = user?.id;
+  
+  // Estabilizar o callback usando useRef
+  const callbackRef = useRef(callback);
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+  
+  const stableCallback = useCallback((geofence: any) => {
+    if (callbackRef.current) {
+      callbackRef.current(geofence);
+    }
+  }, []);
+  
+  const filter = userId ? `user_id=eq.${userId}` : undefined;
   
   return useTableSubscription(
     'geofences',
     event,
-    callback,
-    user ? `user_id=eq.${user.id}` : undefined,
-    enabled && !!user
+    stableCallback,
+    filter,
+    enabled && !!userId
   );
 };
 

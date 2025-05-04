@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Utilitário para armazenamento local persistente
  */
