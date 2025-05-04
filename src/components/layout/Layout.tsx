@@ -1,96 +1,82 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/ResizablePanels';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { cn } from '@/lib/utils';
 import { SkipToContent } from '@/components/ui/SkipToContent';
-import { getFromStorage, saveToStorage } from '@/lib/utils';
+import { ThemeProvider } from '../ui/ThemeProvider';
+import { NotificationProvider } from '../ui/NotificationProvider';
+import { AccessibilityPanel } from '../ui/AccessibilityPanel';
+import { KeyboardNavigationProvider } from '../ui/KeyboardNavigationProvider';
+import { HighContrastProvider } from '../ui/HighContrastProvider';
+import { AccessibleNotificationsProvider } from '../ui/AccessibleNotifications';
+import { SidebarProvider, useSidebar } from '@/lib/sidebar-context';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
-export default function Layout({ children }: LayoutProps) {
+function LayoutContent({ children }: LayoutProps) {
   const pathname = usePathname();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [defaultLayout, setDefaultLayout] = useState([15, 85]);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Verificar o tamanho da tela e ajustar layout
-  useEffect(() => {
-    const checkIfMobile = () => {
-      const isMobileView = window.innerWidth < 768;
-      setIsMobile(isMobileView);
-      
-      // Em dispositivos móveis, o sidebar começa colapsado
-      if (isMobileView) {
-        setIsSidebarCollapsed(true);
-      }
-    };
-    
-    // Verificar no carregamento e quando a janela for redimensionada
-    checkIfMobile();
-    window.addEventListener('resize', checkIfMobile);
-    
-    return () => window.removeEventListener('resize', checkIfMobile);
-  }, []);
-
-  // Carregar layout salvo
-  useEffect(() => {
-    const savedLayout = getFromStorage<number[]>('layout-sizing', [15, 85]);
-    if (savedLayout) {
-      setDefaultLayout(savedLayout);
-    }
-  }, []);
-
-  // Alternar o estado do sidebar
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(!isSidebarCollapsed);
-  };
-
-  // Salvar o layout quando alterado
-  const handleLayoutChange = (sizes: number[]) => {
-    if (sizes[0] < 10) {
-      setIsSidebarCollapsed(true);
-    } else {
-      setIsSidebarCollapsed(false);
-      saveToStorage('layout-sizing', sizes);
-    }
-  };
+  const { isSidebarCollapsed, toggleSidebar, sidebarLayout, updateSidebarLayout, isMobile } = useSidebar();
 
   // Verifica se está em uma rota de autenticação
   const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password';
+  
+  // Verifica se está em uma rota do dashboard
+  const isDashboardRoute = pathname.startsWith('/dashboard');
 
   // Layout para rotas de autenticação
   if (isAuthRoute) {
     return (
-      <>
-        <SkipToContent />
-        <main id="main-content" className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          {children}
-        </main>
-      </>
+      <main 
+        id="main-content" 
+        className="min-h-screen bg-gray-50 dark:bg-gray-900"
+        tabIndex={-1}
+        role="main"
+        aria-label="Conteúdo principal"
+      >
+        {children}
+      </main>
     );
   }
+  
+  // Para rotas de dashboard, simplesmente retorna o children, sem nenhum layout adicional
+  // O layout específico do dashboard será fornecido pelo dashboard/layout.tsx
+  if (isDashboardRoute) {
+    return <>{children}</>;
+  }
 
-  // Layout principal para dashboard
+  // Layout principal para outras páginas
   return (
     <>
+      <div 
+        className="sr-only" 
+        role="status" 
+        aria-live="polite" 
+        id="layout-announcer"
+      >
+        {isSidebarCollapsed ? 'Barra lateral minimizada' : 'Barra lateral expandida'}
+      </div>
+      
       <SkipToContent />
       <div className={cn("layout-container", isSidebarCollapsed && "sidebar-collapsed")}>
-        <Header onToggleSidebar={toggleSidebar} className="layout-header" />
+        <Header 
+          onToggleSidebar={toggleSidebar} 
+          className="layout-header" 
+        />
         
         <ResizablePanelGroup 
           direction="horizontal"
-          onLayout={handleLayoutChange}
+          onLayout={updateSidebarLayout}
           className="h-screen pt-16"
         >
           {/* Sidebar panel */}
           <ResizablePanel 
-            defaultSize={defaultLayout[0]} 
+            defaultSize={sidebarLayout[0]} 
             minSize={isSidebarCollapsed ? 4 : 15}
             maxSize={25}
             className={cn(
@@ -98,10 +84,7 @@ export default function Layout({ children }: LayoutProps) {
               isSidebarCollapsed && "max-w-[70px] min-w-[70px]"
             )}
           >
-            <Sidebar 
-              collapsed={isSidebarCollapsed} 
-              onToggle={toggleSidebar} 
-            />
+            <Sidebar />
           </ResizablePanel>
           
           {!isMobile && !isSidebarCollapsed && (
@@ -110,11 +93,17 @@ export default function Layout({ children }: LayoutProps) {
           
           {/* Conteúdo principal */}
           <ResizablePanel 
-            defaultSize={defaultLayout[1]} 
+            defaultSize={sidebarLayout[1]} 
             minSize={55}
             className="bg-gray-50 dark:bg-gray-900 overflow-auto"
           >
-            <main id="main-content" className="h-full p-6 md:p-8">
+            <main 
+              id="main-content" 
+              className="h-full p-6 md:p-8" 
+              tabIndex={-1}
+              role="main"
+              aria-label="Conteúdo principal"
+            >
               {children}
             </main>
           </ResizablePanel>
@@ -122,4 +111,23 @@ export default function Layout({ children }: LayoutProps) {
       </div>
     </>
   );
-} 
+}
+
+export default function Layout({ children }: LayoutProps) {
+  return (
+    <ThemeProvider>
+      <HighContrastProvider>
+        <AccessibleNotificationsProvider>
+          <NotificationProvider>
+            <KeyboardNavigationProvider>
+              <SidebarProvider>
+                <LayoutContent children={children} />
+                <AccessibilityPanel />
+              </SidebarProvider>
+            </KeyboardNavigationProvider>
+          </NotificationProvider>
+        </AccessibleNotificationsProvider>
+      </HighContrastProvider>
+    </ThemeProvider>
+  );
+}

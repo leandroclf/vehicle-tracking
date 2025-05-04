@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { useSidebar } from '@/lib/sidebar-context';
 import { 
   Home, 
   Map, 
@@ -17,8 +18,18 @@ import {
   Menu,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LayoutDashboard,
+  PanelTop
 } from 'lucide-react'; // Using lucide-react icons
+
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ReactNode;
+  ariaLabel?: string;
+  highlight?: boolean;
+}
 
 interface SidebarProps {
   collapsed?: boolean;
@@ -26,26 +37,10 @@ interface SidebarProps {
   className?: string;
 }
 
-export default function Sidebar({ collapsed = false, onToggle, className = '' }: SidebarProps) {
+export default function Sidebar({ className = '' }: SidebarProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  // Check if we're on mobile on mount and when window resizes
-  useEffect(() => {
-    const checkIfMobile = () => {
-      setIsMobile(window.innerWidth < 768); // 768px is the md breakpoint in Tailwind
-    };
-    
-    // Check on mount
-    checkIfMobile();
-    
-    // Add event listener for resize
-    window.addEventListener('resize', checkIfMobile);
-    
-    // Cleanup
-    return () => window.removeEventListener('resize', checkIfMobile);
-  }, []);
+  const { isSidebarCollapsed, toggleSidebar, isMobile } = useSidebar();
 
   // Close mobile menu when navigating to a new page
   useEffect(() => {
@@ -53,14 +48,57 @@ export default function Sidebar({ collapsed = false, onToggle, className = '' }:
   }, [pathname]);
 
   const navItems = [
-    { name: 'Dashboard', href: '/dashboard/dashboard', icon: <Home className="w-5 h-5" /> },
-    { name: 'Mapa', href: '/dashboard/map', icon: <Map className="w-5 h-5" /> },
-    { name: 'Veículos', href: '/dashboard/vehicles', icon: <Truck className="w-5 h-5" /> },
-    { name: 'Geocercas', href: '/dashboard/geofences', icon: <MapPin className="w-5 h-5" /> },
-    { name: 'Alertas', href: '/dashboard/alerts', icon: <Bell className="w-5 h-5" /> },
-    { name: 'Relatórios', href: '/dashboard/reports', icon: <FileText className="w-5 h-5" /> },
-    { name: 'Configurações', href: '/dashboard/settings', icon: <Settings className="w-5 h-5" /> },
-    { name: 'Perfil', href: '/dashboard/profile', icon: <User className="w-5 h-5" /> },
+    // Grupo de Dashboards
+    { 
+      name: 'Dashboard', 
+      href: '/dashboard/dashboard', 
+      icon: <Home className="w-5 h-5" />,
+      ariaLabel: 'Acessar dashboard principal'
+    },
+    // Grupo de Navegação Principal
+    { 
+      name: 'Mapa', 
+      href: '/dashboard/map', 
+      icon: <Map className="w-5 h-5" />,
+      ariaLabel: 'Visualizar mapa de rastreamento'
+    },
+    { 
+      name: 'Veículos', 
+      href: '/dashboard/vehicles', 
+      icon: <Truck className="w-5 h-5" />,
+      ariaLabel: 'Gerenciar veículos'
+    },
+    { 
+      name: 'Geocercas', 
+      href: '/dashboard/geofences', 
+      icon: <MapPin className="w-5 h-5" />,
+      ariaLabel: 'Configurar geocercas'
+    },
+    { 
+      name: 'Alertas', 
+      href: '/dashboard/alerts', 
+      icon: <Bell className="w-5 h-5" />,
+      ariaLabel: 'Visualizar alertas'
+    },
+    { 
+      name: 'Relatórios', 
+      href: '/dashboard/reports', 
+      icon: <FileText className="w-5 h-5" />,
+      ariaLabel: 'Acessar relatórios'
+    },
+    // Grupo de Configurações
+    { 
+      name: 'Configurações', 
+      href: '/dashboard/settings', 
+      icon: <Settings className="w-5 h-5" />,
+      ariaLabel: 'Ajustar configurações do sistema'
+    },
+    { 
+      name: 'Perfil', 
+      href: '/dashboard/profile', 
+      icon: <User className="w-5 h-5" />,
+      ariaLabel: 'Gerenciar perfil de usuário'
+    },
   ];
 
   const isActive = (path: string) => {
@@ -90,18 +128,18 @@ export default function Sidebar({ collapsed = false, onToggle, className = '' }:
             "fixed bottom-0 left-0 right-0 z-40 transform bg-white dark:bg-gray-800 shadow-lg rounded-t-xl" : 
             "bg-gray-100 dark:bg-gray-800 min-h-screen shadow-md h-full",
           isMobile && !isMobileMenuOpen ? "translate-y-full" : "translate-y-0",
-          !isMobile && collapsed ? "w-16" : isMobile ? "w-full" : "w-64",
+          !isMobile && isSidebarCollapsed ? "w-16" : isMobile ? "w-full" : "w-64",
           className
         )}
       >
         {/* Desktop Toggle Button */}
         {!isMobile && (
           <button
-            onClick={onToggle}
+            onClick={toggleSidebar}
             className="absolute right-[-12px] top-6 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-full p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 z-10"
-            aria-label={collapsed ? "Expandir menu" : "Colapsar menu"}
+            aria-label={isSidebarCollapsed ? "Expandir menu" : "Colapsar menu"}
           >
-            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
         )}
 
@@ -124,7 +162,7 @@ export default function Sidebar({ collapsed = false, onToggle, className = '' }:
           <ul className={cn("space-y-2", isMobile && "grid grid-cols-4 gap-4")}>
             {navItems.map((item) => (
               <li key={item.name} className={isMobile ? 'text-center' : ''}>
-                {collapsed && !isMobile ? (
+                {isSidebarCollapsed && !isMobile ? (
                   <Tooltip content={item.name}>
                     <Link
                       href={item.href}
@@ -132,11 +170,15 @@ export default function Sidebar({ collapsed = false, onToggle, className = '' }:
                         "flex items-center justify-center p-2 rounded-lg transition-all duration-200",
                         isActive(item.href) 
                           ? "bg-blue-600 text-white" 
-                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
+                        item.highlight && !isActive(item.href) && "border-2 border-[#faa631]"
                       )}
-                      aria-label={item.name}
+                      aria-label={item.ariaLabel || item.name}
                     >
                       {item.icon}
+                      {item.highlight && !isActive(item.href) && (
+                        <span className="absolute top-0 right-0 h-2 w-2 bg-[#faa631] rounded-full"></span>
+                      )}
                     </Link>
                   </Tooltip>
                 ) : (
@@ -147,11 +189,21 @@ export default function Sidebar({ collapsed = false, onToggle, className = '' }:
                       isActive(item.href) 
                         ? "bg-blue-600 text-white" 
                         : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
-                      isMobile ? "flex-col text-xs" : "space-x-3"
+                      isMobile ? "flex-col text-xs" : "space-x-3",
+                      item.highlight && !isActive(item.href) && "border-l-4 border-[#faa631]"
                     )}
+                    aria-label={item.ariaLabel || item.name}
                   >
                     {item.icon}
-                    <span className={isMobile ? "mt-1" : ""}>{item.name}</span>
+                    <span className={cn(
+                      isMobile ? "mt-1" : "",
+                      item.highlight && !isActive(item.href) && "font-medium text-[#faa631] dark:text-[#faa631]"
+                    )}>
+                      {item.name}
+                      {item.highlight && !isActive(item.href) && !isMobile && (
+                        <span className="ml-2 text-xs bg-[#faa631] text-white px-1.5 py-0.5 rounded-full">Novo</span>
+                      )}
+                    </span>
                   </Link>
                 )}
               </li>

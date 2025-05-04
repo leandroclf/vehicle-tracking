@@ -3,8 +3,12 @@
 import { useEffect } from 'react';
 import { useVehicles } from '@/lib/vehicles';
 
-// Componente para simular atualizações em tempo real dos dados dos veículos
-export default function RealTimeUpdater() {
+/**
+ * Componente invisível que atualiza dados em tempo real
+ * Este componente não renderiza nada visível na interface,
+ * mas gerencia atualizações de dados em tempo real
+ */
+export const RealTimeUpdater = () => {
   const { refreshVehicles } = useVehicles();
 
   useEffect(() => {
@@ -19,4 +23,7 @@ export default function RealTimeUpdater() {
 
   // Este componente não renderiza nada visualmente
   return null;
-}
+};
+
+// Também exportar como default para compatibilidade
+export default RealTimeUpdater;

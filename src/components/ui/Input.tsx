@@ -27,19 +27,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>((
   const inputId = id || `input-${Math.random().toString(36).substring(2, 9)}`;
   const hasError = !!error;
   
-  const baseInputStyles = 'block rounded-md border-gray-300 dark:border-gray-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100';
-  const errorInputStyles = 'border-red-300 dark:border-red-700 text-red-900 dark:text-red-400 placeholder-red-300 dark:placeholder-red-600 focus:border-red-500 focus:ring-red-500';
+  const baseInputStyles = 'block rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+  const errorInputStyles = 'border-destructive text-destructive placeholder:text-destructive/60 focus-visible:ring-destructive';
   
   return (
     <div className={fullWidth ? 'w-full' : ''}>
       {label && (
-        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-medium text-foreground mb-1">
           {label}
         </label>
       )}
-      <div className="relative rounded-md shadow-sm">
+      <div className="relative rounded-md">
         {leftIcon && (
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted-foreground">
             {leftIcon}
           </div>
         )}
@@ -59,18 +59,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>((
           {...props}
         />
         {rightIcon && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-500 dark:text-gray-400">
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-muted-foreground">
             {rightIcon}
           </div>
         )}
       </div>
       {helperText && !hasError && (
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400" id={`${inputId}-description`}>
+        <p className="mt-1 text-sm text-muted-foreground" id={`${inputId}-description`}>
           {helperText}
         </p>
       )}
       {hasError && (
-        <p className="mt-1 text-sm text-red-600 dark:text-red-400" id={`${inputId}-error`}>
+        <p className="mt-1 text-sm text-destructive" id={`${inputId}-error`}>
           {error}
         </p>
       )}

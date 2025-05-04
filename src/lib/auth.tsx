@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { verifyToken } from './jwt-client'; // Versão do cliente da função verifyToken
 
 // Para debug
-console.log('Módulo auth.tsx carregado - versão corrigida')
+console.log('Módulo auth.tsx carregado')
 
 // Definição do tipo de usuário (pode ser estendido com base no payload do JWT)
 interface User {

@@ -40,13 +40,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>((
   const selectId = id || `select-${Math.random().toString(36).substring(2, 9)}`;
   const hasError = !!error;
   
-  const baseSelectStyles = 'block appearance-none rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 pr-10 text-gray-900';
-  const errorSelectStyles = 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500';
+  const baseSelectStyles = 'block appearance-none rounded-md border border-input bg-background text-foreground px-3 pr-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+  const errorSelectStyles = 'border-destructive text-destructive focus-visible:ring-destructive';
   
   return (
     <div className={fullWidth ? 'w-full' : ''}>
       {label && (
-        <label htmlFor={selectId} className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor={selectId} className="block text-sm font-medium text-foreground mb-1">
           {label}
         </label>
       )}
@@ -71,17 +71,17 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>((
             </option>
           ))}
         </select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground">
           <ChevronDown size={16} />
         </div>
       </div>
       {helperText && !hasError && (
-        <p className="mt-1 text-sm text-gray-500" id={`${selectId}-description`}>
+        <p className="mt-1 text-sm text-muted-foreground" id={`${selectId}-description`}>
           {helperText}
         </p>
       )}
       {hasError && (
-        <p className="mt-1 text-sm text-red-600" id={`${selectId}-error`}>
+        <p className="mt-1 text-sm text-destructive" id={`${selectId}-error`}>
           {error}
         </p>
       )}
