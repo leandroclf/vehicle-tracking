@@ -4,17 +4,21 @@ export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 interface ToastProps {
   message: string;
+  title?: string;
   type?: ToastType;
   duration?: number;
   onClose?: () => void;
+  onClick?: () => void;
   position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
 }
 
 export const Toast: React.FC<ToastProps> = ({
   message,
+  title,
   type = 'info',
   duration = 3000,
   onClose,
+  onClick,
   position = 'top-right',
 }) => {
   const [visible, setVisible] = useState(true);
@@ -28,9 +32,18 @@ export const Toast: React.FC<ToastProps> = ({
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const handleClose = () => {
+  const handleClose = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setVisible(false);
     if (onClose) onClose();
+  };
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+      setVisible(false);
+      if (onClose) onClose();
+    }
   };
 
   const getTypeClasses = () => {
@@ -119,12 +132,16 @@ export const Toast: React.FC<ToastProps> = ({
       }`}
     >
       <div
-        className={`rounded-md shadow-lg overflow-hidden max-w-sm ${getTypeClasses()}`}
+        className={`rounded-md shadow-lg overflow-hidden max-w-sm ${getTypeClasses()} ${onClick ? 'cursor-pointer' : ''}`}
+        onClick={onClick ? handleClick : undefined}
       >
         <div className="p-4 flex items-start">
           <div className="flex-shrink-0">{getIcon()}</div>
           <div className="ml-3 w-0 flex-1 pt-0.5">
-            <p className="text-sm font-medium">{message}</p>
+            {title && (
+              <p className="text-sm font-medium mb-1">{title}</p>
+            )}
+            <p className="text-sm">{message}</p>
           </div>
           <div className="ml-4 flex-shrink-0 flex">
             <button
@@ -150,7 +167,9 @@ export const Toast: React.FC<ToastProps> = ({
 interface ToastItem {
   id: string;
   message: string;
+  title?: string;
   type: ToastType;
+  onClick?: () => void;
 }
 
 interface ToastContainerProps {
@@ -170,8 +189,10 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({
         <Toast
           key={toast.id}
           message={toast.message}
+          title={toast.title}
           type={toast.type}
           position={position}
+          onClick={toast.onClick}
           onClose={() => onRemove(toast.id)}
         />
       ))}

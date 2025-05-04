@@ -76,6 +76,45 @@ O projeto está organizado em duas partes principais:
     *   Vá para o "SQL Editor".
     *   Execute o script de migração localizado em `/yukz-app/supabase/migrations/20250427221812_initial_schema.sql` para criar as tabelas e políticas RLS necessárias.
 
+## Sistema de Migração de Banco de Dados
+
+### Estrutura Unificada
+
+O projeto utiliza um sistema de migração de banco de dados unificado para simplificar a manutenção e garantir consistência. O esquema completo está definido em um único arquivo:
+
+- `migrations/unified_schema.sql`: Contém todas as definições de tabelas, funções, gatilhos e políticas de segurança.
+
+### Principais Tabelas
+
+O banco de dados inclui as seguintes tabelas principais:
+
+1. **profiles**: Perfis de usuários vinculados ao Supabase Auth
+2. **vehicles**: Veículos cadastrados por usuário
+3. **vehicle_status**: Estado atual dos veículos
+4. **events**: Eventos históricos dos veículos
+5. **alerts**: Alertas gerados para os usuários
+6. **notifications**: Notificações do sistema
+7. **settings**: Configurações por usuário
+8. **geofences**: Cercas virtuais definidas pelos usuários
+9. **reports**: Relatórios gerados no sistema
+
+### Aplicando Migrações
+
+As migrações são aplicadas automaticamente durante a inicialização da API. Para aplicar manualmente, utilize:
+
+```bash
+npm run migrate
+```
+
+### Modificando o Esquema
+
+Para modificar o esquema do banco de dados:
+
+1. Edite o arquivo `migrations/unified_schema.sql`
+2. Reinicie a aplicação ou execute `npm run migrate`
+
+Isso garante que todas as alterações sejam aplicadas de forma consistente em todos os ambientes.
+
 ## Executando a Aplicação
 
 1.  **Iniciar a Aplicação Principal (Next.js):**

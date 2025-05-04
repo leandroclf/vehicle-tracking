@@ -48,10 +48,7 @@ export async function GET(request: NextRequest) {
     // Construir consulta base
     let query = supabase
       .from('geofences')
-      .select(`
-        *,
-        vehicles:geofence_vehicles(vehicle_id)
-      `)
+      .select('*')
       .eq('user_id', userId)
       .order('name', { ascending: sort === 'asc' })
       .range(offset, offset + limit - 1);
@@ -61,10 +58,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status);
     }
     
-    // Filtrar por veículo se especificado
-    if (vehicle_id) {
-      query = query.eq('vehicles.vehicle_id', vehicle_id);
-    }
+    // Filtrar por veículo específico foi removido pois não existe a tabela de relacionamento
     
     // Executar consulta
     const { data: geofences, error, count } = await query;
@@ -125,23 +119,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Erro ao criar geocerca' }, { status: 500 });
     }
     
-    // Associar veículos se fornecidos
-    if (vehicle_ids && vehicle_ids.length > 0) {
-      const geofenceVehicles = vehicle_ids.map(vehicle_id => ({
-        geofence_id: newGeofence.id,
-        vehicle_id,
-        user_id: userId
-      }));
-      
-      const { error: linkError } = await supabase
-        .from('geofence_vehicles')
-        .insert(geofenceVehicles);
-      
-      if (linkError) {
-        console.error('Erro ao associar veículos à geocerca:', linkError);
-        // Não falhar a operação principal, apenas logar o erro
-      }
-    }
+    // A associação com veículos foi removida pois a tabela não existe
     
     // Retornar geocerca criada
     return NextResponse.json(newGeofence, { status: 201 });
@@ -164,11 +142,19 @@ export async function PUT(request: NextRequest) {
     
     // Extrair e validar corpo da requisição
     const body = await request.json();
-    const { id, vehicle_ids, ...geofenceData } = body;
     
-    if (!id) {
+    // Validar se o id existe na requisição
+    if (!body || typeof body !== 'object' || !('id' in body)) {
       return NextResponse.json({ error: 'ID da geocerca é obrigatório' }, { status: 400 });
     }
+    
+    const id = body.id as string;
+    
+    // Remover campos que não devem ser enviados para a atualização
+    const geofenceData: Record<string, unknown> = { ...body };
+    delete geofenceData.id;
+    
+    // Não precisamos mais verificar vehicle_ids pois a tabela não existe
     
     const geofenceResult = geofenceSchema.partial().safeParse(geofenceData);
     
@@ -207,38 +193,6 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Erro ao atualizar geocerca' }, { status: 500 });
     }
     
-    // Atualizar associações de veículos se fornecidos
-    if (vehicle_ids !== undefined) {
-      // Primeiro remover todas as associações existentes
-      const { error: deleteError } = await supabase
-        .from('geofence_vehicles')
-        .delete()
-        .eq('geofence_id', id);
-      
-      if (deleteError) {
-        console.error('Erro ao remover associações de veículos:', deleteError);
-        // Não falhar a operação principal, apenas logar o erro
-      }
-      
-      // Adicionar novas associações
-      if (vehicle_ids && vehicle_ids.length > 0) {
-        const geofenceVehicles = vehicle_ids.map(vehicle_id => ({
-          geofence_id: id,
-          vehicle_id,
-          user_id: userId
-        }));
-        
-        const { error: linkError } = await supabase
-          .from('geofence_vehicles')
-          .insert(geofenceVehicles);
-        
-        if (linkError) {
-          console.error('Erro ao associar veículos à geocerca:', linkError);
-          // Não falhar a operação principal, apenas logar o erro
-        }
-      }
-    }
-    
     // Retornar geocerca atualizada
     return NextResponse.json(updatedGeofence);
   } catch (error) {
@@ -258,7 +212,7 @@ export async function DELETE(request: NextRequest) {
     
     const userId = authResult.user.id;
     
-    // Extrair ID da geocerca da URL
+    // Extrair e validar parâmetros de consulta
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
     
@@ -283,17 +237,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Geocerca não encontrada' }, { status: 404 });
     }
     
-    // Excluir associações de veículos primeiro
-    const { error: deleteAssocError } = await supabase
-      .from('geofence_vehicles')
-      .delete()
-      .eq('geofence_id', id);
-    
-    if (deleteAssocError) {
-      console.error('Erro ao excluir associações de veículos:', deleteAssocError);
-      // Não falhar a operação principal, apenas logar o erro
-    }
-    
     // Excluir geocerca
     const { error: deleteError } = await supabase
       .from('geofences')
@@ -307,7 +250,7 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Retornar sucesso
-    return NextResponse.json({ message: 'Geocerca excluída com sucesso' });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });

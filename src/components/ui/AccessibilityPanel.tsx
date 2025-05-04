@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card } from './Card';
+import Card from './Card';
 import { Button } from './Button';
 import { Tooltip } from './Tooltip';
 import { Switch } from './Switch';

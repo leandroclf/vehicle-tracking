@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabaseClient';
 import { useAlertsSubscription, useVehiclesSubscription, useGeofencesSubscription } from '@/lib/hooks/useRealtimeSubscription';
@@ -15,6 +17,27 @@ export interface Notification {
   timestamp: string;
   read: boolean;
   data?: Record<string, any>;
+}
+
+// Interfaces para os tipos de dados
+interface Alert {
+  id: string;
+  message?: string;
+  timestamp?: string;
+  read?: boolean;
+  [key: string]: any;
+}
+
+interface Vehicle {
+  id: string;
+  name?: string;
+  [key: string]: any;
+}
+
+interface Geofence {
+  id: string;
+  name?: string;
+  [key: string]: any;
 }
 
 interface NotificationsContextType {
@@ -42,9 +65,60 @@ interface NotificationsProviderProps {
 export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const { user } = useAuth();
+  const userIdRef = useRef<string | null>(null);
+  
+  // Atualizar ref quando o user mudar
+  useEffect(() => {
+    userIdRef.current = user?.id || null;
+  }, [user?.id]);
 
   // Calcular o número de notificações não lidas
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Handlers para diferentes tipos de notificações
+  const handleNewAlert = useCallback((newAlert: Alert) => {
+    const notification: Notification = {
+      id: newAlert.id,
+      type: 'alert',
+      title: 'Novo Alerta',
+      message: newAlert.message || 'Você recebeu um novo alerta',
+      timestamp: newAlert.timestamp || new Date().toISOString(),
+      read: false,
+      data: newAlert
+    };
+    setNotifications(prev => [notification, ...prev]);
+  }, []);
+
+  const handleVehicleUpdate = useCallback((updatedVehicle: Vehicle) => {
+    const notification: Notification = {
+      id: `vehicle-${updatedVehicle.id}-${Date.now()}`,
+      type: 'vehicle',
+      title: 'Atualização de Veículo',
+      message: `O veículo ${updatedVehicle.name || updatedVehicle.id} foi atualizado`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      data: updatedVehicle
+    };
+    setNotifications(prev => [notification, ...prev]);
+  }, []);
+
+  const handleGeofenceUpdate = useCallback((geofence: Geofence) => {
+    const notification: Notification = {
+      id: `geofence-${geofence.id}-${Date.now()}`,
+      type: 'geofence',
+      title: 'Atualização de Geocerca',
+      message: `A geocerca ${geofence.name || geofence.id} foi atualizada`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      data: geofence
+    };
+    setNotifications(prev => [notification, ...prev]);
+  }, []);
+
+  // Usar os hooks de subscription com callbacks estáveis
+  useAlertsSubscription(handleNewAlert, 'INSERT', !!user);
+  useVehiclesSubscription(handleVehicleUpdate, 'UPDATE', !!user);
+  useGeofencesSubscription(handleGeofenceUpdate, '*', !!user);
 
   // Carregar notificações existentes
   useEffect(() => {
@@ -97,51 +171,11 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     fetchNotifications();
   }, [user]);
 
-  // Inscrever-se para novos alertas
-  useAlertsSubscription((newAlert) => {
-    const notification: Notification = {
-      id: newAlert.id,
-      type: 'alert',
-      title: 'Novo Alerta',
-      message: newAlert.message || 'Você recebeu um novo alerta',
-      timestamp: newAlert.timestamp || new Date().toISOString(),
-      read: false,
-      data: newAlert
-    };
-    setNotifications(prev => [notification, ...prev]);
-  });
-
-  // Inscrever-se para atualizações de veículos
-  useVehiclesSubscription((updatedVehicle) => {
-    const notification: Notification = {
-      id: `vehicle-${updatedVehicle.id}-${Date.now()}`,
-      type: 'vehicle',
-      title: 'Atualização de Veículo',
-      message: `O veículo ${updatedVehicle.name || updatedVehicle.id} foi atualizado`,
-      timestamp: new Date().toISOString(),
-      read: false,
-      data: updatedVehicle
-    };
-    setNotifications(prev => [notification, ...prev]);
-  });
-
-  // Inscrever-se para atualizações de geocercas
-  useGeofencesSubscription((geofence) => {
-    const notification: Notification = {
-      id: `geofence-${geofence.id}-${Date.now()}`,
-      type: 'geofence',
-      title: 'Atualização de Geocerca',
-      message: `A geocerca ${geofence.name || geofence.id} foi atualizada`,
-      timestamp: new Date().toISOString(),
-      read: false,
-      data: geofence
-    };
-    setNotifications(prev => [notification, ...prev]);
-  });
-
   // Marcar uma notificação como lida
-  const markAsRead = async (id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
     try {
+      if (!userIdRef.current) return;
+      
       // Verificar se é uma notificação do tipo alerta (que está na tabela alerts)
       const notification = notifications.find(n => n.id === id);
       if (!notification) return;
@@ -165,25 +199,25 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     } catch (error) {
       console.error('Erro ao marcar notificação como lida:', error);
     }
-  };
+  }, [notifications]);
 
   // Marcar todas as notificações como lidas
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
-      if (!user) return;
+      if (!userIdRef.current) return;
 
       // Marcar todos os alertas como lidos
       await supabase
         .from('alerts')
         .update({ read: true })
-        .eq('user_id', user.id)
+        .eq('user_id', userIdRef.current)
         .eq('read', false);
 
       // Marcar todas as notificações como lidas
       await supabase
         .from('notifications')
         .update({ read: true })
-        .eq('user_id', user.id)
+        .eq('user_id', userIdRef.current)
         .eq('read', false);
 
       // Atualizar estado local
@@ -193,10 +227,10 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     } catch (error) {
       console.error('Erro ao marcar todas notificações como lidas:', error);
     }
-  };
+  }, []);
 
   // Adicionar uma nova notificação manualmente
-  const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+  const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     const newNotification: Notification = {
       ...notification,
       id: `manual-${Date.now()}`,
@@ -205,7 +239,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     };
 
     setNotifications(prev => [newNotification, ...prev]);
-  };
+  }, []);
 
   return (
     <NotificationsContext.Provider
