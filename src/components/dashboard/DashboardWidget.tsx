@@ -1,9 +1,9 @@
 "use client";
 
 import React, { ReactNode } from 'react';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '@/lib/utils';
 import Card from '@/components/ui/Card';
-import { Maximize2, Minimize2, MoreVertical } from 'lucide-react';
+import { Maximize2, Minimize2, MoreVertical, RefreshCw } from 'lucide-react';
 
 export type WidgetSize = 'small' | 'medium' | 'large' | 'full';
 
@@ -42,6 +42,7 @@ export default function DashboardWidget({
   refreshInterval,
 }: DashboardWidgetProps) {
   const [expanded, setExpanded] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
   
   const handleToggleSize = () => {
     if (onSizeChange) {
@@ -65,12 +66,34 @@ export default function DashboardWidget({
     }
   }, [refreshInterval, onRefresh]);
 
+  const handleRefresh = () => {
+    if (onRefresh && !isRefreshing) {
+      setIsRefreshing(true);
+      onRefresh();
+      setTimeout(() => setIsRefreshing(false), 1000); // Visual feedback
+    }
+  };
+
   const headerActions = (
     <div className="flex items-center space-x-2">
+      {onRefresh && (
+        <button 
+          onClick={handleRefresh}
+          disabled={isRefreshing || isLoading}
+          className={cn(
+            "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900",
+            (isRefreshing || isLoading) && "cursor-not-allowed opacity-50"
+          )}
+          aria-label="Atualizar widget"
+        >
+          <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+        </button>
+      )}
+      
       {onSizeChange && (
         <button 
           onClick={handleToggleSize}
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
           aria-label={expanded ? "Minimizar widget" : "Expandir widget"}
         >
           {expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
@@ -80,7 +103,7 @@ export default function DashboardWidget({
       {(onConfigure || onRemove) && (
         <div className="relative group">
           <button 
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
             aria-label="Mais opções"
           >
             <MoreVertical size={16} />
@@ -89,7 +112,7 @@ export default function DashboardWidget({
             {onConfigure && (
               <button 
                 onClick={onConfigure}
-                className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left"
+                className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700"
               >
                 Configurar widget
               </button>
@@ -97,7 +120,7 @@ export default function DashboardWidget({
             {onRemove && (
               <button 
                 onClick={onRemove}
-                className="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left"
+                className="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700"
               >
                 Remover widget
               </button>
@@ -112,14 +135,14 @@ export default function DashboardWidget({
     <div className="flex items-center justify-between w-full">
       <div className="flex items-center">
         {icon && <span className="mr-2 text-gray-400">{icon}</span>}
-        <span>{title}</span>
+        <span className="font-medium">{title}</span>
       </div>
       {headerActions}
     </div>
   );
 
   return (
-    <div className={twMerge(sizeToGridClass[size], className)}>
+    <div className={cn(sizeToGridClass[size], className)}>
       <Card 
         title={widgetTitle}
         elevated

@@ -1,43 +1,14 @@
-import React, { ReactNode } from 'react';
+import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface ContainerProps {
-  children: ReactNode;
-  maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
-  padding?: boolean;
+  children: React.ReactNode;
   className?: string;
 }
 
-export const Container: React.FC<ContainerProps> = ({
-  children,
-  maxWidth = 'lg',
-  padding = true,
-  className = '',
-}) => {
-  const getMaxWidthClass = () => {
-    switch (maxWidth) {
-      case 'xs':
-        return 'max-w-xs';
-      case 'sm':
-        return 'max-w-sm';
-      case 'md':
-        return 'max-w-md';
-      case 'lg':
-        return 'max-w-lg';
-      case 'xl':
-        return 'max-w-xl';
-      case 'full':
-        return 'max-w-full';
-      default:
-        return 'max-w-lg';
-    }
-  };
-
+const Container: React.FC<ContainerProps> = ({ children, className }) => {
   return (
-    <div
-      className={`mx-auto w-full ${getMaxWidthClass()} ${
-        padding ? 'px-4 sm:px-6' : ''
-      } ${className}`}
-    >
+    <div className={cn('w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8', className)}>
       {children}
     </div>
   );

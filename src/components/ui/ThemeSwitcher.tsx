@@ -1,80 +1,55 @@
-import React, { useEffect, useState } from 'react';
-import { Sun, Moon } from 'lucide-react';
+'use client';
 
-type Theme = 'light' | 'dark' | 'system';
+import { Moon, Sun, ZapOff, Zap } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import { useState, useEffect } from 'react';
+import { useHighContrast } from './HighContrastProvider';
 
 export default function ThemeSwitcher() {
-  const [theme, setTheme] = useState<Theme>('system');
   const [mounted, setMounted] = useState(false);
+  const { theme, setTheme } = useTheme();
+  
+  // Usar try/catch para evitar erros no cliente se o contexto não estiver disponível
+  let highContrast = false;
+  let toggleHighContrast = () => {};
+  
+  try {
+    const highContrastContext = useHighContrast();
+    highContrast = highContrastContext.highContrast;
+    toggleHighContrast = highContrastContext.toggleHighContrast;
+  } catch (error) {
+    console.error('Erro ao acessar o contexto de alto contraste:', error);
+  }
 
-  // Quando o componente é montado, lê a preferência do localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    }
     setMounted(true);
   }, []);
 
-  // Efeito para aplicar a classe 'dark' ao elemento html
-  useEffect(() => {
-    if (!mounted) return;
-    
-    const root = window.document.documentElement;
-    
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches 
-        ? 'dark' 
-        : 'light';
-      
-      root.classList.toggle('dark', systemTheme === 'dark');
-    } else {
-      root.classList.toggle('dark', theme === 'dark');
-    }
-    
-    localStorage.setItem('theme', theme);
-  }, [theme, mounted]);
-  
-  // Alternar entre modos claro e escuro
-  const toggleTheme = () => {
-    if (theme === 'dark') {
-      setTheme('light');
-    } else {
-      setTheme('dark');
-    }
-  };
-  
-  // Detectar mudanças na preferência do sistema
-  useEffect(() => {
-    if (!mounted) return;
-    
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleChange = () => {
-      if (theme === 'system') {
-        document.documentElement.classList.toggle('dark', mediaQuery.matches);
-      }
-    };
-    
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme, mounted]);
-  
   if (!mounted) {
-    return null;
+    return <div className="w-9 h-9"></div>;
   }
-  
+
   return (
-    <button
-      onClick={toggleTheme}
-      className="relative p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 dark:focus:ring-offset-gray-800 focus:ring-blue-500 transition-colors"
-      aria-label={theme === 'dark' ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
-    >
-      {theme === 'dark' ? (
-        <Sun className="w-5 h-5" />
-      ) : (
-        <Moon className="w-5 h-5" />
-      )}
-    </button>
+    <div className="flex items-center space-x-2">
+      <button
+        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        aria-label={theme === 'dark' ? 'Alternar para modo claro' : 'Alternar para modo escuro'}
+      >
+        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
+      
+      <button
+        onClick={toggleHighContrast}
+        className={`w-9 h-9 flex items-center justify-center rounded-full ${
+          highContrast
+            ? 'bg-yellow-500 text-black'
+            : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
+        } hover:bg-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+        aria-label={highContrast ? 'Desativar alto contraste' : 'Ativar alto contraste'}
+      >
+        {highContrast ? <ZapOff size={18} /> : <Zap size={18} />}
+      </button>
+    </div>
   );
 } 
