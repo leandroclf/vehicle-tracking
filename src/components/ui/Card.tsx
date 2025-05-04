@@ -235,12 +235,17 @@ const CardActions = React.forwardRef<HTMLDivElement, CardActionsProps>(
       {React.Children.map(children, child => {
         if (React.isValidElement(child)) {
           // Adicionar classe para botões e links a fim de garantir área de toque adequada
-          return React.cloneElement(child, {
-            className: cn(
-              'min-h-[44px] min-w-[44px] flex items-center justify-center',
-              child.props.className
-            )
-          });
+          try {
+            return React.cloneElement(child as React.ReactElement<any>, {
+              className: cn(
+                'min-h-[44px] min-w-[44px] flex items-center justify-center',
+                child.props.className || ''
+              )
+            });
+          } catch (e) {
+            // Fallback em caso de erro ao clonar
+            return child;
+          }
         }
         return child;
       })}
@@ -250,12 +255,12 @@ const CardActions = React.forwardRef<HTMLDivElement, CardActionsProps>(
 
 CardActions.displayName = "CardActions";
 
-// Exportar todos os componentes
-export { 
-  Card as default,
-  CardHeader, 
-  CardTitle, 
-  CardDescription, 
+// Exportar componentes de forma individual para evitar duplicação
+export default Card;
+export {
+  CardHeader,
+  CardTitle,
+  CardDescription,
   CardContent,
   CardFooter,
   CardActions
