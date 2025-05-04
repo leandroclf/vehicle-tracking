@@ -191,7 +191,7 @@ export default function ProfilePage() {
       
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
         <div className="md:flex">
-          {/* Sidebar */}
+          {/* Informações do perfil */}
           <div className="md:w-1/3 bg-gray-50 dark:bg-gray-900 p-6 border-r border-gray-200 dark:border-gray-700">
             <div className="flex flex-col items-center">
               <div className="w-32 h-32 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-4">

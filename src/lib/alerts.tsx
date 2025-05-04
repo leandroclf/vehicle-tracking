@@ -1,129 +1,208 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 // Definição do tipo de alerta
-export interface Alert {
+interface Alert {
   id: number;
   vehicleId: number;
-  vehicleName: string;
-  type: 'ignition' | 'movement' | 'speed' | 'panic' | 'battery' | 'offline';
+  vehicleName?: string;
+  vehiclePlate?: string;
+  type: 'speed' | 'geofence' | 'battery' | 'engine' | 'other';
+  severity: 'info' | 'warning' | 'critical';
   message: string;
   timestamp: string;
-  read: boolean;
+  location?: {
+    lat: number;
+    lng: number;
+    address?: string;
+  };
+  acknowledged: boolean;
+  details?: Record<string, any>;
 }
 
 // Definição do contexto de alertas
 interface AlertContextType {
   alerts: Alert[];
-  unreadCount: number;
   isLoading: boolean;
   error: string | null;
-  markAsRead: (id: number) => void;
-  markAllAsRead: () => void;
-  getVehicleAlerts: (vehicleId: number) => Alert[];
+  fetchAlerts: () => Promise<void>;
+  acknowledgeAlert: (id: number) => Promise<boolean>;
+  getAlert: (id: number) => Alert | undefined;
+  addAlert: (alert: Omit<Alert, 'id'>) => Promise<Alert | null>;
+  deleteAlert: (id: number) => Promise<boolean>;
+  clearAlerts: () => void;
 }
 
-// Dados simulados de alertas
-const mockAlerts: Alert[] = [
-  {
-    id: 1,
-    vehicleId: 1,
-    vehicleName: 'Honda Civic',
-    type: 'movement',
-    message: 'Seu veículo Honda Civic começou a se mover.',
-    timestamp: '2025-04-27T14:28:00',
-    read: false
-  },
-  {
-    id: 2,
-    vehicleId: 2,
-    vehicleName: 'Toyota Corolla',
-    type: 'speed',
-    message: 'Seu veículo Toyota Corolla excedeu o limite de velocidade.',
-    timestamp: '2025-04-27T14:15:00',
-    read: false
-  },
-  {
-    id: 3,
-    vehicleId: 1,
-    vehicleName: 'Honda Civic',
-    type: 'ignition',
-    message: 'Seu veículo Honda Civic foi desligado.',
-    timestamp: '2025-04-27T13:30:00',
-    read: true
-  },
-  {
-    id: 4,
-    vehicleId: 3,
-    vehicleName: 'Yamaha Factor',
-    type: 'battery',
-    message: 'Bateria do rastreador do veículo Yamaha Factor está baixa.',
-    timestamp: '2025-04-27T12:45:00',
-    read: true
-  },
-  {
-    id: 5,
-    vehicleId: 3,
-    vehicleName: 'Yamaha Factor',
-    type: 'offline',
-    message: 'Seu veículo Yamaha Factor está offline há mais de 1 hora.',
-    timestamp: '2025-04-27T12:30:00',
-    read: true
-  }
-];
+// Valor padrão do contexto
+const defaultContextValue: AlertContextType = {
+  alerts: [],
+  isLoading: false,
+  error: null,
+  fetchAlerts: async () => {},
+  acknowledgeAlert: async () => false,
+  getAlert: () => undefined,
+  addAlert: async () => null,
+  deleteAlert: async () => false,
+  clearAlerts: () => {},
+};
 
-// Criação do contexto
-const AlertContext = createContext<AlertContextType | undefined>(undefined);
+// Contexto de alertas
+const AlertContext = createContext<AlertContextType>(defaultContextValue);
 
-// Hook personalizado para usar o contexto
+// Hook para usar o contexto de alertas
 export const useAlerts = () => {
   const context = useContext(AlertContext);
+  
   if (context === undefined) {
     throw new Error('useAlerts deve ser usado dentro de um AlertProvider');
   }
+  
   return context;
 };
 
-// Provedor de alertas
-export const AlertProvider = ({ children }: { children: ReactNode }) => {
-  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
-  const [isLoading, setIsLoading] = useState(false);
+// Provider de alertas
+export function AlertProvider({ children }: { children: ReactNode }) {
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Calcular contagem de alertas não lidos
-  const unreadCount = alerts.filter(alert => !alert.read).length;
-
-  // Marcar alerta como lido
-  const markAsRead = (id: number) => {
-    setAlerts(prevAlerts =>
-      prevAlerts.map(alert =>
-        alert.id === id ? { ...alert, read: true } : alert
-      )
-    );
+  // Buscar alertas do backend
+  const fetchAlerts = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Simulação de busca no backend
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Dados simulados
+      const mockAlerts: Alert[] = [
+        {
+          id: 1,
+          vehicleId: 1,
+          vehicleName: 'Caminhão 137',
+          vehiclePlate: 'ABC-1234',
+          type: 'speed',
+          severity: 'critical',
+          message: 'Veículo ultrapassou limite de velocidade (120km/h)',
+          timestamp: new Date().toISOString(),
+          location: {
+            lat: -23.550520,
+            lng: -46.633308,
+            address: 'Av. Paulista, 1000, São Paulo - SP'
+          },
+          acknowledged: false
+        },
+        {
+          id: 2,
+          vehicleId: 2,
+          vehicleName: 'Van 203',
+          vehiclePlate: 'DEF-5678',
+          type: 'geofence',
+          severity: 'warning',
+          message: 'Veículo saiu da área permitida',
+          timestamp: new Date(Date.now() - 30 * 60000).toISOString(),
+          acknowledged: false
+        }
+      ];
+      
+      setAlerts(mockAlerts);
+    } catch (err) {
+      console.error('Erro ao buscar alertas:', err);
+      setError('Falha ao carregar alertas. Tente novamente mais tarde.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Marcar todos os alertas como lidos
-  const markAllAsRead = () => {
-    setAlerts(prevAlerts =>
-      prevAlerts.map(alert => ({ ...alert, read: true }))
-    );
+  // Carregar alertas ao inicializar
+  useEffect(() => {
+    fetchAlerts();
+  }, []);
+
+  // Acknowledge um alerta (marcar como visualizado/tratado)
+  const acknowledgeAlert = async (id: number): Promise<boolean> => {
+    try {
+      // Simulação de chamada ao backend
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setAlerts(prevAlerts => 
+        prevAlerts.map(alert => 
+          alert.id === id ? { ...alert, acknowledged: true } : alert
+        )
+      );
+      
+      return true;
+    } catch (err) {
+      console.error('Erro ao reconhecer alerta:', err);
+      return false;
+    }
   };
 
-  // Obter alertas de um veículo específico
-  const getVehicleAlerts = (vehicleId: number): Alert[] => {
-    return alerts.filter(alert => alert.vehicleId === vehicleId);
+  // Obter um alerta específico
+  const getAlert = (id: number): Alert | undefined => {
+    return alerts.find(alert => alert.id === id);
   };
 
-  const value = {
+  // Adicionar um novo alerta
+  const addAlert = async (alertData: Omit<Alert, 'id'>): Promise<Alert | null> => {
+    try {
+      // Simulação de chamada ao backend
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const newAlert: Alert = {
+        ...alertData,
+        id: Math.max(0, ...alerts.map(a => a.id)) + 1,
+      };
+      
+      setAlerts(prev => [...prev, newAlert]);
+      
+      return newAlert;
+    } catch (err) {
+      console.error('Erro ao adicionar alerta:', err);
+      return null;
+    }
+  };
+
+  // Excluir um alerta
+  const deleteAlert = async (id: number): Promise<boolean> => {
+    try {
+      // Simulação de chamada ao backend
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setAlerts(prev => prev.filter(alert => alert.id !== id));
+      
+      return true;
+    } catch (err) {
+      console.error('Erro ao excluir alerta:', err);
+      return false;
+    }
+  };
+
+  // Limpar todos os alertas
+  const clearAlerts = () => {
+    setAlerts([]);
+  };
+
+  // Valor do contexto
+  const value: AlertContextType = {
     alerts,
-    unreadCount,
     isLoading,
     error,
-    markAsRead,
-    markAllAsRead,
-    getVehicleAlerts
+    fetchAlerts,
+    acknowledgeAlert,
+    getAlert,
+    addAlert,
+    deleteAlert,
+    clearAlerts
   };
 
-  return <AlertContext.Provider value={value}>{children}</AlertContext.Provider>;
-};
+  return (
+    <AlertContext.Provider value={value}>
+      {children}
+    </AlertContext.Provider>
+  );
+}
+
+export default AlertProvider;

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Map } from 'lucide-react';
 import DashboardWidget from '../DashboardWidget';
 import { useRouter } from 'next/navigation';
+import MapPreview from '@/components/map/MapPreview';
 
 interface MapPreviewWidgetProps {
   previewOnly?: boolean;
@@ -29,12 +30,8 @@ export default function MapPreviewWidget({ previewOnly = true }: MapPreviewWidge
       isLoading={isLoading}
     >
       <div className="w-full h-64 md:h-72 lg:h-80 relative">
-        {/* Este iframe seria substituído pelo componente de mapa real integrado ao Google Maps */}
-        <iframe 
-          src="/dashboard/map?embed=true" 
-          className="w-full h-full border-0 rounded-lg" 
-          title="Mapa de veículos"
-        ></iframe>
+        {/* Componente de MapPreview ao invés do iframe */}
+        <MapPreview />
         
         {/* Overlay para o modo preview */}
         {previewOnly && (

@@ -23,9 +23,10 @@ import {
 interface SidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
+  className?: string;
 }
 
-export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed = false, onToggle, className = '' }: SidebarProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -89,7 +90,8 @@ export default function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
             "fixed bottom-0 left-0 right-0 z-40 transform bg-white dark:bg-gray-800 shadow-lg rounded-t-xl" : 
             "bg-gray-100 dark:bg-gray-800 min-h-screen shadow-md h-full",
           isMobile && !isMobileMenuOpen ? "translate-y-full" : "translate-y-0",
-          !isMobile && collapsed ? "w-16" : isMobile ? "w-full" : "w-64"
+          !isMobile && collapsed ? "w-16" : isMobile ? "w-full" : "w-64",
+          className
         )}
       >
         {/* Desktop Toggle Button */}

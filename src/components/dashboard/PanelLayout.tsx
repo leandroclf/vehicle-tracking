@@ -10,6 +10,7 @@ interface PanelLayoutProps {
   sidebarWidth?: number;
   contentWidth?: number;
   className?: string;
+  hideSidebar?: boolean;
 }
 
 /**
@@ -22,8 +23,17 @@ export function PanelLayout({
   sidebarCollapsed = false,
   sidebarWidth = 20,
   contentWidth = 80,
-  className = ''
+  className = '',
+  hideSidebar = false
 }: PanelLayoutProps) {
+  if (hideSidebar) {
+    return (
+      <div className={`h-full w-full ${className}`}>
+        {content}
+      </div>
+    );
+  }
+
   return (
     <PanelGroup direction="horizontal" className={`h-full w-full ${className}`}>
       {/* Painel lateral */}
