@@ -247,3 +247,9 @@
     }
   }
 }
+
+/* Evitar duplicação de sidebars */
+.main-sidebar ~ aside,
+.main-sidebar ~ div aside {
+  display: none !important;
+}

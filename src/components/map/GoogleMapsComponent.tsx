@@ -67,6 +67,8 @@ interface GoogleMapsComponentProps {
   onGeofenceUpdate?: (geofence: Geofence) => void;
   onGeofenceDelete?: (geofenceId: string) => void;
   onRoutePointClick?: (point: RoutePoint) => void;
+  showVehicleIndicators?: boolean;
+  showGroupedVehicles?: boolean;
 }
 
 // Componente de loading
@@ -96,7 +98,9 @@ function GoogleMapsComponent({
   onGeofenceCreate,
   onGeofenceUpdate,
   onGeofenceDelete,
-  onRoutePointClick
+  onRoutePointClick,
+  showVehicleIndicators = false,
+  showGroupedVehicles = false
 }: GoogleMapsComponentProps) {
   // Carregar o script do Google Maps
   const { isLoaded, loadError } = useLoadScript({

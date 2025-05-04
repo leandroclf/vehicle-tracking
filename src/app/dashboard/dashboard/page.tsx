@@ -45,6 +45,33 @@ export default function DashboardPage() {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
+  // Detectar e remover qualquer sidebar duplicado
+  useEffect(() => {
+    // Função para remover menu lateral duplicado
+    const removeDuplicatedSidebar = () => {
+      // Aguardar um pequeno período para garantir que o DOM esteja carregado
+      setTimeout(() => {
+        // Encontrar todos os elementos da barra lateral secundária dentro desta página
+        const secondarySidebars = document.querySelectorAll('.fake-sidebar');
+        if (secondarySidebars.length > 0) {
+          secondarySidebars.forEach(sidebar => {
+            // Esconder a barra lateral secundária mas manter o elemento para layout
+            sidebar.classList.add('opacity-0', 'w-0', 'overflow-hidden', 'pointer-events-none');
+          });
+        }
+      }, 100);
+    };
+
+    // Executar a função ao carregar a página
+    removeDuplicatedSidebar();
+
+    // Criar um observador de mutação para detectar mudanças no DOM
+    const observer = new MutationObserver(removeDuplicatedSidebar);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, []);
+
   // Salvar layout quando alterado
   const handleLayoutSave = (layout: number[]) => {
     if (isSmallScreen) {

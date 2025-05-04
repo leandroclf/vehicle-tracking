@@ -1,381 +1,143 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-// Definição do tipo de relatório
 export interface Report {
-  id: number;
+  id: string;
   title: string;
-  vehicleId: number | null; // null para "todos os veículos"
-  vehicleName: string;
+  type: 'daily' | 'weekly' | 'monthly' | 'custom';
   startDate: string;
   endDate: string;
-  createdAt: string;
-  format: 'PDF' | 'Excel';
-  status: 'processing' | 'completed' | 'failed';
-  reportType: 'movement' | 'stops' | 'geofence' | 'speed' | 'mileage' | 'consumption' | 'behavior' | 'efficiency' | 'custom';
+  vehicles: number[] | 'all';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
   downloadUrl?: string;
-  schedule?: {
-    frequency: 'daily' | 'weekly' | 'monthly';
-    dayOfWeek?: number; // 0-6, para relatórios semanais
-    dayOfMonth?: number; // 1-31, para relatórios mensais
-    nextRunDate: string;
-  };
-  customFields?: string[]; // Para relatórios customizáveis
-  customFilters?: {
-    field: string;
-    operator: 'eq' | 'gt' | 'lt' | 'gte' | 'lte' | 'contains';
-    value: string | number;
-  }[];
+  createdAt: string;
+  filters?: Record<string, any>;
+  format: 'pdf' | 'csv' | 'xlsx';
+  size?: number;
 }
 
-// Definição do contexto de relatórios
+export interface ReportType {
+  id: string;
+  name: string;
+}
+
 interface ReportContextType {
   reports: Report[];
   isLoading: boolean;
   error: string | null;
-  generateReport: (params: {
-    title: string;
-    vehicleId: number | null;
-    vehicleName: string;
-    startDate: string;
-    endDate: string;
-    format: 'PDF' | 'Excel';
-    reportType: Report['reportType'];
-    customFields?: string[];
-    customFilters?: Report['customFilters'];
-  }) => Promise<Report>;
-  getVehicleReports: (vehicleId: number) => Report[];
-  scheduleReport: (reportId: number, schedule: Report['schedule']) => Promise<void>;
-  cancelSchedule: (reportId: number) => Promise<void>;
-  deleteReport: (reportId: number) => Promise<void>;
-  getReportTypes: () => { id: string; name: string }[];
+  fetchReports: () => Promise<void>;
+  getReport: (id: string) => Report | undefined;
+  generateReport: (reportData: Omit<Report, 'id' | 'status' | 'createdAt' | 'downloadUrl'>) => Promise<Report | null>;
+  downloadReport: (id: string) => Promise<string | null>;
+  deleteReport: (id: string) => Promise<boolean>;
+  getReportTypes: () => ReportType[];
 }
 
-// Dados simulados de relatórios
-const mockReports: Report[] = [
-  {
-    id: 1,
-    title: 'Relatório de Rotas',
-    vehicleId: 1,
-    vehicleName: 'Honda Civic',
-    startDate: '2025-04-15',
-    endDate: '2025-04-22',
-    createdAt: '2025-04-22T10:30:00',
-    format: 'PDF',
-    status: 'completed',
-    reportType: 'movement',
-    downloadUrl: '#'
-  },
-  {
-    id: 2,
-    title: 'Relatório de Uso do Veículo',
-    vehicleId: 2,
-    vehicleName: 'Toyota Corolla',
-    startDate: '2025-04-01',
-    endDate: '2025-04-15',
-    createdAt: '2025-04-15T14:45:00',
-    format: 'Excel',
-    status: 'completed',
-    reportType: 'mileage',
-    downloadUrl: '#'
-  },
-  {
-    id: 3,
-    title: 'Relatório de Eventos',
-    vehicleId: null,
-    vehicleName: 'Todos os veículos',
-    startDate: '2025-03-01',
-    endDate: '2025-03-31',
-    createdAt: '2025-04-01T09:15:00',
-    format: 'PDF',
-    status: 'completed',
-    reportType: 'geofence',
-    downloadUrl: '#',
-    schedule: {
-      frequency: 'monthly',
-      dayOfMonth: 1,
-      nextRunDate: '2025-05-01T00:00:00'
-    }
-  },
-  {
-    id: 4,
-    title: 'Relatório de Consumo de Combustível',
-    vehicleId: 3,
-    vehicleName: 'Fiat Strada',
-    startDate: '2025-03-01',
-    endDate: '2025-03-31',
-    createdAt: '2025-04-01T09:15:00',
-    format: 'PDF',
-    status: 'completed',
-    reportType: 'consumption',
-    downloadUrl: '#'
-  },
-  {
-    id: 5,
-    title: 'Análise de Comportamento do Motorista',
-    vehicleId: 1,
-    vehicleName: 'Honda Civic',
-    startDate: '2025-03-01',
-    endDate: '2025-03-31',
-    createdAt: '2025-04-01T09:15:00',
-    format: 'PDF',
-    status: 'completed',
-    reportType: 'behavior',
-    downloadUrl: '#'
-  },
-  {
-    id: 6,
-    title: 'Relatório de Eficiência Operacional',
-    vehicleId: null,
-    vehicleName: 'Todos os veículos',
-    startDate: '2025-03-01',
-    endDate: '2025-03-31',
-    createdAt: '2025-04-01T09:15:00',
-    format: 'Excel',
-    status: 'completed',
-    reportType: 'efficiency',
-    downloadUrl: '#'
-  },
-  {
-    id: 7,
-    title: 'Relatório Customizado',
-    vehicleId: 2,
-    vehicleName: 'Toyota Corolla',
-    startDate: '2025-03-01',
-    endDate: '2025-03-31',
-    createdAt: '2025-04-01T09:15:00',
-    format: 'PDF',
-    status: 'completed',
-    reportType: 'custom',
-    downloadUrl: '#',
-    customFields: ['data', 'velocidade', 'rpm', 'temperatura_motor', 'consumo_instantaneo'],
-    customFilters: [
-      { field: 'velocidade', operator: 'gt', value: 80 },
-      { field: 'temperatura_motor', operator: 'gte', value: 90 }
-    ]
-  }
-];
+// Valor padrão do contexto
+const defaultContextValue: ReportContextType = {
+  reports: [],
+  isLoading: false,
+  error: null,
+  fetchReports: async () => {},
+  getReport: () => undefined,
+  generateReport: async () => null,
+  downloadReport: async () => null,
+  deleteReport: async () => false,
+  getReportTypes: () => []
+};
 
-// Criação do contexto
-const ReportContext = createContext<ReportContextType | undefined>(undefined);
+// Criar o contexto
+const ReportContext = createContext<ReportContextType>(defaultContextValue);
 
-// Hook personalizado para usar o contexto
+// Hook para usar o contexto
 export const useReports = () => {
   const context = useContext(ReportContext);
+  
   if (context === undefined) {
     throw new Error('useReports deve ser usado dentro de um ReportProvider');
   }
+  
   return context;
 };
 
-// Provedor de relatórios
-export const ReportProvider = ({ children }: { children: ReactNode }) => {
-  const [reports, setReports] = useState<Report[]>(mockReports);
-  const [isLoading, setIsLoading] = useState(false);
+// Provider de relatórios
+export function ReportProvider({ children }: { children: ReactNode }) {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Verificar relatórios agendados
+  // Buscar relatórios ao montar o componente
   useEffect(() => {
-    const checkScheduledReports = () => {
-      const now = new Date();
+    fetchReports();
+  }, []);
+
+  // Buscar relatórios da API
+  const fetchReports = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Simulação de uma chamada API
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Verificar se algum relatório agendado precisa ser executado
-      reports.forEach(report => {
-        if (report.schedule && new Date(report.schedule.nextRunDate) <= now) {
-          // Criar novo relatório baseado no agendamento
-          generateReport({
-            title: report.title,
-            vehicleId: report.vehicleId,
-            vehicleName: report.vehicleName,
-            startDate: calculateStartDate(report.schedule.frequency),
-            endDate: new Date().toISOString().split('T')[0],
-            format: report.format,
-            reportType: report.reportType,
-            customFields: report.customFields,
-            customFilters: report.customFilters
-          });
-          
-          // Atualizar a data da próxima execução
-          scheduleReport(report.id, {
-            ...report.schedule,
-            nextRunDate: calculateNextRunDate(report.schedule)
-          });
+      // Dados simulados de relatórios
+      const mockReports: Report[] = [
+        {
+          id: '1',
+          title: 'Relatório diário de atividades',
+          type: 'daily',
+          startDate: '2025-04-26T00:00:00Z',
+          endDate: '2025-04-26T23:59:59Z',
+          vehicles: [1, 2, 3],
+          status: 'completed',
+          downloadUrl: '/api/reports/1/download',
+          createdAt: '2025-04-27T08:30:00Z',
+          format: 'pdf',
+          size: 1250000
+        },
+        {
+          id: '2',
+          title: 'Relatório semanal de atividades',
+          type: 'weekly',
+          startDate: '2025-04-20T00:00:00Z',
+          endDate: '2025-04-26T23:59:59Z',
+          vehicles: 'all',
+          status: 'completed',
+          downloadUrl: '/api/reports/2/download',
+          createdAt: '2025-04-27T07:15:00Z',
+          format: 'xlsx',
+          size: 3540000
+        },
+        {
+          id: '3',
+          title: 'Relatório personalizado',
+          type: 'custom',
+          startDate: '2025-04-01T00:00:00Z',
+          endDate: '2025-04-26T23:59:59Z',
+          vehicles: [1],
+          status: 'processing',
+          createdAt: '2025-04-27T09:45:00Z',
+          format: 'csv'
         }
-      });
-    };
-    
-    // Verificar a cada 15 minutos
-    const intervalId = setInterval(checkScheduledReports, 15 * 60 * 1000);
-    
-    // Verificar na inicialização
-    checkScheduledReports();
-    
-    return () => clearInterval(intervalId);
-  }, [reports]);
-
-  // Calcular data de início com base na frequência
-  const calculateStartDate = (frequency: 'daily' | 'weekly' | 'monthly'): string => {
-    const today = new Date();
-    let startDate = new Date();
-    
-    switch (frequency) {
-      case 'daily':
-        startDate.setDate(today.getDate() - 1);
-        break;
-      case 'weekly':
-        startDate.setDate(today.getDate() - 7);
-        break;
-      case 'monthly':
-        startDate.setMonth(today.getMonth() - 1);
-        break;
-    }
-    
-    return startDate.toISOString().split('T')[0];
-  };
-
-  // Calcular próxima data de execução
-  const calculateNextRunDate = (schedule: Report['schedule']): string => {
-    if (!schedule) return '';
-    
-    const nextDate = new Date();
-    
-    switch (schedule.frequency) {
-      case 'daily':
-        nextDate.setDate(nextDate.getDate() + 1);
-        break;
-      case 'weekly':
-        nextDate.setDate(nextDate.getDate() + 7);
-        if (schedule.dayOfWeek !== undefined) {
-          // Ajustar para o dia da semana específico
-          const currentDay = nextDate.getDay();
-          const daysToAdd = (schedule.dayOfWeek - currentDay + 7) % 7;
-          nextDate.setDate(nextDate.getDate() + daysToAdd);
-        }
-        break;
-      case 'monthly':
-        nextDate.setMonth(nextDate.getMonth() + 1);
-        if (schedule.dayOfMonth !== undefined) {
-          // Ajustar para o dia do mês específico
-          nextDate.setDate(Math.min(schedule.dayOfMonth, getDaysInMonth(nextDate.getFullYear(), nextDate.getMonth())));
-        }
-        break;
-    }
-    
-    return nextDate.toISOString();
-  };
-
-  // Obter o número de dias em um mês
-  const getDaysInMonth = (year: number, month: number): number => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  // Gerar novo relatório
-  const generateReport = async (params: {
-    title: string;
-    vehicleId: number | null;
-    vehicleName: string;
-    startDate: string;
-    endDate: string;
-    format: 'PDF' | 'Excel';
-    reportType: Report['reportType'];
-    customFields?: string[];
-    customFilters?: Report['customFilters'];
-  }): Promise<Report> => {
-    setIsLoading(true);
-    try {
-      // Simulação de geração de relatório
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      ];
       
-      const newReport: Report = {
-        id: reports.length + 1,
-        ...params,
-        createdAt: new Date().toISOString(),
-        status: 'completed',
-        downloadUrl: '#'
-      };
-      
-      setReports(prevReports => [...prevReports, newReport]);
-      return newReport;
-    } catch (error) {
-      setError('Erro ao gerar relatório');
-      console.error('Erro ao gerar relatório:', error);
-      throw error;
+      setReports(mockReports);
+    } catch (err) {
+      console.error('Erro ao buscar relatórios:', err);
+      setError('Falha ao carregar relatórios. Tente novamente mais tarde.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Agendar relatório periódico
-  const scheduleReport = async (reportId: number, schedule: Report['schedule']): Promise<void> => {
-    setIsLoading(true);
-    try {
-      // Em um cenário real, aqui chamaria a API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setReports(prevReports => 
-        prevReports.map(report => 
-          report.id === reportId ? { ...report, schedule } : report
-        )
-      );
-    } catch (error) {
-      setError('Erro ao agendar relatório');
-      console.error('Erro ao agendar relatório:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+  // Obter um relatório específico
+  const getReport = (id: string): Report | undefined => {
+    return reports.find(report => report.id === id);
   };
 
-  // Cancelar agendamento
-  const cancelSchedule = async (reportId: number): Promise<void> => {
-    setIsLoading(true);
-    try {
-      // Em um cenário real, aqui chamaria a API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setReports(prevReports => 
-        prevReports.map(report => 
-          report.id === reportId ? { ...report, schedule: undefined } : report
-        )
-      );
-    } catch (error) {
-      setError('Erro ao cancelar agendamento');
-      console.error('Erro ao cancelar agendamento:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Excluir relatório
-  const deleteReport = async (reportId: number): Promise<void> => {
-    setIsLoading(true);
-    try {
-      // Em um cenário real, aqui chamaria a API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setReports(prevReports => 
-        prevReports.filter(report => report.id !== reportId)
-      );
-    } catch (error) {
-      setError('Erro ao excluir relatório');
-      console.error('Erro ao excluir relatório:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Obter relatórios de um veículo específico
-  const getVehicleReports = (vehicleId: number): Report[] => {
-    return reports.filter(report => 
-      report.vehicleId === vehicleId || report.vehicleId === null
-    );
-  };
-
-  // Obter tipos de relatório disponíveis
-  const getReportTypes = () => {
+  // Obter tipos de relatórios disponíveis
+  const getReportTypes = (): ReportType[] => {
     return [
       { id: 'movement', name: 'Movimentação de Veículos' },
       { id: 'stops', name: 'Paradas' },
@@ -389,17 +151,100 @@ export const ReportProvider = ({ children }: { children: ReactNode }) => {
     ];
   };
 
-  const value = {
+  // Gerar um novo relatório
+  const generateReport = async (reportData: Omit<Report, 'id' | 'status' | 'createdAt' | 'downloadUrl'>): Promise<Report | null> => {
+    setIsLoading(true);
+    
+    try {
+      // Simulação de uma chamada API
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Criar novo relatório
+      const newReport: Report = {
+        ...reportData,
+        id: `report-${Date.now()}`,
+        status: 'processing',
+        createdAt: new Date().toISOString()
+      };
+      
+      setReports(prev => [...prev, newReport]);
+      
+      // Simular processamento do relatório
+      setTimeout(() => {
+        setReports(prev => 
+          prev.map(report => 
+            report.id === newReport.id
+              ? { 
+                  ...report, 
+                  status: 'completed',
+                  downloadUrl: `/api/reports/${newReport.id}/download`
+                }
+              : report
+          )
+        );
+      }, 5000);
+      
+      return newReport;
+    } catch (err) {
+      console.error('Erro ao gerar relatório:', err);
+      setError('Falha ao gerar relatório. Tente novamente mais tarde.');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Baixar um relatório
+  const downloadReport = async (id: string): Promise<string | null> => {
+    const report = reports.find(r => r.id === id);
+    
+    if (!report || report.status !== 'completed' || !report.downloadUrl) {
+      return null;
+    }
+    
+    try {
+      // Simulação do download
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      return report.downloadUrl;
+    } catch (err) {
+      console.error('Erro ao baixar relatório:', err);
+      return null;
+    }
+  };
+
+  // Excluir um relatório
+  const deleteReport = async (id: string): Promise<boolean> => {
+    try {
+      // Simulação de uma chamada API
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setReports(prev => prev.filter(report => report.id !== id));
+      return true;
+    } catch (err) {
+      console.error('Erro ao excluir relatório:', err);
+      return false;
+    }
+  };
+
+  // Valor do contexto
+  const value: ReportContextType = {
     reports,
     isLoading,
     error,
+    fetchReports,
+    getReport,
     generateReport,
-    getVehicleReports,
-    scheduleReport,
-    cancelSchedule,
+    downloadReport,
     deleteReport,
     getReportTypes
   };
 
-  return <ReportContext.Provider value={value}>{children}</ReportContext.Provider>;
-};
+  return (
+    <ReportContext.Provider value={value}>
+      {children}
+    </ReportContext.Provider>
+  );
+}
+
+export default ReportProvider;

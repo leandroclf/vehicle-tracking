@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Tabs from '@/components/ui/Tabs';
 import Badge from '@/components/ui/Badge';
 import Dropdown from '@/components/ui/Dropdown';
@@ -15,6 +16,10 @@ import { Vehicle } from '@/lib/vehicles';
 import MapCustomizationPanel from '@/components/map/MapCustomizationPanel';
 
 export default function MapPage() {
+  // Verificar se estamos em modo embed (para uso em iframe)
+  const searchParams = useSearchParams();
+  const isEmbed = searchParams.get('embed') === 'true';
+
   // Estados para controlar o mapa
   const [mapType, setMapType] = useState<'roadmap' | 'satellite' | 'hybrid' | 'terrain'>('roadmap');
   const [showTraffic, setShowTraffic] = useState(false);
@@ -486,6 +491,34 @@ export default function MapPage() {
     },
   ];
 
+  // Se estamos no modo embed, renderizar apenas o mapa sem controles
+  if (isEmbed) {
+    return (
+      <div className="w-full h-full">
+        <GoogleMapsComponent
+          mapType={mapType}
+          showTraffic={showTraffic}
+          showGeofences={showGeofences}
+          editableGeofences={false}
+          showRouteHistory={false}
+          routeHistoryVehicleId={null}
+          routeHistoryStartDate={null}
+          routeHistoryEndDate={null}
+          selectedVehicleId={null}
+          onVehicleSelect={() => {}}
+          onGeofenceSelect={() => {}}
+          onGeofenceCreate={() => {}}
+          onGeofenceUpdate={() => {}}
+          onGeofenceDelete={() => {}}
+          onRoutePointClick={() => {}}
+          showVehicleIndicators={true}
+          showGroupedVehicles={true}
+        />
+      </div>
+    );
+  }
+
+  // Renderização normal para a visualização completa da página
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Monitoramento</h1>
