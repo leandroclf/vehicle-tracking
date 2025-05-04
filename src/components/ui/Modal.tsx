@@ -80,13 +80,16 @@ const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div 
         ref={modalRef}
-        className={`${sizeClasses[size]} w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden`}
+        className={`${sizeClasses[size]} w-full bg-background text-foreground border border-border rounded-lg shadow-lg overflow-hidden`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
       >
-        <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">{title}</h3>
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h3 id="modal-title" className="text-lg font-medium">{title}</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-500 focus:outline-none"
+            className="text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             aria-label="Fechar"
           >
             <X size={20} />

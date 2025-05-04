@@ -1,14 +1,20 @@
 import '@/styles/globals.css'
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import { ThemeProvider } from '@/components/ui/ThemeProvider'
 import { HighContrastProvider } from '@/components/ui/HighContrastProvider'
-import Layout from '@/components/layout/Layout'
-import NotificationProvider from '@/components/ui/NotificationProvider'
 import { AuthProvider } from '@/lib/auth'
+import NotificationProvider from '@/components/ui/NotificationProvider'
+import { SidebarProvider } from '@/lib/sidebar-context'
+import Layout from '@/components/layout/Layout'
+import { AccessibleNotificationsProvider } from '@/components/ui/AccessibleNotifications'
+import { KeyboardNavigationProvider } from '@/components/ui/KeyboardNavigationProvider'
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Yukz - Rastreamento Veicular',
-  description: 'Plataforma de rastreamento veicular com monitoramento em tempo real',
+  title: 'YUKZ Tracker',
+  description: 'Sistema de rastreamento de veículos',
 }
 
 export default function RootLayout({
@@ -27,7 +33,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans">
+      <body className={inter.className}>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -35,13 +41,19 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <HighContrastProvider>
-            <AuthProvider>
-              <NotificationProvider>
-                <Layout>
-                  {children}
-                </Layout>
-              </NotificationProvider>
-            </AuthProvider>
+            <AccessibleNotificationsProvider>
+              <AuthProvider>
+                <NotificationProvider>
+                  <KeyboardNavigationProvider>
+                    <SidebarProvider>
+                      <Layout>
+                        {children}
+                      </Layout>
+                    </SidebarProvider>
+                  </KeyboardNavigationProvider>
+                </NotificationProvider>
+              </AuthProvider>
+            </AccessibleNotificationsProvider>
           </HighContrastProvider>
         </ThemeProvider>
       </body>

@@ -1,0 +1,370 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Card } from './Card';
+import { Button } from './Button';
+import { Tooltip } from './Tooltip';
+import { Switch } from './Switch';
+import { Slider } from './Slider';
+import { Eye, EyeOff, Type, ZoomIn, Contrast, Moon, Sun, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+
+interface AccessibilityPanelProps {
+  onClose?: () => void;
+}
+
+export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
+  const [largeText, setLargeText] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [textSpacing, setTextSpacing] = useState(false);
+  const [focusIndicators, setFocusIndicators] = useState(true);
+  const [fontScale, setFontScale] = useState(100);
+  
+  // Aplicar configurações de acessibilidade
+  useEffect(() => {
+    // Carregar configurações salvas
+    const savedSettings = localStorage.getItem('accessibility-settings');
+    if (savedSettings) {
+      const settings = JSON.parse(savedSettings);
+      setHighContrast(settings.highContrast || false);
+      setLargeText(settings.largeText || false);
+      setReducedMotion(settings.reducedMotion || false);
+      setTextSpacing(settings.textSpacing || false);
+      setFocusIndicators(settings.focusIndicators !== undefined ? settings.focusIndicators : true);
+      setFontScale(settings.fontScale || 100);
+    }
+    
+    // Aplicar configurações ao carregar
+    applyAccessibilitySettings();
+  }, []);
+  
+  // Aplicar configurações quando alteradas
+  useEffect(() => {
+    applyAccessibilitySettings();
+    saveSettings();
+  }, [highContrast, largeText, reducedMotion, textSpacing, focusIndicators, fontScale]);
+  
+  // Salvar configurações no localStorage
+  const saveSettings = () => {
+    const settings = {
+      highContrast,
+      largeText,
+      reducedMotion,
+      textSpacing,
+      focusIndicators,
+      fontScale
+    };
+    localStorage.setItem('accessibility-settings', JSON.stringify(settings));
+  };
+  
+  // Aplicar configurações de acessibilidade ao DOM
+  const applyAccessibilitySettings = () => {
+    const htmlElement = document.documentElement;
+    
+    // Alto contraste
+    if (highContrast) {
+      htmlElement.classList.add('high-contrast-mode');
+    } else {
+      htmlElement.classList.remove('high-contrast-mode');
+    }
+    
+    // Texto grande
+    if (largeText) {
+      htmlElement.classList.add('large-text-mode');
+    } else {
+      htmlElement.classList.remove('large-text-mode');
+    }
+    
+    // Movimento reduzido
+    if (reducedMotion) {
+      htmlElement.classList.add('reduced-motion');
+    } else {
+      htmlElement.classList.remove('reduced-motion');
+    }
+    
+    // Espaçamento de texto
+    if (textSpacing) {
+      htmlElement.classList.add('increased-spacing');
+    } else {
+      htmlElement.classList.remove('increased-spacing');
+    }
+    
+    // Indicadores de foco
+    if (focusIndicators) {
+      htmlElement.classList.add('focus-visible');
+    } else {
+      htmlElement.classList.remove('focus-visible');
+    }
+    
+    // Escala de fonte
+    htmlElement.style.setProperty('--font-scale', `${fontScale}%`);
+  };
+  
+  // Resetar configurações para o padrão
+  const resetSettings = () => {
+    setHighContrast(false);
+    setLargeText(false);
+    setReducedMotion(false);
+    setTextSpacing(false);
+    setFocusIndicators(true);
+    setFontScale(100);
+  };
+  
+  // Alternar painel
+  const togglePanel = () => {
+    setIsOpen(!isOpen);
+  };
+  
+  // Fechar painel
+  const handleClose = () => {
+    setIsOpen(false);
+    if (onClose) onClose();
+  };
+
+  return (
+    <>
+      {/* Botão flutuante de acessibilidade */}
+      <button
+        onClick={togglePanel}
+        className="fixed bottom-20 right-4 z-50 p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+        aria-label="Abrir configurações de acessibilidade"
+      >
+        <Eye className="h-6 w-6" />
+      </button>
+      
+      {/* Painel de acessibilidade */}
+      <div 
+        className={`fixed inset-y-0 right-0 z-50 w-80 bg-white dark:bg-gray-900 shadow-xl transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        aria-hidden={!isOpen}
+        role="dialog"
+        aria-labelledby="accessibility-title"
+      >
+        <Card className="h-full flex flex-col overflow-hidden border-l border-gray-200 dark:border-gray-700">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h2 id="accessibility-title" className="text-lg font-medium text-gray-800 dark:text-gray-200 flex items-center">
+              <Eye className="mr-2 h-5 w-5 text-blue-500" />
+              Acessibilidade
+            </h2>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={handleClose}
+              aria-label="Fechar painel de acessibilidade"
+            >
+              <PanelLeftClose className="h-5 w-5" />
+            </Button>
+          </div>
+          
+          <div className="flex-1 overflow-auto p-4 space-y-6">
+            {/* Alto Contraste */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Contrast className="h-5 w-5 text-gray-700 dark:text-gray-300 mr-2" />
+                  <label htmlFor="high-contrast" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Alto Contraste
+                  </label>
+                </div>
+                <Switch 
+                  id="high-contrast" 
+                  checked={highContrast} 
+                  onCheckedChange={setHighContrast}
+                  aria-label="Ativar alto contraste"
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Aumenta o contraste de cores para melhor legibilidade.
+              </p>
+            </div>
+            
+            {/* Texto Grande */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Type className="h-5 w-5 text-gray-700 dark:text-gray-300 mr-2" />
+                  <label htmlFor="large-text" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Texto Grande
+                  </label>
+                </div>
+                <Switch 
+                  id="large-text" 
+                  checked={largeText} 
+                  onCheckedChange={setLargeText}
+                  aria-label="Ativar texto grande"
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Aumenta o tamanho do texto em toda a interface.
+              </p>
+            </div>
+            
+            {/* Escala de Fonte */}
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <ZoomIn className="h-5 w-5 text-gray-700 dark:text-gray-300 mr-2" />
+                <label htmlFor="font-scale" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Escala de Fonte: {fontScale}%
+                </label>
+              </div>
+              <Slider
+                id="font-scale"
+                min={80}
+                max={150}
+                step={5}
+                value={[fontScale]}
+                onValueChange={(value: number[]) => setFontScale(value[0])}
+                aria-label="Ajustar escala de fonte"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Ajuste o tamanho da fonte conforme sua preferência.
+              </p>
+            </div>
+            
+            {/* Movimento Reduzido */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Moon className="h-5 w-5 text-gray-700 dark:text-gray-300 mr-2" />
+                  <label htmlFor="reduced-motion" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Movimento Reduzido
+                  </label>
+                </div>
+                <Switch 
+                  id="reduced-motion" 
+                  checked={reducedMotion} 
+                  onCheckedChange={setReducedMotion}
+                  aria-label="Ativar movimento reduzido"
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Reduz ou elimina animações e transições.
+              </p>
+            </div>
+            
+            {/* Espaçamento de Texto */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Type className="h-5 w-5 text-gray-700 dark:text-gray-300 mr-2" />
+                  <label htmlFor="text-spacing" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Espaçamento de Texto
+                  </label>
+                </div>
+                <Switch 
+                  id="text-spacing" 
+                  checked={textSpacing} 
+                  onCheckedChange={setTextSpacing}
+                  aria-label="Ativar espaçamento de texto aumentado"
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Aumenta o espaçamento entre linhas e parágrafos.
+              </p>
+            </div>
+            
+            {/* Indicadores de Foco */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Eye className="h-5 w-5 text-gray-700 dark:text-gray-300 mr-2" />
+                  <label htmlFor="focus-indicators" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Indicadores de Foco
+                  </label>
+                </div>
+                <Switch 
+                  id="focus-indicators" 
+                  checked={focusIndicators} 
+                  onCheckedChange={setFocusIndicators}
+                  aria-label="Ativar indicadores de foco visíveis"
+                />
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Destaca visualmente o elemento em foco ao navegar pelo teclado.
+              </p>
+            </div>
+          </div>
+          
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+            <Button 
+              variant="info" 
+              className="w-full justify-center"
+              onClick={resetSettings}
+              aria-label="Restaurar configurações padrão"
+            >
+              Restaurar Padrões
+            </Button>
+          </div>
+        </Card>
+      </div>
+      
+      {/* Estilos globais para acessibilidade */}
+      <style jsx global>{`
+        /* Alto contraste */
+        .high-contrast-mode {
+          --background: white;
+          --foreground: black;
+          --primary: #0000FF;
+          --primary-foreground: white;
+          --muted: #f0f0f0;
+          --muted-foreground: black;
+          --border: black;
+        }
+        
+        .dark .high-contrast-mode {
+          --background: black;
+          --foreground: white;
+          --primary: #FFFF00;
+          --primary-foreground: black;
+          --muted: #333333;
+          --muted-foreground: white;
+          --border: white;
+        }
+        
+        /* Texto grande */
+        .large-text-mode {
+          font-size: 120%;
+        }
+        
+        /* Escala de fonte */
+        :root {
+          --font-scale: 100%;
+        }
+        
+        html {
+          font-size: var(--font-scale);
+        }
+        
+        /* Movimento reduzido */
+        .reduced-motion * {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+        
+        /* Espaçamento de texto */
+        .increased-spacing {
+          --line-height-multiplier: 1.5;
+          --letter-spacing: 0.05em;
+        }
+        
+        .increased-spacing p, 
+        .increased-spacing li,
+        .increased-spacing h1,
+        .increased-spacing h2,
+        .increased-spacing h3,
+        .increased-spacing h4,
+        .increased-spacing h5,
+        .increased-spacing h6 {
+          line-height: calc(1.5 * var(--line-height-multiplier));
+          letter-spacing: var(--letter-spacing);
+        }
+        
+        /* Indicadores de foco */
+        .focus-visible :focus-visible {
+          outline: 3px solid var(--primary) !important;
+          outline-offset: 2px !important;
+        }
+      `}</style>
+    </>
+  );
+}

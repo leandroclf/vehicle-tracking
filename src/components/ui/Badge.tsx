@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 export interface BadgeProps {
   children: React.ReactNode;
@@ -21,36 +22,36 @@ const Badge: React.FC<BadgeProps> = ({
   className = '',
   onClick,
 }) => {
-  // Mapeia as variantes para as cores do Tailwind
+  // Mapeia as variantes para as cores do Tailwind com variáveis CSS
   const variantClasses = {
     default: outline
-      ? 'bg-transparent text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600'
-      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
+      ? 'bg-transparent text-foreground border-border'
+      : 'bg-muted text-muted-foreground',
     primary: outline
-      ? 'bg-transparent text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400'
-      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400',
+      ? 'bg-transparent text-primary border-primary'
+      : 'bg-primary/10 text-primary',
     success: outline
-      ? 'bg-transparent text-green-600 dark:text-green-400 border-green-600 dark:border-green-400'
+      ? 'bg-transparent text-green-600 border-green-600'
       : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400',
     warning: outline
-      ? 'bg-transparent text-yellow-600 dark:text-yellow-400 border-yellow-600 dark:border-yellow-400'
+      ? 'bg-transparent text-yellow-600 border-yellow-600'
       : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400',
     danger: outline
-      ? 'bg-transparent text-red-600 dark:text-red-400 border-red-600 dark:border-red-400'
-      : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400',
+      ? 'bg-transparent text-destructive border-destructive'
+      : 'bg-destructive/10 text-destructive',
     info: outline
-      ? 'bg-transparent text-indigo-600 dark:text-indigo-400 border-indigo-600 dark:border-indigo-400'
-      : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-400',
+      ? 'bg-transparent text-blue-600 border-blue-600'
+      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400',
   };
 
   // Cores para o indicador de ponto
   const dotColors = {
-    default: 'bg-gray-500 dark:bg-gray-400',
-    primary: 'bg-blue-500 dark:bg-blue-400',
-    success: 'bg-green-500 dark:bg-green-400',
-    warning: 'bg-yellow-500 dark:bg-yellow-400',
-    danger: 'bg-red-500 dark:bg-red-400',
-    info: 'bg-indigo-500 dark:bg-indigo-400',
+    default: 'bg-muted-foreground',
+    primary: 'bg-primary',
+    success: 'bg-green-500',
+    warning: 'bg-yellow-500',
+    danger: 'bg-destructive',
+    info: 'bg-blue-500',
   };
 
   // Dimensões com base no tamanho
@@ -60,26 +61,23 @@ const Badge: React.FC<BadgeProps> = ({
     lg: 'text-sm px-3 py-1.5',
   };
 
-  // Concatena as classes para o badge
-  const badgeClasses = `
-    inline-flex items-center font-medium
-    ${outline ? 'border ' : ''}
-    ${rounded ? 'rounded-full' : 'rounded'}
-    ${sizeClasses[size]}
-    ${variantClasses[variant]}
-    ${onClick ? 'cursor-pointer hover:opacity-80' : ''}
-    ${className}
-  `;
-
   return (
     <span 
-      className={badgeClasses}
+      className={cn(
+        'inline-flex items-center font-medium',
+        outline && 'border',
+        rounded ? 'rounded-full' : 'rounded',
+        sizeClasses[size],
+        variantClasses[variant],
+        onClick && 'cursor-pointer hover:opacity-80',
+        className
+      )}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
     >
       {dot && (
         <span 
-          className={`mr-1.5 inline-block h-2 w-2 flex-shrink-0 rounded-full ${dotColors[variant]}`}
+          className={cn('mr-1.5 inline-block h-2 w-2 flex-shrink-0 rounded-full', dotColors[variant])}
           aria-hidden="true"
         />
       )}

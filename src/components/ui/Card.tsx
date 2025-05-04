@@ -15,15 +15,15 @@ export function Card({ title, children, footer, className, elevated = false }: C
   return (
     <div 
       className={cn(
-        'rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-850 overflow-hidden h-full flex flex-col',
-        elevated && 'shadow-md dark:shadow-gray-900/30',
+        'rounded-lg border border-border bg-card text-card-foreground overflow-hidden h-full flex flex-col',
+        elevated && 'shadow-md',
         className
       )}
     >
       {title && (
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
+        <div className="p-4 border-b border-border bg-muted/40">
           {typeof title === 'string' ? (
-            <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">{title}</h3>
+            <h3 className="text-base font-medium">{title}</h3>
           ) : (
             title
           )}
@@ -35,7 +35,7 @@ export function Card({ title, children, footer, className, elevated = false }: C
       </div>
       
       {footer && (
-        <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40">
+        <div className="p-4 border-t border-border bg-muted/40">
           {footer}
         </div>
       )}

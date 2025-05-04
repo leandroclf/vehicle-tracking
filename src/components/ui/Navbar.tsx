@@ -45,7 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <nav
-      className={`w-full bg-white border-b border-gray-200 ${
+      className={`w-full bg-background border-b border-border ${
         sticky ? 'sticky top-0 z-10' : ''
       } ${transparent ? 'bg-transparent' : ''} ${className}`}
     >
@@ -67,8 +67,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         onClick={() => toggleDropdown(item.label)}
                         className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${
                           item.active
-                            ? 'bg-blue-500 text-white'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                         }`}
                       >
                         {item.label}
@@ -89,12 +89,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </svg>
                       </button>
                       {openDropdown === item.label && (
-                        <div className="absolute z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
+                        <div className="absolute z-10 mt-2 w-48 origin-top-right rounded-md bg-background border border-border py-1 shadow-lg">
                           {item.dropdownItems.map((dropdownItem) => (
                             <Link
                               key={dropdownItem.label}
                               href={dropdownItem.href}
-                              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                              className="block px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
                               onClick={() => setOpenDropdown(null)}
                             >
                               {dropdownItem.label}
@@ -108,8 +108,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                       href={item.href}
                       className={`px-3 py-2 text-sm font-medium rounded-md ${
                         item.active
-                          ? 'bg-blue-500 text-white'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                       }`}
                     >
                       {item.label}
@@ -130,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               type="button"
               onClick={toggleMobileMenu}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+              className="inline-flex items-center justify-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring"
             >
               <span className="sr-only">Abrir menu principal</span>
               {mobileMenuOpen ? (
@@ -181,8 +181,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onClick={() => toggleDropdown(item.label)}
                       className={`w-full flex justify-between items-center px-3 py-2 text-base font-medium rounded-md ${
                         item.active
-                          ? 'bg-blue-500 text-white'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                       }`}
                     >
                       {item.label}
@@ -208,7 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <Link
                             key={dropdownItem.label}
                             href={dropdownItem.href}
-                            className="block px-3 py-2 text-base font-medium text-gray-600 hover:bg-gray-100 rounded-md"
+                            className="block px-3 py-2 text-base font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md"
                             onClick={() => {
                               setOpenDropdown(null);
                               setMobileMenuOpen(false);
@@ -225,8 +225,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                     href={item.href}
                     className={`block px-3 py-2 text-base font-medium rounded-md ${
                       item.active
-                        ? 'bg-blue-500 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-foreground hover:bg-accent hover:text-accent-foreground'
                     }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -237,7 +237,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             ))}
           </div>
           {rightContent && (
-            <div className="border-t border-gray-200 pt-4 pb-3">
+            <div className="border-t border-border pt-4 pb-3">
               <div className="px-2">{rightContent}</div>
             </div>
           )}

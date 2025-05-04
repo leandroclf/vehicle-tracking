@@ -1,195 +1,211 @@
 'use client';
 
-import { useState } from 'react';
-import { useAuth } from '@/lib/auth';
+import React from 'react';
+import { Menu, Bell, User, Moon, Sun, LogOut, Truck, MapPin, AlertTriangle, FileText, Settings, Search } from 'lucide-react';
 import Link from 'next/link';
-import { Menu, X, User, LogOut, MapPin, Bell, Settings, BarChart, ChevronLeft, ChevronRight } from 'lucide-react';
-import ThemeSwitcher from '@/components/ui/ThemeSwitcher';
+import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
-import { Tooltip } from '@/components/ui/Tooltip';
+import { useSidebar } from '@/lib/sidebar-context';
+import { GlobalSearch } from '@/components/navigation/GlobalSearch';
+import { ContextualNavigation, NavigationProvider } from '@/components/navigation/ContextualNavigation';
+import { KeyboardShortcuts } from '@/components/navigation/KeyboardShortcuts';
 
 interface HeaderProps {
-  onToggleSidebar?: () => void;
   className?: string;
+  onToggleSidebar?: () => void;
 }
 
-export default function Header({ onToggleSidebar, className }: HeaderProps) {
-  const { user, logout, isAuthenticated } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+// Definição das seções de navegação
+const navigationSections = [
+  {
+    id: 'vehicles',
+    title: 'Veículos',
+    path: '/dashboard/vehicles',
+    shortcut: 'v',
+    icon: <Truck className="h-4 w-4" />,
+    children: [
+      {
+        id: 'vehicles-list',
+        title: 'Lista de Veículos',
+        path: '/dashboard/vehicles',
+        shortcut: 'l',
+        icon: <Truck className="h-4 w-4" />
+      },
+      {
+        id: 'vehicles-map',
+        title: 'Mapa de Veículos',
+        path: '/dashboard/map',
+        shortcut: 'm',
+        icon: <MapPin className="h-4 w-4" />
+      },
+      {
+        id: 'vehicles-maintenance',
+        title: 'Manutenção',
+        path: '/dashboard/vehicles/maintenance',
+        shortcut: 'n',
+        icon: <Settings className="h-4 w-4" />
+      }
+    ]
+  },
+  {
+    id: 'geofences',
+    title: 'Geocercas',
+    path: '/dashboard/geofences',
+    shortcut: 'g',
+    icon: <MapPin className="h-4 w-4" />,
+    children: [
+      {
+        id: 'geofences-list',
+        title: 'Lista de Geocercas',
+        path: '/dashboard/geofences',
+        shortcut: 'g',
+        icon: <MapPin className="h-4 w-4" />
+      },
+      {
+        id: 'geofences-create',
+        title: 'Criar Geocerca',
+        path: '/dashboard/geofences/create',
+        shortcut: 'c',
+        icon: <MapPin className="h-4 w-4" />
+      }
+    ]
+  },
+  {
+    id: 'alerts',
+    title: 'Alertas',
+    path: '/dashboard/alerts',
+    shortcut: 'a',
+    icon: <AlertTriangle className="h-4 w-4" />,
+    children: [
+      {
+        id: 'alerts-active',
+        title: 'Alertas Ativos',
+        path: '/dashboard/alerts',
+        shortcut: 'a',
+        icon: <AlertTriangle className="h-4 w-4" />
+      },
+      {
+        id: 'alerts-history',
+        title: 'Histórico de Alertas',
+        path: '/dashboard/alerts/history',
+        shortcut: 'h',
+        icon: <AlertTriangle className="h-4 w-4" />
+      }
+    ]
+  },
+  {
+    id: 'reports',
+    title: 'Relatórios',
+    path: '/dashboard/reports',
+    shortcut: 'r',
+    icon: <FileText className="h-4 w-4" />,
+    children: [
+      {
+        id: 'reports-list',
+        title: 'Lista de Relatórios',
+        path: '/dashboard/reports',
+        shortcut: 'l',
+        icon: <FileText className="h-4 w-4" />
+      },
+      {
+        id: 'reports-create',
+        title: 'Criar Relatório',
+        path: '/dashboard/reports/create',
+        shortcut: 'c',
+        icon: <FileText className="h-4 w-4" />
+      }
+    ]
+  }
+];
+
+export default function Header({ className = '' }: HeaderProps) {
+  const { toggleSidebar, isMobile } = useSidebar();
+  const { theme, setTheme } = useTheme();
+  
+  const isDark = theme === 'dark';
 
   return (
-    <header className={cn("bg-[#00315c] dark:bg-[#001a33] text-white shadow-md sticky top-0 z-50", className)}>
-      <div className="yukz-container py-3 flex justify-between items-center">
-        {/* Logo & Toggle */}
-        <div className="flex items-center">
-          {/* Sidebar Toggle (Desktop) */}
-          <Tooltip content="Alternar barra lateral">
+    <NavigationProvider sections={navigationSections}>
+      <header className={cn(
+        "flex flex-col h-auto bg-white dark:bg-gray-800 shadow-sm fixed top-0 left-0 right-0 z-30",
+        className
+      )}>
+        <div className="flex items-center justify-between h-16 px-4">
+          <div className="flex items-center space-x-4">
             <button
-              onClick={onToggleSidebar}
-              className="text-gray-300 hover:text-white mr-3 hidden md:flex focus:outline-none focus:ring-2 focus:ring-blue-400 rounded p-1.5"
+              onClick={toggleSidebar}
+              className="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               aria-label="Alternar barra lateral"
+              aria-expanded={!isMobile}
             >
-              <Menu size={20} />
+              <Menu className="w-5 h-5" />
             </button>
-          </Tooltip>
+            
+            <Link href="/dashboard/dashboard" className="text-xl font-bold text-blue-600 dark:text-blue-400">
+              YUKZ Track<span className="text-gray-800 dark:text-gray-300">er</span>
+            </Link>
+            
+            {/* Componente de Pesquisa Global */}
+            <GlobalSearch className="ml-4 flex" />
+          </div>
           
-          {/* Logo */}
-          <Link href="/dashboard/dashboard" className="text-xl font-bold flex items-center">
-            <span className="mr-2 text-[#faa631]">Yukz</span>
-            <span className="text-sm font-normal hidden sm:inline">Rastreamento</span>
-          </Link>
-        </div>
-
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-6">
-          {isAuthenticated && (
-            <>
-              <Link href="/dashboard/dashboard" className="hover:text-[#faa631] flex items-center transition-colors">
-                <BarChart className="w-4 h-4 mr-1" />
-                Dashboard
-              </Link>
-              <Link href="/dashboard/map" className="hover:text-[#faa631] flex items-center transition-colors">
-                <MapPin className="w-4 h-4 mr-1" />
-                Mapa
-              </Link>
-              <Link href="/dashboard/alerts" className="hover:text-[#faa631] flex items-center transition-colors">
-                <Bell className="w-4 h-4 mr-1" />
-                Alertas
-              </Link>
-              <Link href="/dashboard/settings" className="hover:text-[#faa631] flex items-center transition-colors">
-                <Settings className="w-4 h-4 mr-1" />
-                Configurações
-              </Link>
-            </>
-          )}
-        </nav>
-
-        {/* User Info & Actions */}
-        <div className="hidden md:flex items-center space-x-4">
-          {/* Theme Switcher */}
-          <ThemeSwitcher />
-          
-          {isAuthenticated && user ? (
-            <>
-              <Tooltip content="Ver perfil">
-                <Link 
-                  href="/dashboard/profile" 
-                  className="flex items-center text-sm bg-[#007db8]/30 px-3 py-1 rounded-full transition-colors hover:bg-[#007db8]/50"
-                >
-                  <User className="w-4 h-4 mr-1" />
-                  {user.name || user.email}
-                </Link>
-              </Tooltip>
-              <Tooltip content="Encerrar sessão">
-                <button
-                  onClick={logout}
-                  className="flex items-center px-3 py-1 bg-[#faa631] hover:bg-[#d69028] rounded transition duration-300 text-sm"
-                  aria-label="Encerrar sessão"
-                >
-                  <LogOut className="w-4 h-4 mr-1" />
-                  Sair
-                </button>
-              </Tooltip>
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="hover:text-[#faa631] transition-colors">Login</Link>
-              <Link href="/register" className="px-3 py-1 bg-[#faa631] hover:bg-[#d69028] rounded transition duration-300 text-sm">Novo Usuário</Link>
-            </>
-          )}
-        </div>
-
-        {/* Mobile Menu Button */}
-        <div className="md:hidden flex items-center">
-          <ThemeSwitcher />
-          <button 
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
-            aria-label="Alternar menu" 
-            className="text-white ml-3 p-1.5"
-          >
-            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-[#00315c] dark:bg-[#001a33] border-t border-[#007db8]/30 py-4 absolute w-full z-50">
-          <div className="yukz-container flex flex-col space-y-4">
-            {isAuthenticated ? (
-              <>
-                <Link 
-                  href="/dashboard/dashboard" 
-                  className="flex items-center px-4 py-2 hover:bg-[#007db8]/20 rounded-md"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <BarChart className="w-5 h-5 mr-3" />
-                  Dashboard
-                </Link>
-                <Link 
-                  href="/dashboard/map" 
-                  className="flex items-center px-4 py-2 hover:bg-[#007db8]/20 rounded-md"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <MapPin className="w-5 h-5 mr-3" />
-                  Mapa
-                </Link>
-                <Link 
-                  href="/dashboard/alerts" 
-                  className="flex items-center px-4 py-2 hover:bg-[#007db8]/20 rounded-md"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Bell className="w-5 h-5 mr-3" />
-                  Alertas
-                </Link>
-                <Link 
-                  href="/dashboard/settings" 
-                  className="flex items-center px-4 py-2 hover:bg-[#007db8]/20 rounded-md"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <Settings className="w-5 h-5 mr-3" />
-                  Configurações
-                </Link>
-                <div className="border-t border-[#007db8]/30 pt-4 mt-2">
-                  <div className="flex items-center px-4 py-2 text-sm">
-                    <User className="w-5 h-5 mr-3" />
-                    {user?.name || user?.email}
-                  </div>
-                  <button
-                    onClick={() => {
-                      logout();
-                      setIsMobileMenuOpen(false);
-                    }}
-                    className="flex items-center w-full px-4 py-2 text-left text-[#faa631] hover:bg-[#007db8]/20 rounded-md"
-                  >
-                    <LogOut className="w-5 h-5 mr-3" />
-                    Sair
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <Link 
-                  href="/login" 
-                  className="flex items-center px-4 py-2 hover:bg-[#007db8]/20 rounded-md"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <User className="w-5 h-5 mr-3" />
-                  Login
-                </Link>
-                <Link 
-                  href="/register" 
-                  className="flex items-center px-4 py-2 bg-[#faa631] text-white rounded-md mx-4"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Novo Usuário
-                </Link>
-              </>
-            )}
+          <div className="flex items-center space-x-2">
+            {/* Botão de pesquisa para dispositivos móveis */}
+            <button
+              onClick={() => {
+                // Disparar evento para abrir a pesquisa global
+                const event = new CustomEvent('open-global-search');
+                window.dispatchEvent(event);
+              }}
+              className="md:hidden p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              aria-label="Abrir pesquisa global"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+            
+            {/* Componente de Atalhos de Teclado */}
+            <KeyboardShortcuts className="hidden md:flex mr-2" />
+            
+            <button
+              onClick={() => setTheme(isDark ? 'light' : 'dark')}
+              className="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              aria-label={isDark ? "Alternar para tema claro" : "Alternar para tema escuro"}
+            >
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+            
+            <Link 
+              href="/dashboard/alerts"
+              className="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 relative"
+              aria-label="Notificações"
+            >
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" aria-hidden="true"></span>
+              <span className="sr-only">1 notificação não lida</span>
+            </Link>
+            
+            <Link
+              href="/dashboard/profile"
+              className="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              aria-label="Perfil"
+            >
+              <User className="w-5 h-5" />
+            </Link>
+            
+            <Link
+              href="/login"
+              className="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+              aria-label="Sair"
+            >
+              <LogOut className="w-5 h-5" />
+            </Link>
           </div>
         </div>
-      )}
-    </header>
+        
+        {/* Navegação Contextual */}
+        <ContextualNavigation />
+      </header>
+    </NavigationProvider>
   );
 }
 

@@ -2,13 +2,12 @@
 
 import React from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { useSidebar } from '@/lib/sidebar-context';
 
 interface PanelLayoutProps {
   sidebar: React.ReactNode;
   content: React.ReactNode;
   sidebarCollapsed?: boolean;
-  sidebarWidth?: number;
-  contentWidth?: number;
   className?: string;
   hideSidebar?: boolean;
 }
@@ -20,12 +19,15 @@ interface PanelLayoutProps {
 export function PanelLayout({
   sidebar,
   content,
-  sidebarCollapsed = false,
-  sidebarWidth = 20,
-  contentWidth = 80,
+  sidebarCollapsed,
   className = '',
   hideSidebar = false
 }: PanelLayoutProps) {
+  const { isSidebarCollapsed, sidebarLayout, updateSidebarLayout } = useSidebar();
+  
+  // Use o valor do contexto, mas permita sobrescrever com a prop se fornecida
+  const isCollapsed = sidebarCollapsed !== undefined ? sidebarCollapsed : isSidebarCollapsed;
+
   if (hideSidebar) {
     return (
       <div className={`h-full w-full ${className}`}>
@@ -35,28 +37,36 @@ export function PanelLayout({
   }
 
   return (
-    <PanelGroup direction="horizontal" className={`h-full w-full ${className}`}>
+    <PanelGroup 
+      direction="horizontal" 
+      className={`h-full w-full ${className}`}
+      onLayout={updateSidebarLayout}
+    >
       {/* Painel lateral */}
       <Panel 
-        defaultSize={sidebarWidth} 
-        minSize={sidebarCollapsed ? 5 : 15} 
+        defaultSize={sidebarLayout[0]} 
+        minSize={isCollapsed ? 5 : 15} 
         maxSize={25}
         collapsible={true}
-        className="h-full"
+        className={`h-full transition-all duration-300 ${isCollapsed ? 'max-w-[70px]' : ''}`}
       >
-        {sidebar}
+        <div className="h-full overflow-auto">
+          {sidebar}
+        </div>
       </Panel>
       
       {/* Separador redimensionável */}
-      <PanelResizeHandle 
-        className="w-1 bg-gray-300 dark:bg-gray-700 hover:bg-blue-400 dark:hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:bg-blue-500" 
-        tabIndex={0}
-        aria-label="Redimensionar painel lateral"
-      />
+      {!isCollapsed && (
+        <PanelResizeHandle 
+          className="w-1 bg-gray-300 dark:bg-gray-700 hover:bg-blue-400 dark:hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:bg-blue-500" 
+          tabIndex={0}
+          aria-label="Redimensionar painel lateral"
+        />
+      )}
       
       {/* Conteúdo principal */}
       <Panel 
-        defaultSize={contentWidth}
+        defaultSize={sidebarLayout[1]}
         className="h-full"
       >
         {content}

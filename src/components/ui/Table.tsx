@@ -107,25 +107,25 @@ const Table = <T extends Record<string, any>>({
   if (isLoading) {
     return (
       <div className="w-full overflow-x-auto">
-        <table className={`min-w-full divide-y divide-gray-200 dark:divide-gray-700 ${className}`}>
-          <thead className="bg-gray-50 dark:bg-gray-700">
+        <table className={`min-w-full divide-y divide-border ${className}`}>
+          <thead className="bg-muted">
             <tr>
               {columns.map((column, index) => (
                 <th 
                   key={index}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider"
                 >
                   {column.header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="bg-background divide-y divide-border">
             {Array.from({ length: 5 }).map((_, index) => (
               <tr key={index}>
                 {columns.map((_, colIndex) => (
                   <td key={colIndex} className="px-6 py-4 whitespace-nowrap">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+                    <div className="h-4 bg-muted rounded animate-pulse"></div>
                   </td>
                 ))}
               </tr>
@@ -140,13 +140,13 @@ const Table = <T extends Record<string, any>>({
   if (data.length === 0) {
     return (
       <div className="w-full overflow-x-auto">
-        <table className={`min-w-full divide-y divide-gray-200 dark:divide-gray-700 ${className}`}>
-          <thead className="bg-gray-50 dark:bg-gray-700">
+        <table className={`min-w-full divide-y divide-border ${className}`}>
+          <thead className="bg-muted">
             <tr>
               {columns.map((column, index) => (
                 <th 
                   key={index}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider"
                 >
                   {column.header}
                 </th>
@@ -154,7 +154,7 @@ const Table = <T extends Record<string, any>>({
             </tr>
           </thead>
         </table>
-        <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+        <div className="text-center py-6 text-muted-foreground">
           {emptyMessage}
         </div>
       </div>
@@ -164,13 +164,13 @@ const Table = <T extends Record<string, any>>({
   return (
     <div className="w-full">
       <div className="overflow-x-auto">
-        <table className={`min-w-full divide-y divide-gray-200 dark:divide-gray-700 ${className}`}>
-          <thead className="bg-gray-100 dark:bg-gray-800">
+        <table className={`min-w-full divide-y divide-border ${className}`}>
+          <thead className="bg-muted">
             <tr>
               {columns.map((column, index) => (
                 <th 
                   key={index}
-                  className={`px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-100 uppercase tracking-wider ${column.className || ''}`}
+                  className={`px-6 py-3 text-left text-xs font-medium text-foreground uppercase tracking-wider ${column.className || ''}`}
                 >
                   <div className="flex items-center">
                     {column.header}
@@ -195,17 +195,17 @@ const Table = <T extends Record<string, any>>({
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="bg-background divide-y divide-border">
             {paginatedData.map((item, index) => (
               <tr 
                 key={`${item[idKey]}-${index}`}
-                className={onRowClick ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : ''}
+                className={onRowClick ? 'cursor-pointer hover:bg-muted' : ''}
                 onClick={() => onRowClick && onRowClick(item)}
               >
                 {columns.map((column, colIndex) => (
                   <td 
                     key={colIndex} 
-                    className={`px-6 py-4 whitespace-nowrap text-gray-800 dark:text-gray-200 ${column.className || ''}`}
+                    className={`px-6 py-4 whitespace-nowrap text-foreground ${column.className || ''}`}
                   >
                     {renderCell(column, item)}
                   </td>
@@ -217,10 +217,10 @@ const Table = <T extends Record<string, any>>({
       </div>
       
       {pagination && totalPages > 1 && (
-        <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6">
+        <div className="px-4 py-3 flex items-center justify-between border-t border-border sm:px-6">
           <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
+              <p className="text-sm text-muted-foreground">
                 Mostrando <span className="font-medium">{((currentPage - 1) * itemsPerPage) + 1}</span> a{' '}
                 <span className="font-medium">
                   {Math.min(currentPage * itemsPerPage, data.length)}
@@ -233,7 +233,7 @@ const Table = <T extends Record<string, any>>({
                 <button
                   onClick={() => goToPage(1)}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-input bg-background text-sm font-medium text-muted-foreground hover:bg-accent disabled:opacity-50"
                 >
                   <span className="sr-only">Primeira</span>
                   <ChevronsLeft size={16} />
@@ -241,7 +241,7 @@ const Table = <T extends Record<string, any>>({
                 <button
                   onClick={() => goToPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                  className="relative inline-flex items-center px-2 py-2 border border-input bg-background text-sm font-medium text-muted-foreground hover:bg-accent disabled:opacity-50"
                 >
                   <span className="sr-only">Anterior</span>
                   <ChevronLeft size={16} />

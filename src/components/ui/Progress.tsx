@@ -27,7 +27,7 @@ const sizeClasses = {
   lg: 'h-3',
 };
 
-const Progress: React.FC<ProgressProps> = ({
+export function Progress({
   value,
   max = 100,
   label,
@@ -37,7 +37,7 @@ const Progress: React.FC<ProgressProps> = ({
   className,
   valueClassName,
   labelClassName,
-}) => {
+}: ProgressProps) {
   // Certifica-se de que o valor está entre 0 e max
   const normalizedValue = Math.max(0, Math.min(value, max));
   
@@ -73,6 +73,6 @@ const Progress: React.FC<ProgressProps> = ({
       </div>
     </div>
   );
-};
+}
 
 export default Progress; 
