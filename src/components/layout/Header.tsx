@@ -9,6 +9,7 @@ import { useSidebar } from '@/lib/sidebar-context';
 import { GlobalSearch } from '@/components/navigation/GlobalSearch';
 import { ContextualNavigation, NavigationProvider } from '@/components/navigation/ContextualNavigation';
 import { KeyboardShortcuts } from '@/components/navigation/KeyboardShortcuts';
+import NotificationsBell from '@/components/notifications/NotificationsBell';
 
 interface HeaderProps {
   className?: string;
@@ -174,15 +175,8 @@ export default function Header({ className = '' }: HeaderProps) {
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             
-            <Link 
-              href="/dashboard/alerts"
-              className="p-2 rounded-full text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 relative"
-              aria-label="Notificações"
-            >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" aria-hidden="true"></span>
-              <span className="sr-only">1 notificação não lida</span>
-            </Link>
+            {/* Componente de Notificações em Tempo Real */}
+            <NotificationsBell className="text-gray-700 dark:text-gray-300" />
             
             <Link
               href="/dashboard/profile"

@@ -9,6 +9,7 @@ import { SidebarProvider } from '@/lib/sidebar-context'
 import Layout from '@/components/layout/Layout'
 import { AccessibleNotificationsProvider } from '@/components/ui/AccessibleNotifications'
 import { KeyboardNavigationProvider } from '@/components/ui/KeyboardNavigationProvider'
+import NotificationsProvider from '@/components/notifications/NotificationsProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -43,11 +44,12 @@ export default function RootLayout({
           <HighContrastProvider>
             <AccessibleNotificationsProvider>
               <AuthProvider>
-                <NotificationProvider>
-                  <KeyboardNavigationProvider>
-                    <SidebarProvider>
-                      <Layout>
-                        {children}
+                <NotificationsProvider>
+                  <NotificationProvider>
+                    <KeyboardNavigationProvider>
+                      <SidebarProvider>
+                        <Layout>
+                          {children}
                       </Layout>
                     </SidebarProvider>
                   </KeyboardNavigationProvider>

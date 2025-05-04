@@ -29,15 +29,16 @@ export const useSidebar = () => useContext(SidebarContext);
 // Provedor do contexto
 interface SidebarProviderProps {
   children: ReactNode;
+  initialMobile?: boolean;
 }
 
 export const SIDEBAR_LAYOUT_KEY = 'sidebar-layout-sizing';
 export const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
 
-export function SidebarProvider({ children }: SidebarProviderProps) {
+export function SidebarProvider({ children, initialMobile = false }: SidebarProviderProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [sidebarLayout, setSidebarLayout] = useState<number[]>([15, 85]);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(initialMobile);
 
   // Verificar o tamanho da tela
   useEffect(() => {
@@ -51,11 +52,20 @@ export function SidebarProvider({ children }: SidebarProviderProps) {
       }
     };
     
-    checkIfMobile();
+    // Se não foi fornecido initialMobile, detectamos automaticamente
+    if (!initialMobile) {
+      checkIfMobile();
+    } else {
+      // Se fornecido initialMobile como true, iniciamos com sidebar colapsado
+      if (initialMobile) {
+        setIsSidebarCollapsed(true);
+      }
+    }
+    
     window.addEventListener('resize', checkIfMobile);
     
     return () => window.removeEventListener('resize', checkIfMobile);
-  }, []);
+  }, [initialMobile]);
 
   // Carregar estado do sidebar do localStorage
   useEffect(() => {
