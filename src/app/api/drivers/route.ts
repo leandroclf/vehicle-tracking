@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
 import { supabase } from '@/lib/supabaseClient';
 import { z } from 'zod';
+import { errorResponse, successResponse, handleApiError } from '@/lib/api-helpers';
+import { v4 as uuidv4 } from 'uuid';
 
 // Esquema para validar parâmetros de consulta
 const querySchema = z.object({
@@ -77,60 +79,69 @@ function successResponse(data: any, message?: string, status: number = 200) {
   }, { status });
 }
 
-// Handler para listar motoristas (GET)
+/**
+ * @swagger
+ * /api/drivers:
+ *   get:
+ *     summary: Listar motoristas
+ *     description: Retorna a lista de motoristas cadastrados
+ *     tags:
+ *       - Motoristas
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: status
+ *         in: query
+ *         description: Filtrar por status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive, vacation, medical_leave]
+ *       - name: limit
+ *         in: query
+ *         description: Número máximo de registros
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - name: offset
+ *         in: query
+ *         description: Offset para paginação
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: Lista de motoristas
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
+    // Verificar autenticação
     const authResult = await verifyAuth(request);
-    if (!authResult.user) {
-      return errorResponse(
-        authResult.error || 'Não autorizado',
-        undefined,
-        authResult.status || 401
-      );
+    if (!authResult.success) {
+      return errorResponse('Não autorizado', undefined, 401);
     }
     
-    const userId = authResult.user.id;
+    const { userId } = authResult;
     
-    // Extrair e validar parâmetros de consulta
+    // Obter parâmetros de consulta
     const url = new URL(request.url);
-    const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
+    const status = url.searchParams.get('status');
+    const limit = parseInt(url.searchParams.get('limit') || '10');
+    const offset = parseInt(url.searchParams.get('offset') || '0');
     
-    if (!queryResult.success) {
-      return errorResponse(
-        'Parâmetros de consulta inválidos', 
-        queryResult.error.format()
-      );
-    }
-    
-    const { limit, offset, status, sort, search, license_type } = queryResult.data;
-    
-    // Construir consulta base
+    // Construir consulta
     let query = supabase
       .from('drivers')
-      .select(`
-        *,
-        driver_vehicles:driver_vehicle_assignments(
-          vehicle:vehicle_id(id, name, license_plate)
-        )
-      `)
+      .select('*, vehicles!driver_vehicle(*)', { count: 'exact' })
       .eq('user_id', userId)
-      .order('name', { ascending: sort === 'asc' })
       .range(offset, offset + limit - 1);
     
-    // Aplicar filtro de status se não for 'all'
-    if (status !== 'all') {
+    // Aplicar filtros opcionais
+    if (status) {
       query = query.eq('status', status);
-    }
-    
-    // Aplicar filtro de pesquisa se fornecido
-    if (search) {
-      query = query.or(`name.ilike.%${search}%,license_number.ilike.%${search}%,email.ilike.%${search}%`);
-    }
-    
-    // Aplicar filtro de tipo de CNH se fornecido
-    if (license_type) {
-      query = query.eq('license_type', license_type);
     }
     
     // Executar consulta
@@ -138,278 +149,244 @@ export async function GET(request: NextRequest) {
     
     if (error) {
       console.error('Erro ao buscar motoristas:', error);
-      return errorResponse('Erro ao buscar motoristas', undefined, 500);
+      return errorResponse('Erro ao buscar motoristas', error.message, 500);
     }
     
-    // Formatar os resultados
-    const formattedDrivers = (drivers as Driver[] | null)?.map(driver => {
-      const assignedVehicles = driver.driver_vehicles?.map((assignment: VehicleAssignment) => assignment.vehicle) || [];
-      
-      return {
-        id: driver.id,
-        name: driver.name,
-        license_number: driver.license_number,
-        license_type: driver.license_type,
-        license_expiry: driver.license_expiry,
-        phone: driver.phone,
-        email: driver.email,
-        status: driver.status,
-        notes: driver.notes,
-        created_at: driver.created_at,
-        updated_at: driver.updated_at,
-        assigned_vehicles: assignedVehicles
-      };
-    }) || [];
-    
     return successResponse({
-      drivers: formattedDrivers,
-      pagination: {
-        total: count || 0,
-        limit,
-        offset
-      }
+      drivers,
+      count,
+      limit,
+      offset
     });
     
   } catch (error) {
-    console.error('Erro ao processar requisição de motoristas:', error);
-    return errorResponse('Erro interno do servidor', undefined, 500);
+    return handleApiError(error);
   }
 }
 
-// Handler para criar motorista (POST)
+/**
+ * @swagger
+ * /api/drivers:
+ *   post:
+ *     summary: Criar motorista
+ *     description: Adiciona um novo motorista ao sistema
+ *     tags:
+ *       - Motoristas
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Driver'
+ *     responses:
+ *       201:
+ *         description: Motorista criado com sucesso
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
+    // Verificar autenticação
     const authResult = await verifyAuth(request);
-    if (!authResult.user) {
-      return errorResponse(
-        authResult.error || 'Não autorizado',
-        undefined,
-        authResult.status || 401
-      );
+    if (!authResult.success) {
+      return errorResponse('Não autorizado', undefined, 401);
     }
     
-    const userId = authResult.user.id;
+    const { userId } = authResult;
     
     // Extrair e validar corpo da requisição
     const body = await request.json();
-    const driverResult = driverSchema.safeParse(body);
+    const validationResult = driverSchema.safeParse(body);
     
-    if (!driverResult.success) {
+    if (!validationResult.success) {
       return errorResponse(
         'Dados inválidos', 
-        driverResult.error.format()
+        validationResult.error.format(),
+        400
       );
     }
     
-    const driverData = driverResult.data;
+    // Preparar dados do motorista
+    const driverData = {
+      id: body.id || uuidv4(),
+      user_id: userId,
+      ...validationResult.data,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
     
-    // Verificar se já existe motorista com a mesma CNH
-    const { data: existingDriver, error: checkError } = await supabase
+    // Inserir no banco de dados
+    const { data: driver, error } = await supabase
       .from('drivers')
-      .select('id')
-      .eq('license_number', driverData.license_number)
-      .eq('user_id', userId)
-      .maybeSingle();
-    
-    if (checkError) {
-      console.error('Erro ao verificar motorista existente:', checkError);
-      return errorResponse('Erro ao verificar motorista existente', undefined, 500);
-    }
-    
-    if (existingDriver) {
-      return errorResponse('Já existe um motorista com esta CNH', undefined, 409);
-    }
-    
-    // Verificar se o email já está em uso (se fornecido)
-    if (driverData.email) {
-      const { data: existingEmail, error: emailCheckError } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('email', driverData.email)
-        .eq('user_id', userId)
-        .maybeSingle();
-      
-      if (emailCheckError) {
-        console.error('Erro ao verificar email existente:', emailCheckError);
-        return errorResponse('Erro ao verificar email existente', undefined, 500);
-      }
-      
-      if (existingEmail) {
-        return errorResponse('Este email já está associado a outro motorista', undefined, 409);
-      }
-    }
-    
-    // Inserir novo motorista
-    const { data: newDriver, error: insertError } = await supabase
-      .from('drivers')
-      .insert({
-        ...driverData,
-        user_id: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .insert(driverData)
       .select()
       .single();
     
-    if (insertError) {
-      console.error('Erro ao criar motorista:', insertError);
-      return errorResponse('Erro ao criar motorista', undefined, 500);
+    if (error) {
+      console.error('Erro ao criar motorista:', error);
+      return errorResponse('Erro ao criar motorista', error.message, 500);
     }
     
-    // Retornar motorista criado
-    return successResponse(
-      newDriver, 
-      'Motorista criado com sucesso', 
-      201
-    );
+    return successResponse({ driver }, 'Motorista criado com sucesso', 201);
     
   } catch (error) {
-    console.error('Erro ao processar criação de motorista:', error);
-    return errorResponse('Erro interno do servidor', undefined, 500);
+    return handleApiError(error);
   }
 }
 
-// Handler para atualizar motorista (PUT)
+/**
+ * @swagger
+ * /api/drivers:
+ *   put:
+ *     summary: Atualizar motorista
+ *     description: Atualiza os dados de um motorista existente
+ *     tags:
+ *       - Motoristas
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: query
+ *         required: true
+ *         description: ID do motorista a ser atualizado
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Driver'
+ *     responses:
+ *       200:
+ *         description: Motorista atualizado com sucesso
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 export async function PUT(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
+    // Verificar autenticação
     const authResult = await verifyAuth(request);
-    if (!authResult.user) {
-      return errorResponse(
-        authResult.error || 'Não autorizado',
-        undefined,
-        authResult.status || 401
-      );
+    if (!authResult.success) {
+      return errorResponse('Não autorizado', undefined, 401);
     }
     
-    const userId = authResult.user.id;
+    const { userId } = authResult;
     
-    // Extrair e validar corpo da requisição
-    const body = await request.json() as { id: string; [key: string]: unknown };
-    const { id, ...driverData } = body;
+    // Obter ID do motorista
+    const url = new URL(request.url);
+    const driverId = url.searchParams.get('id');
     
-    if (!id) {
+    if (!driverId) {
       return errorResponse('ID do motorista é obrigatório');
     }
     
-    const driverResult = driverSchema.partial().safeParse(driverData);
+    // Extrair e validar corpo da requisição
+    const body = await request.json();
+    const validationResult = driverSchema.safeParse(body);
     
-    if (!driverResult.success) {
+    if (!validationResult.success) {
       return errorResponse(
         'Dados inválidos', 
-        driverResult.error.format()
+        validationResult.error.format(),
+        400
       );
     }
-    
-    const updatedData = driverResult.data;
     
     // Verificar se o motorista existe e pertence ao usuário
     const { data: existingDriver, error: checkError } = await supabase
       .from('drivers')
-      .select('id, license_number, email')
-      .eq('id', id)
+      .select('id')
+      .eq('id', driverId)
       .eq('user_id', userId)
-      .maybeSingle();
+      .single();
     
-    if (checkError) {
-      console.error('Erro ao verificar motorista:', checkError);
-      return errorResponse('Erro ao verificar motorista', undefined, 500);
-    }
-    
-    if (!existingDriver) {
+    if (checkError || !existingDriver) {
       return errorResponse('Motorista não encontrado', undefined, 404);
     }
     
-    // Verificar se a CNH atualizada já existe em outro motorista (se fornecida)
-    if (updatedData.license_number && updatedData.license_number !== existingDriver.license_number) {
-      const { data: duplicateLicense, error: licenseCheckError } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('license_number', updatedData.license_number)
-        .eq('user_id', userId)
-        .neq('id', id)
-        .maybeSingle();
-      
-      if (licenseCheckError) {
-        console.error('Erro ao verificar CNH existente:', licenseCheckError);
-        return errorResponse('Erro ao verificar CNH existente', undefined, 500);
-      }
-      
-      if (duplicateLicense) {
-        return errorResponse('Esta CNH já está associada a outro motorista', undefined, 409);
-      }
-    }
+    // Preparar dados atualizados
+    const updateData = {
+      ...validationResult.data,
+      updated_at: new Date().toISOString()
+    };
     
-    // Verificar se o email atualizado já existe em outro motorista (se fornecido)
-    if (updatedData.email && updatedData.email !== existingDriver.email) {
-      const { data: duplicateEmail, error: emailCheckError } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('email', updatedData.email)
-        .eq('user_id', userId)
-        .neq('id', id)
-        .maybeSingle();
-      
-      if (emailCheckError) {
-        console.error('Erro ao verificar email existente:', emailCheckError);
-        return errorResponse('Erro ao verificar email existente', undefined, 500);
-      }
-      
-      if (duplicateEmail) {
-        return errorResponse('Este email já está associado a outro motorista', undefined, 409);
-      }
-    }
-    
-    // Atualizar motorista
-    const { data: updatedDriver, error: updateError } = await supabase
+    // Atualizar no banco de dados
+    const { data: driver, error } = await supabase
       .from('drivers')
-      .update({
-        ...updatedData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .eq('user_id', userId)
+      .update(updateData)
+      .eq('id', driverId)
       .select()
       .single();
     
-    if (updateError) {
-      console.error('Erro ao atualizar motorista:', updateError);
-      return errorResponse('Erro ao atualizar motorista', undefined, 500);
+    if (error) {
+      console.error('Erro ao atualizar motorista:', error);
+      return errorResponse('Erro ao atualizar motorista', error.message, 500);
     }
     
-    // Retornar motorista atualizado
-    return successResponse(
-      updatedDriver, 
-      'Motorista atualizado com sucesso'
-    );
+    return successResponse({ driver }, 'Motorista atualizado com sucesso');
     
   } catch (error) {
-    console.error('Erro ao processar atualização de motorista:', error);
-    return errorResponse('Erro interno do servidor', undefined, 500);
+    return handleApiError(error);
   }
 }
 
-// Handler para excluir motorista (DELETE)
+/**
+ * @swagger
+ * /api/drivers:
+ *   delete:
+ *     summary: Excluir motorista
+ *     description: Remove um motorista do sistema
+ *     tags:
+ *       - Motoristas
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: query
+ *         required: true
+ *         description: ID do motorista a ser excluído
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Motorista excluído com sucesso
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       404:
+ *         $ref: '#/components/responses/NotFoundError'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
 export async function DELETE(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
+    // Verificar autenticação
     const authResult = await verifyAuth(request);
-    if (!authResult.user) {
-      return errorResponse(
-        authResult.error || 'Não autorizado',
-        undefined,
-        authResult.status || 401
-      );
+    if (!authResult.success) {
+      return errorResponse('Não autorizado', undefined, 401);
     }
     
-    const userId = authResult.user.id;
+    const { userId } = authResult;
     
-    // Extrair ID do motorista
+    // Obter ID do motorista
     const url = new URL(request.url);
-    const id = url.searchParams.get('id');
+    const driverId = url.searchParams.get('id');
     
-    if (!id) {
+    if (!driverId) {
       return errorResponse('ID do motorista é obrigatório');
     }
     
@@ -417,50 +394,28 @@ export async function DELETE(request: NextRequest) {
     const { data: existingDriver, error: checkError } = await supabase
       .from('drivers')
       .select('id')
-      .eq('id', id)
+      .eq('id', driverId)
       .eq('user_id', userId)
-      .maybeSingle();
+      .single();
     
-    if (checkError) {
-      console.error('Erro ao verificar motorista:', checkError);
-      return errorResponse('Erro ao verificar motorista', undefined, 500);
-    }
-    
-    if (!existingDriver) {
+    if (checkError || !existingDriver) {
       return errorResponse('Motorista não encontrado', undefined, 404);
     }
     
-    // Deletar todas as associações de veículos primeiro
-    const { error: deleteAssignmentsError } = await supabase
-      .from('driver_vehicle_assignments')
-      .delete()
-      .eq('driver_id', id);
-    
-    if (deleteAssignmentsError) {
-      console.error('Erro ao excluir associações de veículos:', deleteAssignmentsError);
-      return errorResponse('Erro ao excluir associações de veículos', undefined, 500);
-    }
-    
-    // Excluir motorista
-    const { error: deleteError } = await supabase
+    // Excluir do banco de dados
+    const { error } = await supabase
       .from('drivers')
       .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
+      .eq('id', driverId);
     
-    if (deleteError) {
-      console.error('Erro ao excluir motorista:', deleteError);
-      return errorResponse('Erro ao excluir motorista', undefined, 500);
+    if (error) {
+      console.error('Erro ao excluir motorista:', error);
+      return errorResponse('Erro ao excluir motorista', error.message, 500);
     }
     
-    // Retornar resposta de sucesso
-    return successResponse(
-      null, 
-      'Motorista excluído com sucesso'
-    );
+    return successResponse(null, 'Motorista excluído com sucesso');
     
   } catch (error) {
-    console.error('Erro ao processar exclusão de motorista:', error);
-    return errorResponse('Erro interno do servidor', undefined, 500);
+    return handleApiError(error);
   }
 } 
