@@ -8,7 +8,7 @@ import {
   PanelResizeHandle,
   ImperativePanelHandle,
 } from "react-resizable-panels";
-import { cn } from "@/lib/utils";
+import { cn, composeRefs } from "@/lib/utils";
 
 interface ResizablePanelGroupProps extends React.ComponentProps<typeof PanelGroup> {
   children: React.ReactNode;
@@ -40,15 +40,20 @@ interface ResizablePanelProps extends React.ComponentProps<typeof Panel> {
 const ResizablePanel = React.forwardRef<
   ImperativePanelHandle,
   ResizablePanelProps
->(({ className, children, ...props }, ref) => (
-  <Panel
-    ref={ref}
-    className={cn("relative h-full w-full overflow-auto", className)}
-    {...props}
-  >
-    {children}
-  </Panel>
-));
+>(({ className, children, ...props }, ref) => {
+  // Usar ref interno para prevenir problemas de atualização em loop
+  const internalRef = React.useRef<ImperativePanelHandle>(null);
+  
+  return (
+    <Panel
+      ref={composeRefs(internalRef, ref)}
+      className={cn("relative h-full w-full overflow-auto", className)}
+      {...props}
+    >
+      {children}
+    </Panel>
+  );
+});
 ResizablePanel.displayName = "ResizablePanel";
 
 type ResizableHandleProps = {

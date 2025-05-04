@@ -10,7 +10,7 @@ import {
   useFormContext,
 } from "react-hook-form";
 import { AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, composeRefs } from "@/lib/utils";
 
 const Form = FormProvider;
 
@@ -74,11 +74,12 @@ const FormItem = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
   const id = React.useId();
+  const internalRef = React.useRef<HTMLDivElement>(null);
 
   return (
     <FormItemContext.Provider value={{ id }}>
       <div
-        ref={ref}
+        ref={composeRefs(internalRef, ref)}
         className={cn("space-y-2 mb-4", className)}
         {...props}
       />
@@ -92,10 +93,11 @@ const FormLabel = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
 >(({ className, ...props }, ref) => {
   const { error, formItemId } = useFormField();
+  const internalRef = React.useRef<React.ElementRef<typeof LabelPrimitive.Root>>(null);
 
   return (
     <LabelPrimitive.Root
-      ref={ref}
+      ref={composeRefs(internalRef, ref)}
       className={cn(
         "text-sm font-medium leading-none block mb-1.5",
         error && "text-red-500 dark:text-red-400",
@@ -113,10 +115,11 @@ const FormControl = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof Slot>
 >(({ ...props }, ref) => {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
+  const internalRef = React.useRef<React.ElementRef<typeof Slot>>(null);
 
   return (
     <Slot
-      ref={ref}
+      ref={composeRefs(internalRef, ref)}
       id={formItemId}
       aria-describedby={
         !error
@@ -135,10 +138,11 @@ const FormDescription = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => {
   const { formDescriptionId } = useFormField();
+  const internalRef = React.useRef<HTMLParagraphElement>(null);
 
   return (
     <p
-      ref={ref}
+      ref={composeRefs(internalRef, ref)}
       id={formDescriptionId}
       className={cn("text-xs text-gray-500 dark:text-gray-400 mt-1", className)}
       {...props}
@@ -153,6 +157,7 @@ const FormMessage = React.forwardRef<
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField();
   const body = error ? String(error?.message) : children;
+  const internalRef = React.useRef<HTMLParagraphElement>(null);
 
   if (!body) {
     return null;
@@ -160,7 +165,7 @@ const FormMessage = React.forwardRef<
 
   return (
     <p
-      ref={ref}
+      ref={composeRefs(internalRef, ref)}
       id={formMessageId}
       className={cn(
         "text-sm font-medium text-red-500 dark:text-red-400 flex items-center mt-1",

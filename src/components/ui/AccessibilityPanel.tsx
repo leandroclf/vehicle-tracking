@@ -25,6 +25,30 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
   const { registerShortcut, unregisterShortcut } = useKeyboardNavigation();
   const tutorialRef = useRef<HTMLDivElement>(null);
   
+  // Adicionar estilos CSS para animação e feedback visual
+  useEffect(() => {
+    // Adicionar estilos para animação de pulso lenta
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes pulse-slow {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+      }
+      .animate-pulse-slow {
+        animation: pulse-slow 3s ease-in-out infinite;
+      }
+      .accessibility-shortcut-activated {
+        transform: scale(1.2);
+        transition: transform 0.3s ease;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+  
   // Aplicar configurações de acessibilidade
   useEffect(() => {
     // Carregar configurações salvas
@@ -46,11 +70,20 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
       localStorage.setItem('accessibility-tutorial-shown', 'true');
     }
     
-    // Registrar atalho de teclado Alt+A
+    // Registrar atalho de teclado Alt+A com feedback visual
     const handleAltA = (e: KeyboardEvent) => {
       if (e.altKey && e.key === 'a') {
         e.preventDefault();
         setIsOpen(prev => !prev);
+        
+        // Feedback visual quando o atalho é acionado
+        const accessButton = document.querySelector('.accessibility-button');
+        if (accessButton) {
+          accessButton.classList.add('accessibility-shortcut-activated');
+          setTimeout(() => {
+            accessButton.classList.remove('accessibility-shortcut-activated');
+          }, 300);
+        }
       }
     };
     
@@ -168,23 +201,25 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
 
   return (
     <>
-      {/* Botão flutuante de acessibilidade - reposicionado para ficar mais visível */}
+      {/* Botão flutuante de acessibilidade - redesenhado para maior visibilidade */}
       <Tooltip content="Acessibilidade (Alt+A)">
         <button
           onClick={togglePanel}
-          className="fixed bottom-4 right-4 z-50 p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+          className="fixed bottom-4 right-4 z-50 p-3 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-offset-2 transition-all animate-pulse-slow accessibility-button"
           aria-label="Abrir configurações de acessibilidade (Alt+A)"
+          style={{ boxShadow: '0 0 15px rgba(37, 99, 235, 0.7)' }}
         >
           <Accessibility className="h-6 w-6" />
+          <span className="sr-only">Pressione Alt+A para abrir</span>
         </button>
       </Tooltip>
       
-      {/* Tutorial de primeira utilização */}
+      {/* Tutorial de primeira utilização - aprimorado */}
       {showTutorial && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-[51] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-70 z-[51] flex items-center justify-center p-4">
           <div 
             ref={tutorialRef}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 animate-fade-in"
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 animate-fade-in border-2 border-blue-500"
             role="dialog"
             aria-labelledby="tutorial-title"
           >
@@ -194,17 +229,25 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
             </div>
             
             <div className="space-y-4 mb-6">
-              <p>Bem-vindo aos recursos de acessibilidade do sistema! Aqui você pode:</p>
+              <p className="text-base">Bem-vindo aos recursos de acessibilidade do sistema! Aqui você pode:</p>
               
               <ul className="list-disc pl-5 space-y-2">
-                <li>Ativar alto contraste para melhor visualização</li>
-                <li>Aumentar o tamanho do texto</li>
-                <li>Reduzir animações</li>
-                <li>Ajustar espaçamento de texto</li>
-                <li>Personalizar indicadores de foco</li>
+                <li><strong>Alto Contraste:</strong> Aumenta o contraste de cores para melhor legibilidade</li>
+                <li><strong>Texto Grande:</strong> Aumenta o tamanho do texto em toda a interface</li>
+                <li><strong>Escala de Fonte:</strong> Ajuste o tamanho da fonte conforme sua preferência</li>
+                <li><strong>Movimento Reduzido:</strong> Reduz ou elimina animações e transições</li>
+                <li><strong>Espaçamento de Texto:</strong> Ajusta o espaçamento entre linhas e parágrafos</li>
+                <li><strong>Indicadores de Foco:</strong> Destaca elementos selecionados para navegação por teclado</li>
               </ul>
               
-              <p className="font-semibold">Dica: Use o atalho Alt+A para abrir o painel a qualquer momento.</p>
+              <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-md border border-blue-200 dark:border-blue-800 mt-2">
+                <p className="font-semibold flex items-center"><HelpCircle className="h-4 w-4 mr-2" /> Dicas rápidas:</p>
+                <ul className="list-disc pl-5 mt-1 text-sm">
+                  <li>Use o atalho <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">Alt+A</kbd> para abrir o painel a qualquer momento</li>
+                  <li>O botão de acessibilidade estará sempre visível no canto inferior direito</li>
+                  <li>Suas configurações serão salvas automaticamente para futuras visitas</li>
+                </ul>
+              </div>
             </div>
             
             <div className="flex justify-between">
