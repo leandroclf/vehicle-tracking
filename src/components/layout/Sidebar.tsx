@@ -159,7 +159,10 @@ export default function Sidebar({ className = '' }: SidebarProps) {
 
         {/* Navigation Links */}
         <nav className={cn("p-6", isMobile && "p-4")}>
-          <ul className={cn("space-y-2", isMobile && "grid grid-cols-4 gap-4")}>
+          <ul className={cn(
+            "space-y-2", 
+            isMobile && "grid grid-cols-2 sm:grid-cols-4 gap-3"
+          )}>
             {navItems.map((item) => (
               <li key={item.name} className={isMobile ? 'text-center' : ''}>
                 {isSidebarCollapsed && !isMobile ? (

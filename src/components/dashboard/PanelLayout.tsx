@@ -50,7 +50,7 @@ export function PanelLayout({
         collapsible={true}
         className={`h-full transition-all duration-300 ${isCollapsed ? 'max-w-[70px]' : ''}`}
       >
-        <div className="h-full overflow-auto">
+        <div className="h-full overflow-y-auto overflow-x-hidden">
           {sidebar}
         </div>
       </Panel>
