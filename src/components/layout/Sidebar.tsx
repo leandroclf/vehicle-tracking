@@ -30,6 +30,7 @@ interface NavItem {
   ariaLabel?: string;
   highlight?: boolean;
   badge?: number;
+  emoji?: string;
 }
 
 interface SidebarProps {
@@ -57,61 +58,114 @@ export default function Sidebar({ className = '' }: SidebarProps) {
   const navItems: NavItem[] = [
     // Grupo de Dashboards
     { 
-      name: 'Dashboard', 
-      href: '/dashboard/dashboard', 
+      name: 'Painel', 
+      href: '/dashboard', 
       icon: <Home className="w-6 h-6" />,
-      ariaLabel: 'Acessar dashboard principal'
+      ariaLabel: 'Acessar dashboard principal',
+      emoji: '🏠'
     },
-    // Grupo de Navegação Principal
+    
+    // Grupo de Monitoramento
     { 
       name: 'Mapa', 
       href: '/dashboard/map', 
       icon: <Map className="w-6 h-6" />,
-      ariaLabel: 'Visualizar mapa de rastreamento'
+      ariaLabel: 'Visualizar mapa de rastreamento',
+      emoji: '🗺️'
     },
     { 
       name: 'Veículos', 
       href: '/dashboard/vehicles', 
       icon: <Truck className="w-6 h-6" />,
-      ariaLabel: 'Gerenciar veículos'
+      ariaLabel: 'Gerenciar veículos',
+      emoji: '🚚'
     },
     { 
       name: 'Geocercas', 
       href: '/dashboard/geofences', 
       icon: <MapPin className="w-6 h-6" />,
-      ariaLabel: 'Configurar geocercas'
+      ariaLabel: 'Configurar geocercas',
+      emoji: '📍'
     },
     { 
       name: 'Alertas', 
       href: '/dashboard/alerts', 
       icon: <Bell className="w-6 h-6" />,
       ariaLabel: 'Visualizar alertas',
-      badge: alertCount
+      badge: alertCount,
+      emoji: '🔔'
     },
+    
+    // Grupo de Relatórios e Configurações
     { 
       name: 'Relatórios', 
       href: '/dashboard/reports', 
       icon: <FileText className="w-6 h-6" />,
-      ariaLabel: 'Acessar relatórios'
+      ariaLabel: 'Acessar relatórios',
+      emoji: '📊'
     },
-    // Grupo de Configurações
     { 
       name: 'Configurações', 
       href: '/dashboard/settings', 
       icon: <Settings className="w-6 h-6" />,
-      ariaLabel: 'Ajustar configurações do sistema'
+      ariaLabel: 'Ajustar configurações do sistema',
+      emoji: '⚙️'
     },
     { 
       name: 'Perfil', 
       href: '/dashboard/profile', 
       icon: <User className="w-6 h-6" />,
-      ariaLabel: 'Gerenciar perfil de usuário'
+      ariaLabel: 'Gerenciar perfil de usuário',
+      emoji: '👤'
     },
   ];
 
   const isActive = (path: string) => {
     return pathname === path;
   };
+  
+  // Função para renderizar cada item de navegação
+  const renderNavItem = (item: NavItem) => (
+    <li key={item.name}>
+      <Link
+        href={item.href}
+        className={cn(
+          "flex items-center p-3 rounded-lg transition-all duration-200",
+          isActive(item.href) 
+            ? "bg-blue-600 text-white shadow-md" 
+            : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
+          isMobile ? "flex-col text-sm" : "space-x-3",
+          item.highlight && !isActive(item.href) && !isMobile && "border-l-4 border-[#faa631]"
+        )}
+        aria-label={item.ariaLabel || item.name}
+      >
+        <div className="relative flex items-center">
+          {isMobile ? 
+            <span className="text-xl mb-1">{item.emoji}</span> : 
+            item.icon
+          }
+          {item.badge && item.badge > 0 && (
+            <span className={cn(
+              "absolute bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse",
+              isMobile ? "top-0 right-0" : "-top-1 -right-1"
+            )}>
+              {item.badge}
+            </span>
+          )}
+        </div>
+        <span className={cn(
+          isMobile ? "mt-1" : "",
+          item.highlight && !isActive(item.href) && "font-medium text-[#faa631] dark:text-[#faa631]"
+        )}>
+          {!isMobile && !isSidebarCollapsed && <span className="mr-2">{item.emoji}</span>}
+          {item.name}
+          {item.highlight && !isActive(item.href) && !isMobile && (
+            <span className="ml-2 text-xs bg-[#faa631] text-white px-1.5 py-0.5 rounded-full">Novo</span>
+          )}
+        </span>
+      </Link>
+    </li>
+  );
 
   return (
     <>
@@ -166,81 +220,113 @@ export default function Sidebar({ className = '' }: SidebarProps) {
         )}
 
         {/* Navigation Links */}
-        <nav className={cn("py-6", isMobile ? "px-4" : "px-6")}>
-          <ul className={cn(
-            "space-y-2", 
-            isMobile && "grid grid-cols-2 sm:grid-cols-3 gap-4 space-y-0"
-          )}>
-            {navItems.map((item) => (
-              <li key={item.name} className={isMobile ? 'text-center' : ''}>
-                {isSidebarCollapsed && !isMobile ? (
-                  <Tooltip content={item.name}>
+        {!isSidebarCollapsed && !isMobile ? (
+          <nav className="py-6 px-3">
+            <div className="mb-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Dashboard
+            </div>
+            <ul className="space-y-1 mb-6">
+              {navItems.slice(0, 1).map((item) => renderNavItem(item))}
+            </ul>
+            
+            <div className="mb-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Monitoramento
+            </div>
+            <ul className="space-y-1 mb-6">
+              {navItems.slice(1, 5).map((item) => renderNavItem(item))}
+            </ul>
+            
+            <div className="mb-2 px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Gestão
+            </div>
+            <ul className="space-y-1">
+              {navItems.slice(5).map((item) => renderNavItem(item))}
+            </ul>
+          </nav>
+        ) : (
+          <nav className={cn("py-6", isMobile ? "px-4" : "px-2")}>
+            <ul className={cn(
+              "space-y-2", 
+              isMobile && "grid grid-cols-2 sm:grid-cols-3 gap-4 space-y-0"
+            )}>
+              {navItems.map((item) => (
+                <li key={item.name} className={isMobile ? 'text-center' : ''}>
+                  {isSidebarCollapsed && !isMobile ? (
+                    <Tooltip content={item.name} placement="right">
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center justify-center p-3 rounded-lg transition-all duration-200 w-14 h-14 mx-auto hover:scale-105 active:scale-95",
+                          isActive(item.href) 
+                            ? "bg-blue-600 text-white shadow-md" 
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
+                          item.highlight && !isActive(item.href) && "border-2 border-[#faa631]"
+                        )}
+                        aria-label={item.ariaLabel || item.name}
+                      >
+                        <div className="relative">
+                          <span className="text-xl">{item.emoji}</span>
+                          {item.badge && item.badge > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                      </Link>
+                    </Tooltip>
+                  ) : (
                     <Link
                       href={item.href}
                       className={cn(
-                        "flex items-center justify-center p-3 rounded-lg transition-all duration-200 w-14 h-14 mx-auto",
+                        "flex items-center p-4 rounded-lg transition-all duration-200 min-h-[64px] hover:scale-105 active:scale-95",
                         isActive(item.href) 
-                          ? "bg-blue-600 text-white" 
+                          ? "bg-blue-600 text-white shadow-md" 
                           : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
-                        item.highlight && !isActive(item.href) && "border-2 border-[#faa631]"
+                        isMobile ? "flex-col text-sm" : "space-x-4",
+                        item.highlight && !isActive(item.href) && !isMobile && "border-l-4 border-[#faa631]"
                       )}
                       aria-label={item.ariaLabel || item.name}
                     >
                       <div className="relative">
-                        {item.icon}
+                        {isMobile ? (
+                          <span className="text-xl">{item.emoji}</span>
+                        ) : (
+                          <div className="flex items-center">
+                            <span className="text-lg mr-2">{item.emoji}</span>
+                            {item.icon}
+                          </div>
+                        )}
                         {item.badge && item.badge > 0 && (
-                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          <span className={cn(
+                            "absolute bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse",
+                            isMobile ? "top-0 right-0" : "-top-1 -right-1"
+                          )}>
                             {item.badge}
                           </span>
                         )}
                       </div>
+                      <span className={cn(
+                        isMobile ? "mt-2" : "",
+                        item.highlight && !isActive(item.href) && "font-medium text-[#faa631] dark:text-[#faa631]"
+                      )}>
+                        {item.name}
+                        {item.highlight && !isActive(item.href) && !isMobile && (
+                          <span className="ml-2 text-xs bg-[#faa631] text-white px-1.5 py-0.5 rounded-full">Novo</span>
+                        )}
+                      </span>
                     </Link>
-                  </Tooltip>
-                ) : (
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center p-4 rounded-lg transition-all duration-200 min-h-[64px]",
-                      isActive(item.href) 
-                        ? "bg-blue-600 text-white" 
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700",
-                      isMobile ? "flex-col text-sm" : "space-x-4",
-                      item.highlight && !isActive(item.href) && !isMobile && "border-l-4 border-[#faa631]"
-                    )}
-                    aria-label={item.ariaLabel || item.name}
-                  >
-                    <div className="relative">
-                      {item.icon}
-                      {item.badge && item.badge > 0 && (
-                        <span className={cn(
-                          "absolute bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center",
-                          isMobile ? "top-0 right-0" : "-top-1 -right-1"
-                        )}>
-                          {item.badge}
-                        </span>
-                      )}
-                    </div>
-                    <span className={cn(
-                      isMobile ? "mt-2" : "",
-                      item.highlight && !isActive(item.href) && "font-medium text-[#faa631] dark:text-[#faa631]"
-                    )}>
-                      {item.name}
-                      {item.highlight && !isActive(item.href) && !isMobile && (
-                        <span className="ml-2 text-xs bg-[#faa631] text-white px-1.5 py-0.5 rounded-full">Novo</span>
-                      )}
-                    </span>
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        </nav>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
       </aside>
 
       {/* Overlay for mobile */}
       {isMobile && isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-30"
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 backdrop-blur-sm"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}

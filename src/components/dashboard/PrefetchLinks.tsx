@@ -5,15 +5,16 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 
 // Rotas mais comuns que devem ser pré-carregadas
-const commonRoutes = [
-  '/dashboard/dashboard',
+const routes = [
   '/dashboard/vehicles',
   '/dashboard/map',
   '/dashboard/alerts',
-  '/dashboard/geofences',
   '/dashboard/reports',
+  '/dashboard/geofences',
+  '/dashboard/drivers',
   '/dashboard/settings',
   '/dashboard/profile',
+  '/dashboard',
 ];
 
 export default function PrefetchLinks() {
@@ -21,7 +22,7 @@ export default function PrefetchLinks() {
 
   useEffect(() => {
     // Pré-carrega as rotas mais comuns
-    commonRoutes.forEach((route) => {
+    routes.forEach((route) => {
       // Não pré-carregar a rota atual
       if (route !== pathname) {
         const linkElement = document.createElement('link');
@@ -35,7 +36,7 @@ export default function PrefetchLinks() {
   // Este componente não renderiza nada visualmente
   return (
     <>
-      {commonRoutes.map((route) => 
+      {routes.map((route) => 
         route !== pathname ? (
           <Link key={route} href={route} prefetch={true} style={{ display: 'none' }} />
         ) : null

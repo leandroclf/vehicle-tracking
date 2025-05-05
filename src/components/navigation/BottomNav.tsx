@@ -21,7 +21,7 @@ const NavItem = ({ href, icon, label, isActive, onClick, badge }: NavItemProps) 
   >
     <Link
       href={onClick ? '#' : href}
-      className={`flex flex-col items-center justify-center w-full h-full p-1 ${
+      className={`flex flex-col items-center justify-center w-full h-full p-1 transition-all duration-200 hover:scale-105 active:scale-95 ${
         isActive 
           ? 'text-blue-600 dark:text-blue-400 font-semibold border-t-2 border-blue-600 dark:border-blue-400' 
           : 'text-gray-600 dark:text-gray-400'
@@ -37,7 +37,7 @@ const NavItem = ({ href, icon, label, isActive, onClick, badge }: NavItemProps) 
       <div className="w-12 h-12 flex items-center justify-center relative">
         {icon}
         {badge !== undefined && badge > 0 && (
-          <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+          <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
             {badge > 9 ? '9+' : badge}
           </span>
         )}
@@ -46,6 +46,14 @@ const NavItem = ({ href, icon, label, isActive, onClick, badge }: NavItemProps) 
     </Link>
   </div>
 );
+
+interface NavItem {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+  badge?: number;
+}
 
 interface BottomNavProps {
   onOpenMenu?: () => void;
@@ -75,9 +83,9 @@ export default function BottomNav({ onOpenMenu }: BottomNavProps) {
   }, [pathname]);
 
   // Navegação principal - 5 itens principais (dentro do limite recomendado de 5-6 itens)
-  const mainNavItems = [
+  const mainNavItems: NavItem[] = [
     {
-      href: '/dashboard/dashboard',
+      href: '/dashboard',
       icon: <Home size={24} />,
       label: 'Início'
     },
@@ -112,7 +120,7 @@ export default function BottomNav({ onOpenMenu }: BottomNavProps) {
   ];
 
   // Itens de monitoramento
-  const monitoringNavItems = [
+  const monitoringNavItems: NavItem[] = [
     {
       href: '/dashboard/map',
       icon: <Map size={24} />,
@@ -143,7 +151,7 @@ export default function BottomNav({ onOpenMenu }: BottomNavProps) {
   ];
 
   // Itens de relatórios e configurações
-  const reportsNavItems = [
+  const reportsNavItems: NavItem[] = [
     {
       href: '/dashboard/reports',
       icon: <FileText size={24} />,
@@ -155,7 +163,7 @@ export default function BottomNav({ onOpenMenu }: BottomNavProps) {
       label: 'Config'
     },
     {
-      href: '/dashboard/dashboard',
+      href: '/dashboard',
       icon: <Activity size={24} />,
       label: 'Estatísticas'
     },
@@ -211,7 +219,7 @@ export default function BottomNav({ onOpenMenu }: BottomNavProps) {
         <>
           {/* Overlay para fechar o menu expandido */}
           <div 
-            className="sm:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+            className="sm:hidden fixed inset-0 bg-black bg-opacity-50 z-30 backdrop-blur-sm transition-opacity duration-300"
             onClick={() => setExpanded(false)}
           />
           
@@ -221,7 +229,7 @@ export default function BottomNav({ onOpenMenu }: BottomNavProps) {
               <h3 className="font-semibold text-gray-800 dark:text-gray-200">Navegação</h3>
               <button 
                 onClick={() => setExpanded(false)}
-                className="p-2 rounded-full text-gray-600 dark:text-gray-400"
+                className="p-2 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
                 aria-label="Fechar menu expandido"
               >
                 <X size={20} />
@@ -231,7 +239,7 @@ export default function BottomNav({ onOpenMenu }: BottomNavProps) {
             <div className="grid grid-cols-3 gap-4">
               <button 
                 onClick={() => switchSection('main')}
-                className={`flex flex-col items-center justify-center p-3 rounded-lg ${
+                className={`flex flex-col items-center justify-center p-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 ${
                   pageSection === 'main' 
                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -243,7 +251,7 @@ export default function BottomNav({ onOpenMenu }: BottomNavProps) {
               
               <button 
                 onClick={() => switchSection('monitoring')}
-                className={`flex flex-col items-center justify-center p-3 rounded-lg ${
+                className={`flex flex-col items-center justify-center p-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 ${
                   pageSection === 'monitoring' 
                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
@@ -255,7 +263,7 @@ export default function BottomNav({ onOpenMenu }: BottomNavProps) {
               
               <button 
                 onClick={() => switchSection('reports')}
-                className={`flex flex-col items-center justify-center p-3 rounded-lg ${
+                className={`flex flex-col items-center justify-center p-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 ${
                   pageSection === 'reports' 
                     ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400' 
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'

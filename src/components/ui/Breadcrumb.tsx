@@ -7,7 +7,7 @@ import { ChevronRight, Home } from 'lucide-react';
 export function Breadcrumb() {
   const pathname = usePathname();
   
-  if (pathname === '/dashboard/dashboard') return null;
+  if (pathname === '/dashboard') return null;
   
   const parts = pathname.split('/').filter(Boolean);
   
@@ -35,7 +35,7 @@ export function Breadcrumb() {
       <ol className="flex items-center">
         <li>
           <Link 
-            href="/dashboard/dashboard" 
+            href="/dashboard" 
             className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 flex items-center"
             aria-label="Página inicial"
           >

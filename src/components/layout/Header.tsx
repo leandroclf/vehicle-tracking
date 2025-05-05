@@ -142,7 +142,7 @@ export default function Header({ className = '' }: HeaderProps) {
               <Menu className="w-5 h-5" />
             </button>
             
-            <Link href="/dashboard/dashboard" className="text-xl font-bold text-blue-600 dark:text-blue-400">
+            <Link href="/dashboard" className="text-xl font-bold text-blue-600 dark:text-blue-400">
               YUKZ Track<span className="text-gray-800 dark:text-gray-300">er</span>
             </Link>
             

@@ -16,6 +16,15 @@ interface TelemetryData {
   batteryLevel: number;
   engineLoad: number;
   lastUpdate: string;
+  tirePressure: {
+    frontLeft: number;
+    frontRight: number;
+    rearLeft: number;
+    rearRight: number;
+  };
+  oilLevel: number;
+  coolantLevel: number;
+  odometerReading: number;
 }
 
 export default function TelemetryWidget() {
@@ -37,7 +46,16 @@ export default function TelemetryWidget() {
           fuelLevel: 45,
           batteryLevel: 98,
           engineLoad: 72,
-          lastUpdate: new Date().toISOString()
+          lastUpdate: new Date().toISOString(),
+          tirePressure: {
+            frontLeft: 32,
+            frontRight: 32,
+            rearLeft: 35,
+            rearRight: 34
+          },
+          oilLevel: 85,
+          coolantLevel: 90,
+          odometerReading: 45678
         },
         {
           vehicleId: 'v2',
@@ -48,7 +66,16 @@ export default function TelemetryWidget() {
           fuelLevel: 80,
           batteryLevel: 100,
           engineLoad: 0,
-          lastUpdate: new Date().toISOString()
+          lastUpdate: new Date().toISOString(),
+          tirePressure: {
+            frontLeft: 30,
+            frontRight: 30,
+            rearLeft: 30,
+            rearRight: 30
+          },
+          oilLevel: 95,
+          coolantLevel: 100,
+          odometerReading: 12345
         },
         {
           vehicleId: 'v3',
@@ -59,7 +86,16 @@ export default function TelemetryWidget() {
           fuelLevel: 30,
           batteryLevel: 85,
           engineLoad: 65,
-          lastUpdate: new Date().toISOString()
+          lastUpdate: new Date().toISOString(),
+          tirePressure: {
+            frontLeft: 29,
+            frontRight: 31,
+            rearLeft: 30,
+            rearRight: 30
+          },
+          oilLevel: 70,
+          coolantLevel: 85,
+          odometerReading: 78901
         }
       ];
 
@@ -155,9 +191,10 @@ export default function TelemetryWidget() {
         {selectedVehicleData ? (
           <div className="flex-grow overflow-auto">
             <Tabs defaultValue="gauges" className="w-full">
-              <TabsList className="w-full grid grid-cols-2 mb-4">
+              <TabsList className="w-full grid grid-cols-3 mb-4">
                 <TabsTrigger value="gauges">Medidores</TabsTrigger>
                 <TabsTrigger value="details">Detalhes</TabsTrigger>
+                <TabsTrigger value="diagnostics">Diagnóstico</TabsTrigger>
               </TabsList>
 
               <TabsContent value="gauges" className="space-y-4">
@@ -244,35 +281,97 @@ export default function TelemetryWidget() {
 
               <TabsContent value="details" className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Velocidade</div>
-                    <div className="text-xl font-bold text-gray-800 dark:text-gray-200">{selectedVehicleData.speed} km/h</div>
+                  <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Nível de Combustível</div>
+                    <div className="text-lg font-semibold">{selectedVehicleData.fuelLevel}%</div>
                   </div>
                   
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Temperatura</div>
-                    <div className="text-xl font-bold text-gray-800 dark:text-gray-200">{selectedVehicleData.engineTemp}°C</div>
+                  <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Bateria</div>
+                    <div className="text-lg font-semibold">{selectedVehicleData.batteryLevel}%</div>
                   </div>
                   
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Combustível</div>
-                    <div className="text-xl font-bold text-gray-800 dark:text-gray-200">{selectedVehicleData.fuelLevel}%</div>
+                  <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Carga do Motor</div>
+                    <div className="text-lg font-semibold">{selectedVehicleData.engineLoad}%</div>
                   </div>
                   
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Bateria</div>
-                    <div className="text-xl font-bold text-gray-800 dark:text-gray-200">{selectedVehicleData.batteryLevel}%</div>
+                  <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Última Atualização</div>
+                    <div className="text-lg font-semibold">{formatLastUpdate(selectedVehicleData.lastUpdate)}</div>
                   </div>
-                  
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Carga do Motor</div>
-                    <div className="text-xl font-bold text-gray-800 dark:text-gray-200">{selectedVehicleData.engineLoad}%</div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="diagnostics" className="space-y-4">
+                {/* Pressão dos Pneus */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pressão dos Pneus (PSI)</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Dianteiro Esquerdo</div>
+                      <div className={`text-lg font-semibold ${getColorClass(selectedVehicleData.tirePressure.frontLeft, [28, 26])}`}>
+                        {selectedVehicleData.tirePressure.frontLeft}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Dianteiro Direito</div>
+                      <div className={`text-lg font-semibold ${getColorClass(selectedVehicleData.tirePressure.frontRight, [28, 26])}`}>
+                        {selectedVehicleData.tirePressure.frontRight}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Traseiro Esquerdo</div>
+                      <div className={`text-lg font-semibold ${getColorClass(selectedVehicleData.tirePressure.rearLeft, [28, 26])}`}>
+                        {selectedVehicleData.tirePressure.rearLeft}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Traseiro Direito</div>
+                      <div className={`text-lg font-semibold ${getColorClass(selectedVehicleData.tirePressure.rearRight, [28, 26])}`}>
+                        {selectedVehicleData.tirePressure.rearRight}
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Velocidade Máxima</div>
-                    <div className="text-xl font-bold text-gray-800 dark:text-gray-200">{selectedVehicleData.maxSpeed} km/h</div>
+                </div>
+                
+                {/* Níveis de Fluidos */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Níveis de Fluidos</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Nível de Óleo</div>
+                      <div className="flex items-center">
+                        <div className="flex-grow">
+                          <Progress 
+                            value={selectedVehicleData.oilLevel} 
+                            max={100} 
+                            className={getProgressColor(selectedVehicleData.oilLevel, [60, 40], true)}
+                          />
+                        </div>
+                        <div className="ml-2 text-lg font-semibold">{selectedVehicleData.oilLevel}%</div>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Líquido de Arrefecimento</div>
+                      <div className="flex items-center">
+                        <div className="flex-grow">
+                          <Progress 
+                            value={selectedVehicleData.coolantLevel} 
+                            max={100} 
+                            className={getProgressColor(selectedVehicleData.coolantLevel, [60, 40], true)}
+                          />
+                        </div>
+                        <div className="ml-2 text-lg font-semibold">{selectedVehicleData.coolantLevel}%</div>
+                      </div>
+                    </div>
                   </div>
+                </div>
+                
+                {/* Odômetro */}
+                <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-md">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Leitura do Odômetro</div>
+                  <div className="text-lg font-semibold">{selectedVehicleData.odometerReading.toLocaleString('pt-BR')} km</div>
                 </div>
               </TabsContent>
             </Tabs>

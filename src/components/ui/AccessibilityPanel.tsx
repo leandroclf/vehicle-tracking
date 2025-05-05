@@ -343,12 +343,12 @@ export function AccessibilityPanel({ onClose }: AccessibilityPanelProps) {
             <div className="space-y-2">
               <div className="flex items-center">
                 <ZoomIn className="h-5 w-5 text-gray-700 dark:text-gray-300 mr-2" />
-                <label htmlFor="font-scale" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="font-scale-slider" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Escala de Fonte: {fontScale}%
                 </label>
               </div>
               <Slider
-                id="font-scale"
+                id="font-scale-slider"
                 min={80}
                 max={150}
                 step={5}
