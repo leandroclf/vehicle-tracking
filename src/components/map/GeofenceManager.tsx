@@ -45,6 +45,72 @@ interface GeofenceManagerProps {
   onGeofenceEvent?: (event: GeofenceEvent) => void;
 }
 
+// Componente para exibir alertas de geocerca
+const GeofenceAlertPanel: React.FC<{
+  alerts: GeofenceEvent[];
+  geofences: Geofence[];
+  vehicles: Array<{ id: number; name: string; plate: string; }>;
+  onClose: () => void;
+}> = ({ alerts, geofences, vehicles, onClose }) => {
+  if (alerts.length === 0) return null;
+  
+  // Função para obter o nome da geocerca
+  const getGeofenceName = (geofenceId: string) => {
+    const geofence = geofences.find(g => g.id === geofenceId);
+    return geofence?.name || 'Geocerca desconhecida';
+  };
+  
+  // Função para obter o nome do veículo
+  const getVehicleName = (vehicleId: number) => {
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    return vehicle?.name || `Veículo ${vehicleId}`;
+  };
+  
+  // Função para formatar a data
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+  
+  return (
+    <div className="absolute top-4 right-4 w-80 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden z-10">
+      <div className="p-3 bg-blue-500 dark:bg-blue-600 text-white flex justify-between items-center">
+        <h3 className="font-medium">Alertas de Geocerca</h3>
+        <button 
+          onClick={onClose}
+          className="text-white hover:text-gray-200 focus:outline-none"
+          aria-label="Fechar painel de alertas"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </button>
+      </div>
+      <div className="max-h-80 overflow-y-auto">
+        {alerts.map(alert => (
+          <div 
+            key={alert.id} 
+            className={`p-3 border-b border-gray-200 dark:border-gray-700 ${alert.eventType === 'enter' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}
+          >
+            <div className="flex items-center mb-1">
+              <span className={`inline-block w-2 h-2 rounded-full mr-2 ${alert.eventType === 'enter' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              <span className="font-medium">
+                {alert.eventType === 'enter' ? 'Entrada' : 'Saída'} - {getVehicleName(alert.vehicleId)}
+              </span>
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-300">
+              Geocerca: {getGeofenceName(alert.geofenceId)}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {formatDate(alert.timestamp)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const GeofenceManager: React.FC<GeofenceManagerProps> = ({
   map,
   geofences,
@@ -65,6 +131,10 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
   
   // Estado para rastrear veículos dentro de cada geocerca
   const [vehiclesInGeofences, setVehiclesInGeofences] = useState<Record<string, number[]>>({});
+  
+  // Estado para alertas de geocerca
+  const [geofenceAlerts, setGeofenceAlerts] = useState<GeofenceEvent[]>([]);
+  const [showAlerts, setShowAlerts] = useState<boolean>(true);
   
   // Cores padrão para as geocercas
   const defaultColors = useMemo(() => [
@@ -87,6 +157,58 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
       setSelectedGeofence(null);
     }
   }, [selectedGeofenceId, geofences]);
+  
+  // Efeito para verificar veículos dentro das geocercas e gerar alertas
+  useEffect(() => {
+    if (!vehicles || vehicles.length === 0 || !geofences || geofences.length === 0) return;
+    
+    const newVehiclesInGeofences: Record<string, number[]> = {};
+    
+    // Inicializar o objeto de rastreamento
+    geofences.forEach(geofence => {
+      newVehiclesInGeofences[geofence.id] = [];
+    });
+    
+    // Verificar cada veículo em relação a cada geocerca
+    vehicles.forEach(vehicle => {
+      const vehiclePosition = { lat: vehicle.lat, lng: vehicle.lng };
+      
+      geofences.forEach(geofence => {
+        let isInside = false;
+        
+        if (geofence.type === 'polygon' && geofence.paths) {
+          isInside = isPointInPolygon(vehiclePosition, geofence.paths);
+        } else if (geofence.type === 'circle' && geofence.center && geofence.radius) {
+          const distance = google.maps.geometry.spherical.computeDistanceBetween(
+            new google.maps.LatLng(vehiclePosition.lat, vehiclePosition.lng),
+            new google.maps.LatLng(geofence.center.lat, geofence.center.lng)
+          );
+          isInside = distance <= geofence.radius;
+        }
+        
+        // Se o veículo está dentro da geocerca, adicionar ao array
+        if (isInside) {
+          newVehiclesInGeofences[geofence.id].push(vehicle.id);
+          
+          // Verificar se é uma nova entrada (não estava na lista anterior)
+          const wasInside = vehiclesInGeofences[geofence.id]?.includes(vehicle.id);
+          if (!wasInside) {
+            // Gerar alerta de entrada
+            generateGeofenceAlert(vehicle.id, geofence.id, 'enter', vehiclePosition);
+          }
+        } else {
+          // Verificar se é uma saída (estava na lista anterior)
+          const wasInside = vehiclesInGeofences[geofence.id]?.includes(vehicle.id);
+          if (wasInside) {
+            // Gerar alerta de saída
+            generateGeofenceAlert(vehicle.id, geofence.id, 'exit', vehiclePosition);
+          }
+        }
+      });
+    });
+    
+    setVehiclesInGeofences(newVehiclesInGeofences);
+  }, [vehicles, geofences, vehiclesInGeofences, isPointInPolygon, generateGeofenceAlert]);
 
   // Reset do modo de desenho quando o modo de edição é desativado
   useEffect(() => {
@@ -95,6 +217,28 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
     }
   }, [editable]);
 
+  // Função para gerar alertas de geocerca
+  const generateGeofenceAlert = useCallback((vehicleId: number, geofenceId: string, eventType: 'enter' | 'exit', position: google.maps.LatLngLiteral) => {
+    const newAlert: GeofenceEvent = {
+      id: `${vehicleId}-${geofenceId}-${Date.now()}`,
+      vehicleId,
+      geofenceId,
+      eventType,
+      timestamp: new Date().toISOString(),
+      position
+    };
+    
+    setGeofenceAlerts(prev => [newAlert, ...prev].slice(0, 50)); // Manter apenas os 50 alertas mais recentes
+    
+    // Chamar o callback se fornecido
+    if (onGeofenceEvent) {
+      onGeofenceEvent(newAlert);
+    }
+    
+    // Em uma aplicação real, aqui você enviaria o alerta para um sistema de notificações
+    console.log(`Alerta de Geocerca: Veículo ${vehicleId} ${eventType === 'enter' ? 'entrou na' : 'saiu da'} geocerca ${geofenceId}`);
+  }, [onGeofenceEvent]);
+  
   // Função para verificar se um ponto está dentro de um polígono
   const isPointInPolygon = useCallback((point: google.maps.LatLngLiteral, polygon: google.maps.LatLngLiteral[]) => {
     if (!point || !polygon || polygon.length < 3) return false;
@@ -489,4 +633,4 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
   );
 };
 
-export default memo(GeofenceManager); 
+export default memo(GeofenceManager);

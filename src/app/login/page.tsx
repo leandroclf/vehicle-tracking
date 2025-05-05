@@ -48,7 +48,7 @@ function LoginForm() {
         console.log('Login bem-sucedido, redirecionando para dashboard');
         // Adicionar pequeno delay para garantir que o token seja armazenado
         await new Promise(resolve => setTimeout(resolve, 300));
-        router.push('/dashboard/dashboard');
+        router.push('/dashboard');
       } else {
         console.error('Falha no login:', result.error);
         setError(result.error || 'Erro ao fazer login');

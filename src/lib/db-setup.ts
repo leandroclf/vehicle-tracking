@@ -22,16 +22,35 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Função para verificar se a tabela existe
 export async function checkTableExists(tableName: string): Promise<boolean> {
   try {
+    // Usando rpc para verificar se a tabela existe
     const { data, error } = await supabase
-      .from('information_schema.tables')
-      .select('table_name')
-      .eq('table_schema', 'public')
-      .eq('table_name', tableName)
-      .maybeSingle();
+      .rpc('table_exists', { table_name: tableName })
+      .single();
     
     if (error) {
       console.error(`Erro ao verificar tabela ${tableName}:`, error);
-      return false;
+      
+      // Alternativa: tentar consultar a tabela diretamente para ver se ela existe
+      try {
+        const { data: testData, error: testError } = await supabase
+          .from(tableName)
+          .select('*')
+          .limit(1);
+          
+        // Se conseguir consultar a tabela sem erros, ela existe
+        if (!testError) {
+          return true;
+        }
+        
+        // Se o erro for diferente de "tabela não existe", logar o erro
+        if (!testError.message.includes('does not exist')) {
+          console.error(`Erro ao testar consulta na tabela ${tableName}:`, testError);
+        }
+        
+        return false;
+      } catch (testErr) {
+        return false;
+      }
     }
     
     return !!data;
@@ -69,6 +88,34 @@ export async function ensureNotificationsTable() {
   }
 }
 
+// Função para verificar e criar a tabela de alertas se não existir
+export async function ensureAlertsTable() {
+  try {
+    const exists = await checkTableExists('alerts');
+    
+    if (exists) {
+      console.log('Tabela de alertas já existe');
+      return true;
+    }
+    
+    console.log('Criando tabela de alertas...');
+    
+    // Usar RPC para criar a tabela
+    const { error } = await supabaseAdmin().rpc('create_alerts_table');
+    
+    if (error) {
+      console.error('Erro ao criar tabela de alertas:', error);
+      return false;
+    }
+    
+    console.log('Tabela de alertas criada com sucesso');
+    return true;
+  } catch (error) {
+    console.error('Erro ao verificar/criar tabela de alertas:', error);
+    return false;
+  }
+}
+
 // Função para inicializar o banco de dados
 export async function initializeDatabase() {
   try {
@@ -76,6 +123,7 @@ export async function initializeDatabase() {
     
     // Verificar e criar tabelas essenciais
     await ensureNotificationsTable();
+    await ensureAlertsTable();
     
     console.log('Verificação de banco de dados concluída');
     return true;

@@ -24,13 +24,23 @@ interface LocationOption {
   name: string;
 }
 
+interface VehicleLocation {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  lastUpdate: string;
+}
+
 export default function WeatherWidget() {
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [vehicleLocations, setVehicleLocations] = useState<VehicleLocation[]>([]);
+  const [showVehicleWeather, setShowVehicleWeather] = useState<boolean>(false);
 
-  // Simular carregamento de dados meteorológicos
+  // Simular carregamento de dados meteorológicos e localizações de veículos
   useEffect(() => {
     const fetchWeatherData = () => {
       // Simulação de localizações disponíveis
@@ -42,7 +52,15 @@ export default function WeatherWidget() {
         { id: 'curitiba', name: 'Curitiba, PR' }
       ];
       
+      // Simulação de localizações de veículos
+      const mockVehicleLocations: VehicleLocation[] = [
+        { id: 'v1', name: 'Caminhão 01', lat: -23.5505, lng: -46.6333, lastUpdate: new Date().toISOString() }, // São Paulo
+        { id: 'v2', name: 'Van de Entrega', lat: -22.9068, lng: -43.1729, lastUpdate: new Date().toISOString() }, // Rio de Janeiro
+        { id: 'v3', name: 'Utilitário 03', lat: -19.9167, lng: -43.9345, lastUpdate: new Date().toISOString() } // Belo Horizonte
+      ];
+      
       setLocations(mockLocations);
+      setVehicleLocations(mockVehicleLocations);
       
       if (!selectedLocation && mockLocations.length > 0) {
         setSelectedLocation(mockLocations[0].id);
@@ -54,8 +72,19 @@ export default function WeatherWidget() {
         const conditions: Array<'clear' | 'cloudy' | 'rain' | 'storm' | 'fog'> = ['clear', 'cloudy', 'rain', 'storm', 'fog'];
         const randomCondition = conditions[Math.floor(Math.random() * conditions.length)];
         
+        // Verificar se é uma localização de veículo
+        const isVehicle = selectedLocation.startsWith('v');
+        let locationName = '';
+        
+        if (isVehicle) {
+          const vehicle = mockVehicleLocations.find(v => v.id === selectedLocation);
+          locationName = vehicle ? `${vehicle.name} (em trânsito)` : '';
+        } else {
+          locationName = mockLocations.find(loc => loc.id === selectedLocation)?.name || '';
+        }
+        
         const mockData: WeatherData = {
-          location: mockLocations.find(loc => loc.id === selectedLocation)?.name || '',
+          location: locationName,
           temperature: Math.floor(Math.random() * 15) + 15, // 15-30°C
           condition: randomCondition,
           humidity: Math.floor(Math.random() * 40) + 40, // 40-80%
@@ -165,9 +194,27 @@ export default function WeatherWidget() {
       <div className="p-4 flex-grow overflow-hidden flex flex-col">
         {/* Seletor de localização */}
         <div className="mb-4">
-          <label htmlFor="location-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Selecione a localização:
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="location-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Selecione a localização:
+            </label>
+            <div className="flex items-center">
+              <label htmlFor="vehicle-weather-toggle" className="text-xs text-gray-600 dark:text-gray-400 mr-2">
+                Clima nas rotas
+              </label>
+              <div className="relative inline-block w-10 mr-2 align-middle select-none">
+                <input 
+                  type="checkbox" 
+                  id="vehicle-weather-toggle" 
+                  checked={showVehicleWeather}
+                  onChange={() => setShowVehicleWeather(!showVehicleWeather)}
+                  className="sr-only"
+                />
+                <div className="block h-6 bg-gray-300 dark:bg-gray-600 rounded-full w-10"></div>
+                <div className={`absolute left-1 top-1 bg-white rounded-full h-4 w-4 transition-transform ${showVehicleWeather ? 'transform translate-x-4' : ''}`}></div>
+              </div>
+            </div>
+          </div>
           <select
             id="location-select"
             value={selectedLocation}
@@ -175,11 +222,21 @@ export default function WeatherWidget() {
             className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             aria-label="Selecionar localização para previsão do tempo"
           >
-            {locations.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.name}
-              </option>
-            ))}
+            {showVehicleWeather ? (
+              // Mostrar localizações de veículos
+              vehicleLocations.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.name}
+                </option>
+              ))
+            ) : (
+              // Mostrar localizações fixas
+              locations.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))
+            )}
           </select>
         </div>
 

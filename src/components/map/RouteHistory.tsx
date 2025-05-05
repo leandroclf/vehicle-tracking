@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Polyline, Marker, InfoWindow } from '@react-google-maps/api';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Polyline, Marker, InfoWindow, Circle } from '@react-google-maps/api';
 
 export interface RoutePoint {
   id: string;
@@ -23,6 +23,7 @@ interface RouteHistoryProps {
   startDate?: Date;
   endDate?: Date;
   onPointClick?: (point: RoutePoint) => void;
+  enableReplay?: boolean;
 }
 
 // Função para simplificar uma rota (algoritmo Douglas-Peucker simplificado)
@@ -63,6 +64,7 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
   startDate,
   endDate,
   onPointClick,
+  enableReplay = false,
 }) => {
   // Estado para o ponto selecionado
   const [selectedPoint, setSelectedPoint] = useState<RoutePoint | null>(null);
@@ -72,6 +74,15 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
   
   // Estado para simplificação adaptativa com base no zoom
   const [simplificationTolerance, setSimplificationTolerance] = useState<number>(0.0001);
+  
+  // Estados para o replay de trajetos
+  const [isReplaying, setIsReplaying] = useState<boolean>(false);
+  const [replaySpeed, setReplaySpeed] = useState<number>(1); // Velocidade de reprodução (1x, 2x, 4x)
+  const [currentReplayIndex, setCurrentReplayIndex] = useState<number>(0);
+  const [replayProgress, setReplayProgress] = useState<number>(0); // Progresso de 0 a 100
+  
+  // Referência para o intervalo de replay
+  const replayIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Detectar mudanças no zoom para ajustar a simplificação
   useEffect(() => {
@@ -96,6 +107,12 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
     });
   }, [routePoints, vehicleId, startDate, endDate]);
 
+  // Função para formatar data
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+  
   // Ordenar os pontos por timestamp para garantir a ordem correta
   const sortedRoutePoints = useMemo(() => {
     return [...filteredRoutePoints].sort((a, b) => {
@@ -229,6 +246,136 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
     return nonEventPoints.filter((_, index) => index % samplingRate === 0);
   };
 
+  // Funções para controle do replay
+  const startReplay = useCallback(() => {
+    if (sortedRoutePoints.length === 0) return;
+    
+    setIsReplaying(true);
+    setCurrentReplayIndex(0);
+    setReplayProgress(0);
+    
+    // Limpar intervalo anterior se existir
+    if (replayIntervalRef.current) {
+      clearInterval(replayIntervalRef.current);
+    }
+    
+    // Iniciar novo intervalo para replay
+    const intervalTime = 1000 / replaySpeed; // Ajustar velocidade
+    replayIntervalRef.current = setInterval(() => {
+      setCurrentReplayIndex(prevIndex => {
+        const newIndex = prevIndex + 1;
+        if (newIndex >= sortedRoutePoints.length) {
+          // Parar o replay quando chegar ao final
+          if (replayIntervalRef.current) {
+            clearInterval(replayIntervalRef.current);
+            replayIntervalRef.current = null;
+          }
+          setIsReplaying(false);
+          return prevIndex;
+        }
+        
+        // Atualizar progresso
+        const progress = (newIndex / (sortedRoutePoints.length - 1)) * 100;
+        setReplayProgress(progress);
+        
+        return newIndex;
+      });
+    }, intervalTime);
+  }, [sortedRoutePoints, replaySpeed]);
+  
+  const pauseReplay = useCallback(() => {
+    setIsReplaying(false);
+    if (replayIntervalRef.current) {
+      clearInterval(replayIntervalRef.current);
+      replayIntervalRef.current = null;
+    }
+  }, []);
+  
+  const resumeReplay = useCallback(() => {
+    if (currentReplayIndex >= sortedRoutePoints.length - 1) {
+      // Se estiver no final, reiniciar
+      startReplay();
+    } else {
+      setIsReplaying(true);
+      const intervalTime = 1000 / replaySpeed;
+      replayIntervalRef.current = setInterval(() => {
+        setCurrentReplayIndex(prevIndex => {
+          const newIndex = prevIndex + 1;
+          if (newIndex >= sortedRoutePoints.length) {
+            if (replayIntervalRef.current) {
+              clearInterval(replayIntervalRef.current);
+              replayIntervalRef.current = null;
+            }
+            setIsReplaying(false);
+            return prevIndex;
+          }
+          
+          const progress = (newIndex / (sortedRoutePoints.length - 1)) * 100;
+          setReplayProgress(progress);
+          
+          return newIndex;
+        });
+      }, intervalTime);
+    }
+  }, [sortedRoutePoints, currentReplayIndex, replaySpeed, startReplay]);
+  
+  const stopReplay = useCallback(() => {
+    setIsReplaying(false);
+    setCurrentReplayIndex(0);
+    setReplayProgress(0);
+    if (replayIntervalRef.current) {
+      clearInterval(replayIntervalRef.current);
+      replayIntervalRef.current = null;
+    }
+  }, []);
+  
+  const changeReplaySpeed = useCallback(() => {
+    // Alternar entre 1x, 2x e 4x
+    const newSpeed = replaySpeed === 1 ? 2 : replaySpeed === 2 ? 4 : 1;
+    setReplaySpeed(newSpeed);
+    
+    // Se estiver reproduzindo, atualizar o intervalo
+    if (isReplaying && replayIntervalRef.current) {
+      clearInterval(replayIntervalRef.current);
+      const intervalTime = 1000 / newSpeed;
+      replayIntervalRef.current = setInterval(() => {
+        setCurrentReplayIndex(prevIndex => {
+          const newIndex = prevIndex + 1;
+          if (newIndex >= sortedRoutePoints.length) {
+            if (replayIntervalRef.current) {
+              clearInterval(replayIntervalRef.current);
+              replayIntervalRef.current = null;
+            }
+            setIsReplaying(false);
+            return prevIndex;
+          }
+          
+          const progress = (newIndex / (sortedRoutePoints.length - 1)) * 100;
+          setReplayProgress(progress);
+          
+          return newIndex;
+        });
+      }, intervalTime);
+    }
+  }, [sortedRoutePoints, isReplaying, replaySpeed]);
+  
+  // Limpar intervalo ao desmontar o componente
+  useEffect(() => {
+    return () => {
+      if (replayIntervalRef.current) {
+        clearInterval(replayIntervalRef.current);
+      }
+    };
+  }, []);
+  
+  // Obter o ponto atual do replay
+  const currentReplayPoint = useMemo(() => {
+    if (currentReplayIndex < sortedRoutePoints.length) {
+      return sortedRoutePoints[currentReplayIndex];
+    }
+    return null;
+  }, [sortedRoutePoints, currentReplayIndex]);
+  
   return (
     <>
       {/* Linha da rota */}
@@ -315,6 +462,37 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
           onClick={() => handlePointClick(point)}
         />
       ))}
+      
+      {/* Marcador de replay */}
+      {enableReplay && isReplaying && currentReplayPoint && (
+        <>
+          <Marker
+            position={{ lat: currentReplayPoint.lat, lng: currentReplayPoint.lng }}
+            icon={{
+              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+              scale: 6,
+              fillColor: '#FF5722',
+              fillOpacity: 1,
+              strokeWeight: 2,
+              strokeColor: '#FFFFFF',
+              rotation: currentReplayPoint.heading || 0,
+            }}
+            zIndex={10}
+          />
+          <Circle
+            center={{ lat: currentReplayPoint.lat, lng: currentReplayPoint.lng }}
+            radius={50}
+            options={{
+              fillColor: '#FF5722',
+              fillOpacity: 0.1,
+              strokeColor: '#FF5722',
+              strokeOpacity: 0.5,
+              strokeWeight: 1,
+              zIndex: 9,
+            }}
+          />
+        </>
+      )}
 
       {/* Janela de informações para o ponto selecionado */}
       {selectedPoint && (
@@ -348,8 +526,71 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
           </div>
         </InfoWindow>
       )}
+      
+      {/* Controles de replay */}
+      {enableReplay && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 p-3 rounded-lg shadow-lg z-10 w-80">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Replay de Trajeto
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {currentReplayPoint ? formatDate(currentReplayPoint.timestamp) : ''}
+            </div>
+          </div>
+          
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-3">
+            <div 
+              className="bg-blue-500 h-2.5 rounded-full" 
+              style={{ width: `${replayProgress}%` }}
+            ></div>
+          </div>
+          
+          <div className="flex items-center justify-center space-x-4">
+            <button
+              onClick={stopReplay}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+              aria-label="Parar replay"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700 dark:text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+              </svg>
+            </button>
+            
+            {isReplaying ? (
+              <button
+                onClick={pauseReplay}
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+                aria-label="Pausar replay"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700 dark:text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={resumeReplay}
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+                aria-label="Iniciar replay"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700 dark:text-gray-300" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
+            
+            <button
+              onClick={changeReplaySpeed}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none text-xs font-medium text-gray-700 dark:text-gray-300"
+              aria-label="Alterar velocidade de reprodução"
+            >
+              {replaySpeed}x
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
-export default React.memo(RouteHistory); 
+export default React.memo(RouteHistory);

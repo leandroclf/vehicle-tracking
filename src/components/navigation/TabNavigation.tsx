@@ -13,6 +13,8 @@ interface Tab {
   path?: string;
   icon?: ReactNode;
   shortcut?: string;
+  emoji?: string;
+  badge?: number;
 }
 
 interface TabNavigationProps {
@@ -75,7 +77,7 @@ export function TabNavigation({
           const isActive = activeTabId === tab.id;
           
           return (
-            <button
+            <motion.button
               key={tab.id}
               role="tab"
               id={`tab-${tab.id}`}
@@ -83,20 +85,28 @@ export function TabNavigation({
               aria-controls={`panel-${tab.id}`}
               tabIndex={isActive ? 0 : -1}
               className={cn(
-                'relative px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset',
+                'relative px-4 py-3 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset rounded-t-lg',
                 isActive
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               )}
               onClick={() => handleTabChange(tab.id)}
+              whileHover={{ y: -2 }}
+              whileTap={{ y: 0 }}
             >
               <div className="flex items-center space-x-2">
+                {tab.emoji && <span className="text-lg">{tab.emoji}</span>}
                 {tab.icon && <span>{tab.icon}</span>}
                 <span>{tab.label}</span>
-                {tab.shortcut && (
-                  <span className="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400">
-                    Alt+{tab.shortcut.toUpperCase()}
+                {tab.badge && tab.badge > 0 && (
+                  <span className="ml-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                    {tab.badge > 99 ? '99+' : tab.badge}
                   </span>
+                )}
+                {tab.shortcut && (
+                  <kbd className="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600">
+                    Alt+{tab.shortcut.toUpperCase()}
+                  </kbd>
                 )}
               </div>
               
@@ -110,7 +120,7 @@ export function TabNavigation({
                   transition={{ duration: 0.2 }}
                 />
               )}
-            </button>
+            </motion.button>
           );
         })}
       </div>

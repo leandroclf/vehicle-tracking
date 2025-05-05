@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useVehicles } from '@/lib/vehicles';
+import { motion } from 'framer-motion';
+import { Tooltip } from '@/components/ui/Tooltip';
+import { AlertTriangle, Power, VolumeX, Lightbulb } from 'lucide-react';
 
 // Componente para enviar comandos para veículos
 export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
@@ -102,66 +105,103 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
-      <h2 className="text-lg font-semibold text-gray-800 mb-3">Comandos Remotos</h2>
+    <motion.div 
+      className="bg-white rounded-lg shadow-md p-6 overflow-hidden"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+        🎮 Comandos Remotos
+        <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Controle em tempo real</span>
+      </h2>
       
       {/* Resultado do comando */}
       {commandResult && (
-        <div className={`mb-4 p-3 rounded-md ${commandResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-          <p className={`text-sm ${commandResult.success ? 'text-green-700' : 'text-red-700'}`}>
-            {commandResult.message}
+        <motion.div 
+          className={`mb-5 p-4 rounded-md ${commandResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          transition={{ duration: 0.3 }}
+        >
+          <p className={`text-sm flex items-center ${commandResult.success ? 'text-green-700' : 'text-red-700'}`}>
+            {commandResult.success ? '✅' : '❌'} 
+            <span className="ml-2">{commandResult.message}</span>
           </p>
-        </div>
+        </motion.div>
       )}
       
       {/* Lista de comandos disponíveis */}
-      <div className="grid grid-cols-3 gap-3">
-        <button
-          className={`flex flex-col items-center p-3 rounded-md ${
-            vehicle.ignition 
-              ? 'bg-red-50 hover:bg-red-100 text-red-700' 
-              : 'bg-green-50 hover:bg-green-100 text-green-700'
-          } transition-colors ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-          onClick={handleBlockCommand}
-          disabled={isProcessing}
-        >
-          <span className="text-2xl mb-1">{vehicle.ignition ? '🔒' : '🔓'}</span>
-          <span className="text-xs font-medium">{vehicle.ignition ? 'Bloquear' : 'Desbloquear'}</span>
-        </button>
+      <div className="grid grid-cols-3 gap-4">
+        <Tooltip content={vehicle.ignition ? "Bloquear motor do veículo" : "Desbloquear motor do veículo"}>
+          <motion.button
+            className={`flex flex-col items-center p-4 rounded-md transition-all duration-200 ${
+              vehicle.ignition 
+                ? 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200' 
+                : 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-200'
+            } ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
+            onClick={handleBlockCommand}
+            disabled={isProcessing}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Power className="w-6 h-6 mb-2" />
+            <span className="text-sm font-medium">{vehicle.ignition ? 'Bloquear' : 'Desbloquear'}</span>
+          </motion.button>
+        </Tooltip>
         
-        <button
-          className={`flex flex-col items-center p-3 rounded-md bg-yellow-50 hover:bg-yellow-100 text-yellow-700 transition-colors ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-          onClick={handleSirenCommand}
-          disabled={isProcessing}
-        >
-          <span className="text-2xl mb-1">🔔</span>
-          <span className="text-xs font-medium">Sirene</span>
-        </button>
+        <Tooltip content="Ativar sirene do veículo por 30 segundos">
+          <motion.button
+            className={`flex flex-col items-center p-4 rounded-md bg-yellow-50 hover:bg-yellow-100 text-yellow-700 transition-all duration-200 border border-yellow-200 ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
+            onClick={handleSirenCommand}
+            disabled={isProcessing}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <VolumeX className="w-6 h-6 mb-2" />
+            <span className="text-sm font-medium">Sirene</span>
+          </motion.button>
+        </Tooltip>
         
-        <button
-          className={`flex flex-col items-center p-3 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-          onClick={handleLightsCommand}
-          disabled={isProcessing}
-        >
-          <span className="text-2xl mb-1">💡</span>
-          <span className="text-xs font-medium">Faróis</span>
-        </button>
+        <Tooltip content="Piscar faróis do veículo por 30 segundos">
+          <motion.button
+            className={`flex flex-col items-center p-4 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all duration-200 border border-blue-200 ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
+            onClick={handleLightsCommand}
+            disabled={isProcessing}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Lightbulb className="w-6 h-6 mb-2" />
+            <span className="text-sm font-medium">Faróis</span>
+          </motion.button>
+        </Tooltip>
       </div>
       
       {/* Indicador de processamento */}
       {isProcessing && (
-        <div className="mt-4 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-center text-blue-700">
+        <motion.div 
+          className="mt-5 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-center text-blue-700"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        >
           <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500 mr-2"></div>
-            <span>Enviando comando...</span>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
+            <span>Enviando comando ao veículo...</span>
           </div>
-        </div>
+        </motion.div>
       )}
       
       {/* Aviso de segurança */}
-      <div className="mt-4 text-xs text-gray-500">
-        <p>⚠️ Atenção: O bloqueio do veículo deve ser usado com cautela e apenas quando o veículo estiver parado em local seguro.</p>
-      </div>
-    </div>
+      <motion.div 
+        className="mt-5 p-3 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-700 flex items-start"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.3 }}
+      >
+        <AlertTriangle className="w-5 h-5 mr-2 flex-shrink-0 text-amber-500" />
+        <p>O bloqueio do veículo deve ser usado com cautela e apenas quando o veículo estiver parado em local seguro. A empresa não se responsabiliza por acidentes causados pelo bloqueio indevido.</p>
+      </motion.div>
+    </motion.div>
   );
 }
