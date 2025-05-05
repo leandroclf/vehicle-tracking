@@ -2,7 +2,7 @@
  * Serviços para integração com APIs externas e internas
  */
 
-import { supabase } from './supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 // Tipos para telemetria

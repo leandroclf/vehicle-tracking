@@ -10,8 +10,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase, supabaseRealtime } from '@/lib/supabase';
-import { RealtimeSubscriptionManager, RealtimeUpdater } from '../../lib/realtime-subscription';
-import { useOfflineSync } from '../../lib/offline-sync';
+import { RealtimeSubscriptionManager, RealtimeUpdater } from '@/lib/realtime-subscription';
+import { useOfflineSync } from '@/lib/offline-sync';
 import { Alert } from '../ui/Alert';
 import { Spinner } from '../ui/Spinner';
 import Layout from '../layout/Layout';
@@ -22,110 +22,104 @@ type SyncStatus = 'online' | 'offline' | 'syncing';
 /**
  * Componente principal de integração Realtime
  */
-export function RealtimeIntegration({ children }: { children: React.ReactNode }) {
+export default function RealtimeIntegration({ children }: { children: React.ReactNode }) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('online');
-  const [pendingChanges, setPendingChanges] = useState<number>(0);
-  const [showSyncAlert, setShowSyncAlert] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Inicializar gerenciador de sincronização offline
-  const offlineSync = useOfflineSync(supabaseRealtime);
+  // Usar hook personalizado para controle de sincronização offline
+  const { isSyncing, pendingChanges, syncError } = useOfflineSync();
   
-  // Monitorar status de conexão
+  // Configurar subscriptions e gerenciamento de atualizações em tempo real
   useEffect(() => {
-    const handleOnline = () => {
-      setSyncStatus('syncing');
-      // Tentar sincronizar dados pendentes
-      offlineSync.forceSyncAll()
-        .then(() => {
-          setSyncStatus('online');
-          setShowSyncAlert(true);
-          // Esconder alerta após 3 segundos
-          setTimeout(() => setShowSyncAlert(false), 3000);
-        })
-        .catch(() => {
-          setSyncStatus('offline');
-        });
+    // Criar gerenciador de subscriptions
+    const subscriptionManager = new RealtimeSubscriptionManager(supabaseRealtime);
+    // Criar gerenciador de atualizações em tempo real
+    const updater = new RealtimeUpdater(supabase);
+    
+    // Inicializar e inscrever nos canais
+    const initialize = async () => {
+      try {
+        await subscriptionManager.initialize();
+        setIsLoading(false);
+        setSyncStatus('online');
+      } catch (err) {
+        console.error('Erro ao inicializar realtime:', err);
+        setError('Falha ao inicializar sistema de tempo real. Tente recarregar a página.');
+        setSyncStatus('offline');
+        setIsLoading(false);
+      }
     };
     
-    const handleOffline = () => {
-      setSyncStatus('offline');
+    // Monitorar status de conexão
+    const handleConnectionStatus = (status: string) => {
+      if (status === 'CONNECTED') {
+        setSyncStatus('online');
+        setError(null);
+      } else if (status === 'DISCONNECTED') {
+        setSyncStatus('offline');
+      }
     };
     
-    // Verificar status inicial
-    if (navigator.onLine) {
-      setSyncStatus('online');
-    } else {
-      setSyncStatus('offline');
-    }
+    // Adicionar listeners para status de conexão
+    subscriptionManager.onConnectionStatus(handleConnectionStatus);
     
-    // Verificar mudanças pendentes periodicamente
-    const checkPendingChanges = () => {
-      const hasPending = offlineSync.hasPendingSyncItems();
-      setPendingChanges(hasPending ? 1 : 0); // Simplificado para indicador binário
-    };
+    // Inicializar
+    initialize();
     
-    const pendingInterval = setInterval(checkPendingChanges, 5000);
-    
-    // Configurar event listeners
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    // Limpar event listeners
+    // Cleanup na desmontagem do componente
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      clearInterval(pendingInterval);
+      subscriptionManager.cleanup();
+      updater.cleanup();
     };
-  }, [offlineSync]);
+  }, []);
+  
+  // Atualizar status baseado no processo de sincronização
+  useEffect(() => {
+    if (isSyncing) {
+      setSyncStatus('syncing');
+    } else if (syncError) {
+      setError(syncError);
+      setSyncStatus('offline');
+    } else if (syncStatus === 'syncing') {
+      setSyncStatus('online');
+    }
+  }, [isSyncing, syncError]);
+  
+  // Renderizar spinner de carregamento
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <Spinner size="lg" />
+          <p className="ml-2 text-gray-600">Conectando ao sistema em tempo real...</p>
+        </div>
+      </Layout>
+    );
+  }
   
   return (
-    <RealtimeSubscriptionManager supabaseClient={supabaseRealtime}>
-      {/* Indicador de status de sincronização */}
-      {syncStatus === 'offline' && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <Alert 
-            variant="warning" 
-            title="Modo Offline"
-          >
-            {pendingChanges > 0 
-              ? `Você está offline. ${pendingChanges} alterações pendentes serão sincronizadas quando a conexão for restabelecida.`
-              : "Você está offline. Os dados podem não estar atualizados."}
-          </Alert>
-        </div>
+    <>
+      {error && (
+        <Alert variant="error" title="Erro de Conexão" className="mb-4">
+          {error}
+        </Alert>
       )}
       
       {syncStatus === 'syncing' && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <Alert 
-            variant="info" 
-            title="Sincronizando"
-            icon={<Spinner size="sm" />}
-          >
-            Sincronizando dados...
-          </Alert>
-        </div>
+        <Alert variant="info" title="Sincronizando Dados" className="mb-4">
+          Sincronizando {pendingChanges} alterações pendentes...
+        </Alert>
       )}
       
-      {showSyncAlert && syncStatus === 'online' && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <Alert 
-            variant="success" 
-            title="Sincronização Concluída"
-            onClose={() => setShowSyncAlert(false)}
-          >
-            Todos os dados foram sincronizados com sucesso.
-          </Alert>
-        </div>
+      {syncStatus === 'offline' && !error && (
+        <Alert variant="warning" title="Modo Offline" className="mb-4">
+          Você está trabalhando no modo offline. Suas alterações serão sincronizadas quando a conexão for restaurada.
+        </Alert>
       )}
       
-      {/* Componente para atualizar a interface com dados em tempo real */}
-      <RealtimeUpdater supabaseClient={supabaseRealtime} />
-      
-      {/* Conteúdo da aplicação com Layout */}
-      <Layout>
-        {children}
-      </Layout>
-    </RealtimeSubscriptionManager>
+      {children}
+    </>
   );
 }
 

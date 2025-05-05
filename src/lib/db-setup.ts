@@ -1,6 +1,6 @@
 'use client';
 
-import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 // Função para verificar se a tabela existe
 export async function checkTableExists(tableName: string): Promise<boolean> {
@@ -13,11 +13,13 @@ export async function checkTableExists(tableName: string): Promise<boolean> {
       
     // Se não houver erro, a tabela existe
     if (!error) {
+      console.log(`Tabela ${tableName} existe`);
       return true;
     }
     
     // Verificar se o erro indica que a tabela não existe
     if (error.message && error.message.includes('does not exist')) {
+      console.log(`Tabela ${tableName} não existe`);
       return false;
     }
     
@@ -30,102 +32,106 @@ export async function checkTableExists(tableName: string): Promise<boolean> {
   }
 }
 
-// Função para verificar e criar a tabela de notificações se não existir
-export async function ensureNotificationsTable(): Promise<boolean> {
+// Função para criar tabela de notificações
+export async function createNotificationsTable() {
   try {
     const exists = await checkTableExists('notifications');
+    if (exists) return true;
     
-    if (exists) {
-      console.log('Tabela de notificações já existe');
-      return true;
-    }
+    const { error } = await supabase.rpc('execute_sql', {
+      sql_query: `
+        CREATE TABLE IF NOT EXISTS notifications (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          user_id UUID NOT NULL,
+          type TEXT NOT NULL,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          data JSONB,
+          read BOOLEAN DEFAULT false,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+        CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+        CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
+      `
+    });
     
-    console.log('Criando tabela de notificações...');
-    
-    // Verificar se o supabaseAdmin está disponível
-    if (!supabaseAdmin) {
-      console.warn('Cliente Admin do Supabase não disponível, não é possível criar tabela de notificações');
+    if (error) {
+      console.error('Erro ao criar tabela notifications:', error);
       return false;
     }
     
-    // Usar método From para criar tabela
-    try {
-      // Criar tabela base
-      await supabase.from('notifications').insert({
-        id: '00000000-0000-0000-0000-000000000000',
-        user_id: '00000000-0000-0000-0000-000000000000',
-        title: 'Inicialização',
-        message: 'Tabela criada',
-        read: true,
-        type: 'system',
-        timestamp: new Date().toISOString()
-      }).select();
-      
-      console.log('Tabela de notificações criada com sucesso');
-      return true;
-    } catch (error) {
-      console.error('Erro ao criar tabela de notificações:', error);
-      return false;
-    }
+    console.log('Tabela notifications criada com sucesso');
+    return true;
   } catch (error) {
-    console.error('Erro ao verificar/criar tabela de notificações:', error);
+    console.error('Erro ao criar tabela notifications:', error);
     return false;
   }
 }
 
-// Função para verificar e criar a tabela de alertas se não existir
-export async function ensureAlertsTable(): Promise<boolean> {
+// Função para criar tabela de alertas
+export async function createAlertsTable() {
   try {
     const exists = await checkTableExists('alerts');
+    if (exists) return true;
     
-    if (exists) {
-      console.log('Tabela de alertas já existe');
-      return true;
-    }
+    const { error } = await supabase.rpc('execute_sql', {
+      sql_query: `
+        CREATE TABLE IF NOT EXISTS alerts (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          vehicle_id UUID NOT NULL,
+          type TEXT NOT NULL,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          status TEXT DEFAULT 'active',
+          data JSONB,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          resolved_at TIMESTAMP WITH TIME ZONE,
+          CONSTRAINT fk_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_alerts_vehicle_id ON alerts(vehicle_id);
+        CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
+        CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts(created_at);
+      `
+    });
     
-    console.log('Criando tabela de alertas...');
-    
-    // Verificar se o supabaseAdmin está disponível
-    if (!supabaseAdmin) {
-      console.warn('Cliente Admin do Supabase não disponível, não é possível criar tabela de alertas');
+    if (error) {
+      console.error('Erro ao criar tabela alerts:', error);
       return false;
     }
     
-    // Usar método From para criar tabela
-    try {
-      // Criar tabela base
-      await supabase.from('alerts').insert({
-        id: '00000000-0000-0000-0000-000000000000',
-        user_id: '00000000-0000-0000-0000-000000000000',
-        message: 'Tabela criada',
-        read: true,
-        type: 'system',
-        severity: 'low',
-        timestamp: new Date().toISOString()
-      }).select();
-      
-      console.log('Tabela de alertas criada com sucesso');
-      return true;
-    } catch (error) {
-      console.error('Erro ao criar tabela de alertas:', error);
-      return false;
-    }
+    console.log('Tabela alerts criada com sucesso');
+    return true;
   } catch (error) {
-    console.error('Erro ao verificar/criar tabela de alertas:', error);
+    console.error('Erro ao criar tabela alerts:', error);
     return false;
   }
 }
 
 // Função para inicializar o banco de dados
-export async function initializeDatabase(): Promise<boolean> {
+export async function initializeDatabase() {
+  console.log('Inicializando banco de dados...');
+  
   try {
-    console.log('Verificando estrutura do banco de dados...');
+    // Verificar se a extensão UUID está disponível
+    const { error: uuidError } = await supabase.rpc('execute_sql', {
+      sql_query: "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+    });
     
-    // Verificar e criar tabelas essenciais
-    await ensureNotificationsTable();
-    await ensureAlertsTable();
+    if (uuidError) {
+      console.error('Erro ao habilitar extensão uuid-ossp:', uuidError);
+    } else {
+      console.log('Extensão uuid-ossp habilitada com sucesso');
+    }
     
-    console.log('Verificação de banco de dados concluída');
+    // Criar tabelas
+    await createNotificationsTable();
+    await createAlertsTable();
+    
+    console.log('Inicialização do banco de dados concluída');
     return true;
   } catch (error) {
     console.error('Erro ao inicializar banco de dados:', error);

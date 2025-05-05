@@ -20,7 +20,7 @@ O sistema utiliza dois tipos de clientes Supabase:
 Configurado com a chave anônima para operações do usuário final:
 
 ```typescript
-// src/lib/supabaseClient.ts
+// src/lib/supabase.ts
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
