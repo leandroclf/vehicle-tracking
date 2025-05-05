@@ -24,8 +24,8 @@ export const supabaseAdmin = supabaseServiceKey
   : null;
 
 // Logs para debug
-console.log('Cliente Supabase inicializado com URL:', supabaseUrl);
-console.log('ANON KEY (primeiros 10 caracteres):', supabaseAnonKey.substring(0, 10) + '...');
+console.log('Cliente Supabase inicializado com URL (primeiros 5 caracteres):', supabaseUrl.substring(0, 5) + '...');
+console.log('ANON KEY (primeiros 5 caracteres):', supabaseAnonKey.substring(0, 5) + '...');
 console.log('SERVICE KEY configurada:', supabaseServiceKey ? 'Sim' : 'Não');
 
 // Verificar conectividade com Supabase
