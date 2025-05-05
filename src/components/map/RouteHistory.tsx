@@ -107,10 +107,22 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
     });
   }, [routePoints, vehicleId, startDate, endDate]);
 
+  // Fechar a janela de informações quando mudar o veículo ou as datas
+  useEffect(() => {
+    setSelectedPoint(null);
+  }, [vehicleId, startDate, endDate]);
+
   // Função para formatar data
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
   };
   
   // Ordenar os pontos por timestamp para garantir a ordem correta
@@ -155,24 +167,6 @@ const RouteHistory: React.FC<RouteHistoryProps> = ({
       onPointClick(point);
     }
   }, [onPointClick]);
-
-  // Fechar a janela de informações quando mudar o veículo ou as datas
-  useEffect(() => {
-    setSelectedPoint(null);
-  }, [vehicleId, startDate, endDate]);
-
-  // Função para formatar data
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  };
 
   // Função para obter ícone com base no tipo de evento
   const getEventIcon = (event?: string) => {
