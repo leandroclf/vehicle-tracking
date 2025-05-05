@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { RealtimeIntegration } from '../components/realtime/RealtimeIntegration';
+import RealtimeIntegration from '../components/realtime/RealtimeIntegration';
 import Layout from '../components/layout/Layout';
 
 export default function LayoutWithRealtime({ children }: { children: React.ReactNode }) {
