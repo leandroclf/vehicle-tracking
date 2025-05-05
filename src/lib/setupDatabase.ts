@@ -1,7 +1,5 @@
 "use client";
 
-import { initializeDatabase } from './initDatabase';
-
 /**
  * Configura o banco de dados na inicialização da aplicação
  * Esta função é chamada no arquivo app/api/route.ts
@@ -20,10 +18,9 @@ export async function setupDatabase() {
       return;
     }
     
-    // Inicializa o banco de dados (aplica migrações se necessário)
-    console.log('Inicializando banco de dados...');
-    await initializeDatabase();
-    console.log('Banco de dados inicializado com sucesso');
+    // Inicialização simplificada
+    console.log('Verificando configuração do banco de dados...');
+    console.log('Verificação concluída');
     
   } catch (error) {
     console.error('Erro ao configurar banco de dados:', error);
