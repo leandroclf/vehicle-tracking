@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
 
 // Esquema para validar dados de solicitação de recuperação de senha

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { useAlertsSubscription, useVehiclesSubscription, useGeofencesSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import RealtimeNotifications from './RealtimeNotifications';
 

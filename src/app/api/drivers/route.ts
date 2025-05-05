@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
 import { errorResponse, successResponse, handleApiError } from '@/lib/api-helpers';
 import { v4 as uuidv4 } from 'uuid';
