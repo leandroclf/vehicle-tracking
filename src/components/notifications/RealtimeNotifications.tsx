@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseRealtime } from '@/lib/supabase';
 import { Toast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
@@ -19,18 +19,6 @@ interface Notification {
   read: boolean;
   data?: Record<string, any>;
 }
-
-// Configuração do cliente Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
-  }
-});
 
 export const RealtimeNotifications: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -142,7 +130,7 @@ export const RealtimeNotifications: React.FC = () => {
       }
       
       try {
-        const channel = supabase
+        const channel = supabaseRealtime
           .channel(channelName)
           .on(
             'postgres_changes' as any,
@@ -184,19 +172,13 @@ export const RealtimeNotifications: React.FC = () => {
           return;
         }
         
-        // Verificar se o cliente Supabase foi inicializado corretamente
-        if (!supabase) {
-          console.error('Cliente Supabase não inicializado corretamente');
-          return;
-        }
-        
         // Array para armazenar todas as notificações
         let allNotifications: Notification[] = [];
         
         // Buscar notificações da tabela 'notifications' se ela existir
         if (tableExists.notifications || Object.keys(tableExists).length === 0) {
           try {
-            const { data, error } = await supabase
+            const { data, error } = await supabaseRealtime
               .from('notifications')
               .select('*')
               .eq('user_id', user.id)
@@ -233,7 +215,7 @@ export const RealtimeNotifications: React.FC = () => {
         // Buscar alertas da tabela 'alerts' se ela existir
         if (tableExists.alerts || Object.keys(tableExists).length === 0) {
           try {
-            const { data: alertsData, error: alertsError } = await supabase
+            const { data: alertsData, error: alertsError } = await supabaseRealtime
               .from('alerts')
               .select('*')
               .eq('user_id', user.id)
@@ -253,7 +235,7 @@ export const RealtimeNotifications: React.FC = () => {
                 id: alert.id,
                 type: 'alert' as NotificationType,
                 title: 'Alerta',
-                message: alert.message || 'Novo alerta recebido',
+                message: alert.message || 'Novo alerta',
                 timestamp: alert.timestamp || new Date().toISOString(),
                 read: Boolean(alert.read),
                 data: alert
@@ -267,113 +249,97 @@ export const RealtimeNotifications: React.FC = () => {
           }
         }
         
-        // Ordenar todas as notificações por timestamp
+        // Ordenar por timestamp (mais recente primeiro)
         allNotifications.sort((a, b) => 
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
         
-        // Atualizar estado
+        // Atualizar o estado
         setNotifications(allNotifications);
       } catch (error) {
-        // Melhorar o log de erro com mais informações para depuração
-        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-        const errorStack = error instanceof Error ? error.stack : '';
-        console.error('Erro ao buscar notificações:', errorMessage, errorStack, {
-          userId: user?.id,
-          supabaseInitialized: !!supabase,
-          tablesExist: tableExists
-        });
+        console.error('Erro ao carregar notificações:', error);
       }
     };
-
+    
     fetchNotifications();
-
-    // Limpar inscrições ao desmontar o componente
+    
+    // Limpar canais ao desmontar
     return () => {
       channelsRef.current.forEach(channel => {
         if (channel && channel.unsubscribe) {
           channel.unsubscribe();
         }
       });
-      channelsRef.current = [];
     };
-  }, [user, handleNewNotification, handleNewAlert, handleVehicleUpdate, handleNotification, tableExists]);
+  }, [user, handleNewAlert, handleNotification, handleVehicleUpdate, tableExists]);
 
-  // Marcar notificação como lida
-  const markAsRead = useCallback(async (notificationId: string) => {
+  // Handler para marcar notificação como lida
+  const markAsRead = useCallback(async (id: string) => {
+    if (!user) return;
+    
     try {
-      if (!userIdRef.current) return;
-      
-      // Verificar se é uma notificação do tipo alerta (que está na tabela alerts)
-      const isAlert = notifications.find(n => n.id === notificationId && n.type === 'alert');
-      
-      if (isAlert && tableExists.alerts) {
-        await supabase
-          .from('alerts')
-          .update({ read: true })
-          .eq('id', notificationId);
-      } else if (tableExists.notifications) {
-        await supabase
-          .from('notifications')
-          .update({ read: true })
-          .eq('id', notificationId);
-      }
-
-      // Atualizar estado local independentemente do status do banco
+      // Atualizar localmente primeiro para UI responsiva
       setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+        prev.map(n => 
+          n.id === id ? { ...n, read: true } : n
+        )
       );
+      
+      // Determinar a tabela com base no tipo de notificação
+      const notification = notifications.find(n => n.id === id);
+      if (!notification) return;
+      
+      const table = notification.type === 'alert' ? 'alerts' : 'notifications';
+      
+      // Atualizar no banco de dados
+      await supabaseRealtime
+        .from(table)
+        .update({ read: true })
+        .eq('id', id);
+        
     } catch (error) {
-      // Melhorar o log de erro com mais informações
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      console.error('Erro ao marcar notificação como lida:', errorMessage, {
-        notificationId,
-        userId: userIdRef.current,
-        tablesExist: tableExists
-      });
+      console.error('Erro ao marcar notificação como lida:', error);
     }
-  }, [notifications, tableExists]);
+  }, [notifications, user]);
 
-  // Navegar para a página relacionada à notificação
-  const handleNotificationClick = useCallback((notification: Notification) => {
+  // Renderizar notificação atual como Toast
+  useEffect(() => {
+    if (showToast && currentNotification) {
+      const timer = setTimeout(() => {
+        setShowToast(false);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showToast, currentNotification]);
+
+  // Navegação para detalhes de notificação
+  const handleNotificationClick = (notification: Notification) => {
+    // Marcar como lida
     markAsRead(notification.id);
-    setShowToast(false);
-
-    // Navegar para a página apropriada com base no tipo de notificação
-    switch (notification.type) {
-      case 'alert':
-        router.push('/dashboard/alerts');
-        break;
-      case 'vehicle':
-        if (notification.data?.id) {
-          router.push(`/dashboard/vehicles/${notification.data.id}`);
-        } else {
-          router.push('/dashboard/vehicles');
-        }
-        break;
-      case 'geofence':
-        router.push('/dashboard/geofences');
-        break;
-      default:
-        // Para notificações do sistema ou outros tipos
-        router.push('/dashboard');
+    
+    // Navegar com base no tipo
+    if (notification.type === 'vehicle' && notification.data?.id) {
+      router.push(`/dashboard/vehicles/${notification.data.id}`);
+    } else if (notification.type === 'alert') {
+      router.push('/dashboard/alerts');
+    } else if (notification.type === 'geofence' && notification.data?.id) {
+      router.push(`/dashboard/geofences?highlight=${notification.data.id}`);
     }
-  }, [markAsRead, router]);
-
-  const handleCloseToast = useCallback(() => {
+    
     setShowToast(false);
-  }, []);
+  };
 
   return (
     <>
+      {/* Toast para notificação mais recente */}
       {showToast && currentNotification && (
         <Toast
           title={currentNotification.title}
           message={currentNotification.message}
-          type={currentNotification.type === 'alert' ? 'error' : 'info'}
-          onClose={handleCloseToast}
+          type={currentNotification.type}
+          onClose={() => setShowToast(false)}
           onClick={() => handleNotificationClick(currentNotification)}
-          duration={5000}
         />
       )}
     </>

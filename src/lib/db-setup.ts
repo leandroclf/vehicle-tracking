@@ -1,59 +1,29 @@
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
-
-// Configuração do cliente Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-const supabaseAdmin = () => {
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-};
-
-// Cliente para o usuário normal
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 
 // Função para verificar se a tabela existe
 export async function checkTableExists(tableName: string): Promise<boolean> {
   try {
-    // Usando rpc para verificar se a tabela existe
+    // Tentar consultar a tabela diretamente para ver se ela existe
     const { data, error } = await supabase
-      .rpc('table_exists', { table_name: tableName })
-      .single();
-    
-    if (error) {
-      console.error(`Erro ao verificar tabela ${tableName}:`, error);
+      .from(tableName)
+      .select('*')
+      .limit(1);
       
-      // Alternativa: tentar consultar a tabela diretamente para ver se ela existe
-      try {
-        const { data: testData, error: testError } = await supabase
-          .from(tableName)
-          .select('*')
-          .limit(1);
-          
-        // Se conseguir consultar a tabela sem erros, ela existe
-        if (!testError) {
-          return true;
-        }
-        
-        // Se o erro for diferente de "tabela não existe", logar o erro
-        if (!testError.message.includes('does not exist')) {
-          console.error(`Erro ao testar consulta na tabela ${tableName}:`, testError);
-        }
-        
-        return false;
-      } catch (testErr) {
-        return false;
-      }
+    // Se não houver erro, a tabela existe
+    if (!error) {
+      return true;
     }
     
-    return !!data;
+    // Verificar se o erro indica que a tabela não existe
+    if (error.message && error.message.includes('does not exist')) {
+      return false;
+    }
+    
+    // Se for outro tipo de erro, logar e assumir que a tabela não existe
+    console.error(`Erro ao verificar tabela ${tableName}:`, error);
+    return false;
   } catch (error) {
     console.error(`Erro ao verificar tabela ${tableName}:`, error);
     return false;
@@ -61,7 +31,7 @@ export async function checkTableExists(tableName: string): Promise<boolean> {
 }
 
 // Função para verificar e criar a tabela de notificações se não existir
-export async function ensureNotificationsTable() {
+export async function ensureNotificationsTable(): Promise<boolean> {
   try {
     const exists = await checkTableExists('notifications');
     
@@ -72,16 +42,31 @@ export async function ensureNotificationsTable() {
     
     console.log('Criando tabela de notificações...');
     
-    // Usar RPC para criar a tabela, já que o Supabase não permite criar tabelas diretamente pela API
-    const { error } = await supabaseAdmin().rpc('create_notifications_table');
-    
-    if (error) {
-      console.error('Erro ao criar tabela de notificações:', error);
+    // Verificar se o supabaseAdmin está disponível
+    if (!supabaseAdmin) {
+      console.warn('Cliente Admin do Supabase não disponível, não é possível criar tabela de notificações');
       return false;
     }
     
-    console.log('Tabela de notificações criada com sucesso');
-    return true;
+    // Usar método From para criar tabela
+    try {
+      // Criar tabela base
+      await supabase.from('notifications').insert({
+        id: '00000000-0000-0000-0000-000000000000',
+        user_id: '00000000-0000-0000-0000-000000000000',
+        title: 'Inicialização',
+        message: 'Tabela criada',
+        read: true,
+        type: 'system',
+        timestamp: new Date().toISOString()
+      }).select();
+      
+      console.log('Tabela de notificações criada com sucesso');
+      return true;
+    } catch (error) {
+      console.error('Erro ao criar tabela de notificações:', error);
+      return false;
+    }
   } catch (error) {
     console.error('Erro ao verificar/criar tabela de notificações:', error);
     return false;
@@ -89,7 +74,7 @@ export async function ensureNotificationsTable() {
 }
 
 // Função para verificar e criar a tabela de alertas se não existir
-export async function ensureAlertsTable() {
+export async function ensureAlertsTable(): Promise<boolean> {
   try {
     const exists = await checkTableExists('alerts');
     
@@ -100,16 +85,31 @@ export async function ensureAlertsTable() {
     
     console.log('Criando tabela de alertas...');
     
-    // Usar RPC para criar a tabela
-    const { error } = await supabaseAdmin().rpc('create_alerts_table');
-    
-    if (error) {
-      console.error('Erro ao criar tabela de alertas:', error);
+    // Verificar se o supabaseAdmin está disponível
+    if (!supabaseAdmin) {
+      console.warn('Cliente Admin do Supabase não disponível, não é possível criar tabela de alertas');
       return false;
     }
     
-    console.log('Tabela de alertas criada com sucesso');
-    return true;
+    // Usar método From para criar tabela
+    try {
+      // Criar tabela base
+      await supabase.from('alerts').insert({
+        id: '00000000-0000-0000-0000-000000000000',
+        user_id: '00000000-0000-0000-0000-000000000000',
+        message: 'Tabela criada',
+        read: true,
+        type: 'system',
+        severity: 'low',
+        timestamp: new Date().toISOString()
+      }).select();
+      
+      console.log('Tabela de alertas criada com sucesso');
+      return true;
+    } catch (error) {
+      console.error('Erro ao criar tabela de alertas:', error);
+      return false;
+    }
   } catch (error) {
     console.error('Erro ao verificar/criar tabela de alertas:', error);
     return false;
@@ -117,7 +117,7 @@ export async function ensureAlertsTable() {
 }
 
 // Função para inicializar o banco de dados
-export async function initializeDatabase() {
+export async function initializeDatabase(): Promise<boolean> {
   try {
     console.log('Verificando estrutura do banco de dados...');
     

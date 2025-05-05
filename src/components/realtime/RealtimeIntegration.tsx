@@ -9,7 +9,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase, supabaseRealtime } from '@/lib/supabase';
 import { RealtimeSubscriptionManager, RealtimeUpdater } from '../../lib/realtime-subscription';
 import { useOfflineSync } from '../../lib/offline-sync';
 import { Alert } from '../ui/Alert';
@@ -23,26 +23,12 @@ type SyncStatus = 'online' | 'offline' | 'syncing';
  * Componente principal de integração Realtime
  */
 export function RealtimeIntegration({ children }: { children: React.ReactNode }) {
-  // Inicializar cliente Supabase com configuração Realtime habilitada
-  const [supabaseClient] = useState(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    
-    return createClient(supabaseUrl, supabaseAnonKey, {
-      realtime: {
-        params: {
-          eventsPerSecond: 10
-        }
-      }
-    });
-  });
-
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('online');
   const [pendingChanges, setPendingChanges] = useState<number>(0);
   const [showSyncAlert, setShowSyncAlert] = useState<boolean>(false);
   
   // Inicializar gerenciador de sincronização offline
-  const offlineSync = useOfflineSync(supabaseClient);
+  const offlineSync = useOfflineSync(supabaseRealtime);
   
   // Monitorar status de conexão
   useEffect(() => {
@@ -93,7 +79,7 @@ export function RealtimeIntegration({ children }: { children: React.ReactNode })
   }, [offlineSync]);
   
   return (
-    <RealtimeSubscriptionManager supabaseClient={supabaseClient}>
+    <RealtimeSubscriptionManager supabaseClient={supabaseRealtime}>
       {/* Indicador de status de sincronização */}
       {syncStatus === 'offline' && (
         <div className="fixed bottom-4 right-4 z-50">
@@ -133,7 +119,7 @@ export function RealtimeIntegration({ children }: { children: React.ReactNode })
       )}
       
       {/* Componente para atualizar a interface com dados em tempo real */}
-      <RealtimeUpdater supabaseClient={supabaseClient} />
+      <RealtimeUpdater supabaseClient={supabaseRealtime} />
       
       {/* Conteúdo da aplicação com Layout */}
       <Layout>
@@ -150,14 +136,6 @@ export function RealtimeIntegration({ children }: { children: React.ReactNode })
  * para processamento de eventos complexos.
  */
 export function useEdgeFunctions() {
-  // Inicializar cliente Supabase
-  const [supabaseClient] = useState(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    
-    return createClient(supabaseUrl, supabaseAnonKey);
-  });
-  
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, Error | null>>({});
   
@@ -169,7 +147,7 @@ export function useEdgeFunctions() {
     setError(prev => ({ ...prev, geofence: null }));
     
     try {
-      const { data, error } = await supabaseClient.functions.invoke('geofence-events', {
+      const { data, error } = await supabase.functions.invoke('geofence-events', {
         body: { vehicleId, position, timestamp }
       });
       
@@ -193,7 +171,7 @@ export function useEdgeFunctions() {
     setError(prev => ({ ...prev, speedAlert: null }));
     
     try {
-      const { data, error } = await supabaseClient.functions.invoke('speed-alerts', {
+      const { data, error } = await supabase.functions.invoke('speed-alerts', {
         body: { vehicleId, speed, position, timestamp }
       });
       
