@@ -10,7 +10,8 @@ import { AccessibleNotificationsProvider } from '@/components/ui/AccessibleNotif
 import { KeyboardNavigationProvider } from '@/components/ui/KeyboardNavigationProvider'
 import NotificationsProvider from '@/components/notifications/NotificationsProvider'
 import React from 'react'
-import RealtimeIntegration from '@/components/realtime/RealtimeIntegration'
+import RealtimeIntegration from '@/components/realtime/RealtimeIntegration';
+import { RealtimeProvider } from '@/lib/providers/RealtimeProvider';
 import { RadixPatchProvider } from '@/components/ui/RadixPatchProvider'
 import { UpdateLoopDetector } from '@/components/ui/UpdateLoopDetector'
 import Script from 'next/script'
@@ -58,9 +59,11 @@ export default function RootLayout({
                       <NotificationProvider>
                         <KeyboardNavigationProvider>
                           <SidebarProvider>
-                            <RealtimeIntegration>
-                              {children}
-                            </RealtimeIntegration>
+                            <RealtimeProvider>
+                              <RealtimeIntegration>
+                                {children}
+                              </RealtimeIntegration>
+                            </RealtimeProvider>
                           </SidebarProvider>
                         </KeyboardNavigationProvider>
                       </NotificationProvider>

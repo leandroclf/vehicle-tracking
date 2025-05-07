@@ -25,55 +25,77 @@ const adminOptions = {
   }
 };
 
-// Cliente padrão compartilhado
-let _supabaseClient: SupabaseClient | null = null;
+// Tipagem para as instâncias no globalThis
+declare global {
+  // eslint-disable-next-line no-var
+  var __supabaseClient: SupabaseClient | undefined;
+  // eslint-disable-next-line no-var
+  var __realtimeClient: SupabaseClient | undefined;
+  // eslint-disable-next-line no-var
+  var __adminClient: SupabaseClient | undefined | null;
+}
 
-// Cliente com realtime compartilhado
-let _realtimeClient: SupabaseClient | null = null;
-
-// Cliente admin compartilhado
-let _adminClient: SupabaseClient | null = null;
+const getSupabaseInstance = <T extends SupabaseClient | null | undefined>(
+  name: '__supabaseClient' | '__realtimeClient' | '__adminClient',
+  createFn: () => T
+): T => {
+  if (process.env.NODE_ENV === 'production') {
+    if (!globalThis[name]) {
+      globalThis[name] = createFn();
+    }
+  } else {
+    // Em desenvolvimento, sempre recriamos ou pegamos do global para evitar problemas com HMR
+    // mas a lógica de singleton dentro das createFn ainda se aplica se a instância global já existir.
+    if (!globalThis[name]) {
+      globalThis[name] = createFn();
+    }
+  }
+  return globalThis[name] as T;
+};
 
 /**
  * Retorna um cliente Supabase compartilhado 
  */
 export const createClient = (options = {}): SupabaseClient => {
-  if (!_supabaseClient) {
-    _supabaseClient = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+  return getSupabaseInstance('__supabaseClient', () => {
+    const client = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
       ...defaultOptions,
       ...options
     });
     console.log('Instância principal do cliente Supabase criada');
-  }
-  return _supabaseClient;
+    return client;
+  }) as SupabaseClient;
 };
 
 /**
  * Retorna um cliente Supabase com suporte a realtime
  */
 export const createRealtimeClient = (options = {}): SupabaseClient => {
-  if (!_realtimeClient) {
-    _realtimeClient = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+  return getSupabaseInstance('__realtimeClient', () => {
+    const client = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
       ...realtimeOptions,
       ...options
     });
     console.log('Instância realtime do cliente Supabase criada');
-  }
-  return _realtimeClient;
+    return client;
+  }) as SupabaseClient;
 };
 
 /**
  * Retorna um cliente Supabase com permissões administrativas
  */
 export const createAdminClient = (options = {}): SupabaseClient | null => {
-  if (supabaseServiceKey && !_adminClient) {
-    _adminClient = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
-      ...adminOptions,
-      ...options
-    });
-    console.log('Instância admin do cliente Supabase criada');
-  }
-  return _adminClient;
+  return getSupabaseInstance('__adminClient', () => {
+    if (supabaseServiceKey) {
+      const client = createSupabaseClient(supabaseUrl, supabaseServiceKey, {
+        ...adminOptions,
+        ...options
+      });
+      console.log('Instância admin do cliente Supabase criada');
+      return client;
+    }
+    return null;
+  });
 };
 
 // Exportações para retrocompatibilidade
@@ -106,4 +128,4 @@ const testSupabaseConnection = async () => {
 if (process.env.NODE_ENV !== 'test' && typeof window !== 'undefined') {
   // Executar teste de conexão após carregamento da página
   setTimeout(testSupabaseConnection, 1000);
-} 
+}

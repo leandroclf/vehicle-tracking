@@ -19,8 +19,9 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { supabase, supabaseRealtime } from '@/lib/supabase';
-import { RealtimeSubscriptionManager, RealtimeUpdater } from '@/lib/realtime-subscription';
+import { supabase } from '@/lib/supabase'; // supabaseRealtime pode não ser mais necessário aqui
+import { RealtimeUpdater } from '@/lib/realtime-subscription'; // RealtimeSubscriptionManager foi removido
+import { useRealtimeContext, ConnectionState } from '@/lib/providers/RealtimeProvider'; // Importar o contexto
 import { useOfflineSync } from '@/lib/offline-sync';
 import { Alert } from '../ui/Alert';
 import { Spinner } from '../ui/Spinner';
@@ -34,59 +35,57 @@ type SyncStatus = 'online' | 'offline' | 'syncing' | 'loading';
  */
 export default function RealtimeIntegration({ children }: { children: React.ReactNode }) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
-  const [error, setError] = useState<string | null>(null);
+  const [currentError, setCurrentError] = useState<string | null>(null);
   
-  // Usar hook personalizado para controle de sincronização offline
-  const { isSyncing, pendingChanges, syncError } = useOfflineSync();
+  const { isSyncing, pendingChanges, syncError: offlineSyncError } = useOfflineSync();
+  const { connectionState, error: realtimeContextError } = useRealtimeContext();
 
-  const handleRealtimeError = useCallback((errorMessage: string) => {
-    console.error('Erro no RealtimeSubscriptionManager:', errorMessage);
-    setError(`Falha na conexão em tempo real: ${errorMessage}. Verifique sua conexão e tente recarregar.`);
-    setSyncStatus('offline');
-  }, []);
+  useEffect(() => {
+    let newStatus: SyncStatus = 'loading';
+    let errorMessage: string | null = null;
 
-  const handleRealtimeConnectionChange = useCallback((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
-    if (status === 'SUBSCRIBED') {
-      setSyncStatus('online');
-      setError(null);
-      console.log('RealtimeIntegration: Conectado e inscrito.');
+    if (offlineSyncError) {
+      errorMessage = offlineSyncError;
+      newStatus = 'offline';
+    } else if (realtimeContextError) {
+      errorMessage = realtimeContextError.message;
+      newStatus = 'offline';
+    }
+
+    if (isSyncing) {
+      newStatus = 'syncing';
     } else {
-      console.warn(`RealtimeIntegration: Status da conexão alterado para ${status}`);
-      // Poderia definir como offline aqui, mas vamos esperar o onError para erros mais graves
-      // ou se o status for explicitamente de desconexão.
-      if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        setSyncStatus('offline');
-        if (!error) {
-            setError('Conexão em tempo real perdida. Tentando reconectar...');
-        }
+      switch (connectionState) {
+        case 'CONNECTED':
+          newStatus = 'online';
+          // Limpa o erro apenas se a conexão estiver online e não houver erro de sincronização offline
+          if (!offlineSyncError) errorMessage = null;
+          break;
+        case 'CONNECTING':
+        case 'RECONNECTING':
+          newStatus = 'loading'; // Ou um estado 'reconnecting' se preferir
+          if (!offlineSyncError && !realtimeContextError) errorMessage = 'Conectando ao sistema em tempo real...';
+          break;
+        case 'DISCONNECTED':
+        case 'SUSPENDED':
+        case 'ERROR':
+          newStatus = 'offline';
+          if (!errorMessage) errorMessage = 'Conexão em tempo real perdida. Verifique sua conexão.';
+          break;
+        default:
+          newStatus = 'loading'; // Estado inicial ou desconhecido
+          break;
       }
     }
-  }, [error]);
+    
+    setSyncStatus(newStatus);
+    setCurrentError(errorMessage);
 
-  useEffect(() => {
-    // O RealtimeSubscriptionManager agora é um componente, então não há inicialização manual aqui.
-    // O estado de carregamento inicial é gerenciado pelo próprio componente.
-    // Apenas definimos como 'online' se não houver erro e não estiver carregando.
-    // O estado de 'loading' inicial é tratado pelo syncStatus
-    if (syncStatus === 'loading' && !error) {
-        // A transição para 'online' ou 'offline' será feita pelo handleRealtimeConnectionChange ou handleRealtimeError
-    }
-  }, [syncStatus, error]);
-  
-  // Atualizar status baseado no processo de sincronização offline
-  useEffect(() => {
-    if (isSyncing) {
-      setSyncStatus('syncing');
-    } else if (syncError) {
-      setError(syncError);
-      setSyncStatus('offline');
-    } else if (syncStatus === 'syncing' && !syncError) { // Se estava sincronizando e não houve erro, volta para online
-      setSyncStatus('online');
-    }
-  }, [isSyncing, syncError, syncStatus]);
+  }, [connectionState, realtimeContextError, isSyncing, offlineSyncError]);
   
   // Renderizar spinner de carregamento
-  if (syncStatus === 'loading') {
+  // Renderizar spinner de carregamento ou estado de reconexão
+  if (syncStatus === 'loading' && connectionState !== 'CONNECTED') {
     return (
       <Layout>
         <div className="flex items-center justify-center h-screen">
@@ -98,32 +97,28 @@ export default function RealtimeIntegration({ children }: { children: React.Reac
   }
   
   return (
-    <RealtimeSubscriptionManager 
-        supabaseClient={supabaseRealtime} 
-        onConnectionError={handleRealtimeError}
-        onConnectionStateChange={handleRealtimeConnectionChange}
-    >
+    <>
       <RealtimeUpdater supabaseClient={supabase} />
-      {error && (
-        <Alert variant="error" title="Erro de Conexão" className="mb-4">
-          {error}
+      {currentError && syncStatus !== 'online' && (
+        <Alert variant={syncStatus === 'offline' || realtimeContextError || offlineSyncError ? "error" : "warning"} title="Status da Conexão" className="mb-4">
+          {currentError}
         </Alert>
       )}
       
       {syncStatus === 'syncing' && (
         <Alert variant="info" title="Sincronizando Dados" className="mb-4">
-          Sincronizando {pendingChanges} alterações pendentes...
+          Sincronizando {pendingChanges > 0 ? `${pendingChanges} alterações pendentes` : 'alterações'}...
         </Alert>
       )}
       
-      {syncStatus === 'offline' && !error && (
+      {syncStatus === 'offline' && !currentError && (
         <Alert variant="warning" title="Modo Offline" className="mb-4">
           Você está trabalhando no modo offline. Suas alterações serão sincronizadas quando a conexão for restaurada.
         </Alert>
       )}
       
       {children}
-    </RealtimeSubscriptionManager>
+    </>
   );
 }
 
