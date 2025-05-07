@@ -154,77 +154,67 @@ export function useRealtimeSubscription<T>(
  * Este componente pode ser usado para centralizar todas as assinaturas
  * em tempo real da aplicação, evitando múltiplas conexões.
  */
-export function RealtimeSubscriptionManager({
-  supabaseClient,
-  children
-}: {
+export interface RealtimeSubscriptionManagerProps {
   supabaseClient: ReturnType<typeof createClient<Database>>;
   children: React.ReactNode;
-}) {
-  // Configurar assinaturas globais aqui
+  onConnectionStateChange?: (status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR', channelName: string) => void;
+  onConnectionError?: (errorMessage: string, channelName: string) => void;
+}
+
+export function RealtimeSubscriptionManager({
+  supabaseClient,
+  children,
+  onConnectionStateChange,
+  onConnectionError,
+}: RealtimeSubscriptionManagerProps) {
   useEffect(() => {
-    // Canal para notificações (sempre ativo)
-    const notificationsChannel = supabaseClient
-      .channel('global-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'notifications'
-        },
-        (payload) => {
-          // Disparar evento personalizado para notificações
-          const event = new CustomEvent('realtime-notification', { detail: payload });
-          window.dispatchEvent(event);
-        }
-      )
-      .subscribe();
-      
-    // Canal para atualizações de veículos (sempre ativo)
-    const vehiclesChannel = supabaseClient
-      .channel('global-vehicles')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'vehicles'
-        },
-        (payload) => {
-          // Disparar evento personalizado para veículos
-          const event = new CustomEvent('realtime-vehicle', { detail: payload });
-          window.dispatchEvent(event);
-        }
-      )
-      .subscribe();
-      
-    // Canal para alertas (sempre ativo)
-    const alertsChannel = supabaseClient
-      .channel('global-alerts')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'alerts'
-        },
-        (payload) => {
-          // Disparar evento personalizado para alertas
-          const event = new CustomEvent('realtime-alert', { detail: payload });
-          window.dispatchEvent(event);
-        }
-      )
-      .subscribe();
-      
-    // Limpar todos os canais quando o componente for desmontado
-    return () => {
-      supabaseClient.removeChannel(notificationsChannel);
-      supabaseClient.removeChannel(vehiclesChannel);
-      supabaseClient.removeChannel(alertsChannel);
+    const channels: RealtimeChannel[] = [];
+
+    const setupChannel = (channelName: string, table: RealtimeEntity) => {
+      const channel = supabaseClient
+        .channel(`global-${channelName}-${Date.now()}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: table,
+          },
+          (payload) => {
+            const event = new CustomEvent(`realtime-${channelName}`, { detail: payload });
+            window.dispatchEvent(event);
+          }
+        )
+        .subscribe((status, err) => {
+          if (err && onConnectionError) {
+            onConnectionError(err.message, channelName);
+          }
+          if (onConnectionStateChange) {
+            onConnectionStateChange(status, channelName);
+          }
+          if (status === 'SUBSCRIBED') {
+            console.log(`Canal global '${channelName}' inscrito com sucesso.`);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error(`Erro ou timeout no canal global '${channelName}': ${status}`, err);
+          }
+        });
+      channels.push(channel);
+      return channel;
     };
-  }, [supabaseClient]);
-  
+
+    setupChannel('notifications', 'notifications');
+    setupChannel('vehicles', 'vehicles');
+    setupChannel('alerts', 'alerts');
+
+    return () => {
+      channels.forEach(channel => {
+        supabaseClient.removeChannel(channel).catch(error => 
+          console.error(`Erro ao remover canal ${channel.topic}:`, error)
+        );
+      });
+    };
+  }, [supabaseClient, onConnectionStateChange, onConnectionError]);
+
   return <>{children}</>;
 }
 

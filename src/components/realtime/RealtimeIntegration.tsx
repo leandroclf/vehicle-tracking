@@ -8,7 +8,17 @@
  * offline de dados críticos.
  */
 
-import React, { useEffect, useState } from 'react';
+"use client";
+
+/**
+ * Componente de integração Realtime para o sistema de rastreamento de veículos
+ * 
+ * Este componente integra as Edge Functions do Supabase e o sistema Realtime
+ * na interface do usuário, permitindo atualizações em tempo real e sincronização
+ * offline de dados críticos.
+ */
+
+import React, { useEffect, useState, useCallback } from 'react';
 import { supabase, supabaseRealtime } from '@/lib/supabase';
 import { RealtimeSubscriptionManager, RealtimeUpdater } from '@/lib/realtime-subscription';
 import { useOfflineSync } from '@/lib/offline-sync';
@@ -17,77 +27,66 @@ import { Spinner } from '../ui/Spinner';
 import Layout from '../layout/Layout';
 
 // Status de sincronização
-type SyncStatus = 'online' | 'offline' | 'syncing';
+type SyncStatus = 'online' | 'offline' | 'syncing' | 'loading';
 
 /**
  * Componente principal de integração Realtime
  */
 export default function RealtimeIntegration({ children }: { children: React.ReactNode }) {
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>('online');
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('loading');
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   
   // Usar hook personalizado para controle de sincronização offline
   const { isSyncing, pendingChanges, syncError } = useOfflineSync();
-  
-  // Configurar subscriptions e gerenciamento de atualizações em tempo real
-  useEffect(() => {
-    // Criar gerenciador de subscriptions
-    const subscriptionManager = new RealtimeSubscriptionManager(supabaseRealtime);
-    // Criar gerenciador de atualizações em tempo real
-    const updater = new RealtimeUpdater(supabase);
-    
-    // Inicializar e inscrever nos canais
-    const initialize = async () => {
-      try {
-        await subscriptionManager.initialize();
-        setIsLoading(false);
-        setSyncStatus('online');
-      } catch (err) {
-        console.error('Erro ao inicializar realtime:', err);
-        setError('Falha ao inicializar sistema de tempo real. Tente recarregar a página.');
-        setSyncStatus('offline');
-        setIsLoading(false);
-      }
-    };
-    
-    // Monitorar status de conexão
-    const handleConnectionStatus = (status: string) => {
-      if (status === 'CONNECTED') {
-        setSyncStatus('online');
-        setError(null);
-      } else if (status === 'DISCONNECTED') {
-        setSyncStatus('offline');
-      }
-    };
-    
-    // Adicionar listeners para status de conexão
-    subscriptionManager.onConnectionStatus(handleConnectionStatus);
-    
-    // Inicializar
-    initialize();
-    
-    // Cleanup na desmontagem do componente
-    return () => {
-      subscriptionManager.cleanup();
-      updater.cleanup();
-    };
+
+  const handleRealtimeError = useCallback((errorMessage: string) => {
+    console.error('Erro no RealtimeSubscriptionManager:', errorMessage);
+    setError(`Falha na conexão em tempo real: ${errorMessage}. Verifique sua conexão e tente recarregar.`);
+    setSyncStatus('offline');
   }, []);
+
+  const handleRealtimeConnectionChange = useCallback((status: 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR') => {
+    if (status === 'SUBSCRIBED') {
+      setSyncStatus('online');
+      setError(null);
+      console.log('RealtimeIntegration: Conectado e inscrito.');
+    } else {
+      console.warn(`RealtimeIntegration: Status da conexão alterado para ${status}`);
+      // Poderia definir como offline aqui, mas vamos esperar o onError para erros mais graves
+      // ou se o status for explicitamente de desconexão.
+      if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        setSyncStatus('offline');
+        if (!error) {
+            setError('Conexão em tempo real perdida. Tentando reconectar...');
+        }
+      }
+    }
+  }, [error]);
+
+  useEffect(() => {
+    // O RealtimeSubscriptionManager agora é um componente, então não há inicialização manual aqui.
+    // O estado de carregamento inicial é gerenciado pelo próprio componente.
+    // Apenas definimos como 'online' se não houver erro e não estiver carregando.
+    // O estado de 'loading' inicial é tratado pelo syncStatus
+    if (syncStatus === 'loading' && !error) {
+        // A transição para 'online' ou 'offline' será feita pelo handleRealtimeConnectionChange ou handleRealtimeError
+    }
+  }, [syncStatus, error]);
   
-  // Atualizar status baseado no processo de sincronização
+  // Atualizar status baseado no processo de sincronização offline
   useEffect(() => {
     if (isSyncing) {
       setSyncStatus('syncing');
     } else if (syncError) {
       setError(syncError);
       setSyncStatus('offline');
-    } else if (syncStatus === 'syncing') {
+    } else if (syncStatus === 'syncing' && !syncError) { // Se estava sincronizando e não houve erro, volta para online
       setSyncStatus('online');
     }
-  }, [isSyncing, syncError]);
+  }, [isSyncing, syncError, syncStatus]);
   
   // Renderizar spinner de carregamento
-  if (isLoading) {
+  if (syncStatus === 'loading') {
     return (
       <Layout>
         <div className="flex items-center justify-center h-screen">
@@ -99,7 +98,12 @@ export default function RealtimeIntegration({ children }: { children: React.Reac
   }
   
   return (
-    <>
+    <RealtimeSubscriptionManager 
+        supabaseClient={supabaseRealtime} 
+        onConnectionError={handleRealtimeError}
+        onConnectionStateChange={handleRealtimeConnectionChange}
+    >
+      <RealtimeUpdater supabaseClient={supabase} />
       {error && (
         <Alert variant="error" title="Erro de Conexão" className="mb-4">
           {error}
@@ -119,7 +123,7 @@ export default function RealtimeIntegration({ children }: { children: React.Reac
       )}
       
       {children}
-    </>
+    </RealtimeSubscriptionManager>
   );
 }
 
