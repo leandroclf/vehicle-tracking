@@ -147,7 +147,7 @@ export async function PUT(request: NextRequest) {
         })
         .eq('id', userId)
         .select()
-        .single();
+        .maybeSingle();
       
       if (updateError) {
         console.error('Erro ao atualizar perfil:', updateError);
@@ -156,6 +156,11 @@ export async function PUT(request: NextRequest) {
         }, { status: 500 });
       }
       
+      if (!profile) {
+        return NextResponse.json({
+          error: 'Perfil não encontrado para atualização'
+        }, { status: 404 });
+      }
       updatedProfile = profile;
     }
     

@@ -43,7 +43,8 @@ export async function makeRequest(
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
   body?: any,
   useValidToken: boolean = true,
-  useInvalidToken: boolean = false
+  useInvalidToken: boolean = false,
+  asObject: boolean = true
 ) {
   const url = `${API_BASE_URL}${endpoint}`;
   const headers: Record<string, string> = {
@@ -63,7 +64,7 @@ export async function makeRequest(
   };
 
   if (body) {
-    options.body = JSON.stringify(body);
+    options.body = asObject ? body : JSON.stringify(body);
   }
 
   // Usar o mock em vez do fetch real para testes

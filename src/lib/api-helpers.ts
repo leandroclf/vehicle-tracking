@@ -72,18 +72,12 @@ export function successResponse<T = any>(data: T, message?: string, status: numb
  * @returns Resposta NextResponse padronizada para erro interno
  */
 export function handleApiError(error: unknown): NextResponse {
-  console.error('Erro na API:', error);
+  console.error('API Error:', error);
   
-  // Verificar se é um erro conhecido
   if (error instanceof Error) {
-    return errorResponse(
-      'Erro interno do servidor', 
-      { message: error.message, name: error.name },
-      500
-    );
+    return errorResponse(error.message, undefined, 500);
   }
   
-  // Erro desconhecido
   return errorResponse('Erro interno do servidor', undefined, 500);
 }
 

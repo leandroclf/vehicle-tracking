@@ -1,6 +1,5 @@
 import '@/styles/globals.css'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import { ThemeProvider } from '@/components/ui/ThemeProvider'
 import { HighContrastProvider } from '@/components/ui/HighContrastProvider'
 import { AuthProvider } from '@/lib/auth'
@@ -15,8 +14,6 @@ import { RealtimeProvider } from '@/lib/providers/RealtimeProvider';
 import { RadixPatchProvider } from '@/components/ui/RadixPatchProvider'
 import { UpdateLoopDetector } from '@/components/ui/UpdateLoopDetector'
 import Script from 'next/script'
-
-const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'YUKZ Tracker',
@@ -43,7 +40,7 @@ export default function RootLayout({
           console.log('[Radix Patch Preload] Inicializado');
         `}</Script>
       </head>
-      <body className={inter.className}>
+      <body>
         <RadixPatchProvider>
           <UpdateLoopDetector maxUpdatesPerSecond={40}>
             <ThemeProvider

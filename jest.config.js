@@ -1,5 +1,5 @@
 // jest.config.js
-const nextJest = require("next/jest")();
+const nextJest = require("next/jest");
 
 /** @type {import("jest").Config} */
 const createJestConfig = nextJest({
@@ -8,24 +8,21 @@ const createJestConfig = nextJest({
 });
 
 // Add any custom config to be passed to Jest
-const config = {
-  coverageProvider: "v8",
-  testEnvironment: "jsdom",
-  // Add more setup options before each test is run
-  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+const customJestConfig = {
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  testEnvironment: 'jsdom',
   moduleNameMapper: {
-    // Handle module aliases
-    "^@/(.*)$": "<rootDir>/src/$1",
+    '^@/(.*)$': '<rootDir>/src/$1',
   },
-  testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
-  // Configuração para lidar com o ESM no node-fetch
-  transformIgnorePatterns: [
-    "/node_modules/(?!(node-fetch)/)"
+  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
+  collectCoverageFrom: [
+    'src/**/*.{js,jsx,ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/**/*.stories.{js,jsx,ts,tsx}',
   ],
-  // Configurar para não verificar erros de tipo durante importação
-  resolver: undefined
+  moduleDirectories: ['node_modules', '<rootDir>/'],
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-module.exports = createJestConfig(config);
+module.exports = createJestConfig(customJestConfig);
 

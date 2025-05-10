@@ -1,5 +1,5 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { verifyAuth } from '@/lib/auth-middleware';
+import { supabase } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Definir interface de tipos para a requisição
@@ -12,8 +12,10 @@ interface ReportRequest {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies });
-  
+  const authResult = await verifyAuth(request);
+  if (!authResult.user) {
+    return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
+  }
   try {
     const { 
       reportType, 
@@ -22,12 +24,6 @@ export async function POST(request: NextRequest) {
       vehicleIds,
       format = 'pdf'
     } = await request.json() as ReportRequest;
-    
-    // Verificar autenticação
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
     
     // Validação básica
     if (!reportType || !startDate || !endDate || !vehicleIds || vehicleIds.length === 0) {
@@ -41,7 +37,7 @@ export async function POST(request: NextRequest) {
     const { data: report, error: reportError } = await supabase
       .from('reports')
       .insert({
-        user_id: user.id,
+        user_id: authResult.user.id,
         report_type: reportType,
         start_date: startDate,
         end_date: endDate,
@@ -89,15 +85,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies });
-  
+  const authResult = await verifyAuth(request);
+  if (!authResult.user) {
+    return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
+  }
   try {
-    // Verificar autenticação
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
-    
     // Parâmetros opcionais de paginação
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -107,7 +99,7 @@ export async function GET(request: NextRequest) {
     const { data: reports, error: reportsError } = await supabase
       .from('reports')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', authResult.user.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
       
@@ -123,7 +115,7 @@ export async function GET(request: NextRequest) {
     const { count, error: countError } = await supabase
       .from('reports')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+      .eq('user_id', authResult.user.id);
       
     if (countError) {
       console.error('Erro ao contar relatórios:', countError);
