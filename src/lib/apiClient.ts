@@ -72,12 +72,14 @@ export const apiClient = {
    * Realiza uma requisição GET
    * @param endpoint Endpoint da API
    * @param params Parâmetros da requisição
+   * @param token Token de autenticação
    * @param useCache Se deve usar cache
    * @param cacheExpiry Tempo de expiração do cache em ms
    */
   async get<T>(
     endpoint: string,
     params: Record<string, any> = {},
+    token: string | null,
     useCache = true,
     cacheExpiry = DEFAULT_CACHE_EXPIRY
   ): Promise<ApiResponse<T>> {
@@ -105,14 +107,11 @@ export const apiClient = {
       // Construir URL com parâmetros
       const url = `${endpoint}${queryString ? `?${queryString}` : ''}`;
       
-      // Obter token de autenticação
-      const token = localStorage.getItem('authToken');
-      
       // Realizar requisição
       const response = await fetchWithAuth(url, { method: 'GET' }, token);
       
       // Processar resposta
-      const responseData = await response.json();
+      const responseData: any = await response.json();
       
       // Armazenar no cache se a resposta for bem-sucedida
       if (response.ok && useCache) {
@@ -124,7 +123,7 @@ export const apiClient = {
       }
       
       return {
-        data: response.ok ? responseData : null,
+        data: response.ok ? (responseData as any as T) : null,
         error: response.ok ? null : new Error(responseData.error || 'Erro desconhecido'),
         status: response.status,
         message: response.ok ? 'Sucesso' : responseData.error || 'Erro na requisição',
@@ -145,29 +144,28 @@ export const apiClient = {
    * Realiza uma requisição POST
    * @param endpoint Endpoint da API
    * @param data Dados a serem enviados
+   * @param token Token de autenticação
    * @param invalidateCache Se deve invalidar o cache para este endpoint
    */
   async post<T>(
     endpoint: string,
     data: Record<string, any> = {},
+    token: string | null,
     invalidateCache = true
   ): Promise<ApiResponse<T>> {
     try {
-      // Obter token de autenticação
-      const token = localStorage.getItem('authToken');
-      
       // Realizar requisição
       const response = await fetchWithAuth(
-        endpoint, 
+        endpoint,
         {
           method: 'POST',
           body: JSON.stringify(data)
-        }, 
+        },
         token
       );
       
       // Processar resposta
-      const responseData = await response.json();
+      const responseData: any = await response.json();
       
       // Invalidar cache relacionado se necessário
       if (invalidateCache) {
@@ -175,7 +173,7 @@ export const apiClient = {
       }
       
       return {
-        data: response.ok ? responseData : null,
+        data: response.ok ? (responseData as any as T) : null,
         error: response.ok ? null : new Error(responseData.error || 'Erro desconhecido'),
         status: response.status,
         message: response.ok ? 'Sucesso' : responseData.error || 'Erro na requisição',
@@ -196,29 +194,28 @@ export const apiClient = {
    * Realiza uma requisição PUT
    * @param endpoint Endpoint da API
    * @param data Dados a serem enviados
+   * @param token Token de autenticação
    * @param invalidateCache Se deve invalidar o cache para este endpoint
    */
   async put<T>(
     endpoint: string,
     data: Record<string, any> = {},
+    token: string | null,
     invalidateCache = true
   ): Promise<ApiResponse<T>> {
     try {
-      // Obter token de autenticação
-      const token = localStorage.getItem('authToken');
-      
       // Realizar requisição
       const response = await fetchWithAuth(
-        endpoint, 
+        endpoint,
         {
           method: 'PUT',
           body: JSON.stringify(data)
-        }, 
+        },
         token
       );
       
       // Processar resposta
-      const responseData = await response.json();
+      const responseData: any = await response.json();
       
       // Invalidar cache relacionado se necessário
       if (invalidateCache) {
@@ -226,7 +223,7 @@ export const apiClient = {
       }
       
       return {
-        data: response.ok ? responseData : null,
+        data: response.ok ? (responseData as any as T) : null,
         error: response.ok ? null : new Error(responseData.error || 'Erro desconhecido'),
         status: response.status,
         message: response.ok ? 'Sucesso' : responseData.error || 'Erro na requisição',
@@ -247,11 +244,13 @@ export const apiClient = {
    * Realiza uma requisição DELETE
    * @param endpoint Endpoint da API
    * @param params Parâmetros da requisição
+   * @param token Token de autenticação
    * @param invalidateCache Se deve invalidar o cache para este endpoint
    */
   async delete<T>(
     endpoint: string,
     params: Record<string, any> = {},
+    token: string | null,
     invalidateCache = true
   ): Promise<ApiResponse<T>> {
     try {
@@ -259,14 +258,11 @@ export const apiClient = {
       const queryString = new URLSearchParams(params).toString();
       const url = `${endpoint}${queryString ? `?${queryString}` : ''}`;
       
-      // Obter token de autenticação
-      const token = localStorage.getItem('authToken');
-      
       // Realizar requisição
       const response = await fetchWithAuth(url, { method: 'DELETE' }, token);
       
       // Processar resposta
-      const responseData = await response.json();
+      const responseData: any = await response.json();
       
       // Invalidar cache relacionado se necessário
       if (invalidateCache) {
@@ -274,7 +270,7 @@ export const apiClient = {
       }
       
       return {
-        data: response.ok ? responseData : null,
+        data: response.ok ? (responseData as any as T) : null,
         error: response.ok ? null : new Error(responseData.error || 'Erro desconhecido'),
         status: response.status,
         message: response.ok ? 'Sucesso' : responseData.error || 'Erro na requisição',
@@ -337,11 +333,12 @@ export const apiClient = {
  * Hook para usar o cliente API com tratamento de erros e estado de carregamento
  */
 export const useApi = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   
   return {
     ...apiClient,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    token
   };
 };
 

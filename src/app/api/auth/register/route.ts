@@ -1,90 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-
-interface RegisterRequest {
-  name: string;
-  email: string;
-  phone?: string;
-  password: string;
-}
+import { findUserByEmail } from '@/lib/db/queries/users';
+import { RegisterRequest, AuthResponse } from '@/types/auth';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as RegisterRequest;
-    const { name, email, phone, password } = body;
+    const { name, email, password, phone } = body;
 
-    // Validação básica
     if (!name || !email || !password) {
-      return NextResponse.json({ error: 'Nome, email e senha são obrigatórios' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Email, password, and name are required' },
+        { status: 400 }
+      );
     }
 
-    // Verificar se o email já existe
-    const { data: existingUser, error: checkError } = await supabase
-      .from('users')
-      .select('email')
-      .eq('email', email)
-      .single();
-
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = não encontrado, que é o que queremos
-      console.error('Erro ao verificar email existente:', checkError);
-      return NextResponse.json({ error: 'Erro ao verificar disponibilidade do email' }, { status: 500 });
-    }
-
+    // Verificar se usuário já existe
+    const existingUser = await findUserByEmail(email);
     if (existingUser) {
-      return NextResponse.json({ error: 'Este email já está em uso' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'Email already in use' },
+        { status: 409 }
+      );
     }
 
-    // Registrar o usuário no Auth do Supabase
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Registro nativo Supabase
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: {
-          name
-        }
+        data: { name, phone, role: 'user' }
       }
     });
-
-    if (authError) {
-      console.error('Erro ao criar conta:', authError);
-      return NextResponse.json({ error: authError.message }, { status: 400 });
+    if (error || !data || !data.user) {
+      return NextResponse.json(
+        { error: 'Failed to create user' },
+        { status: 500 }
+      );
     }
 
-    if (!authData.user) {
-      return NextResponse.json({ error: 'Erro ao criar usuário' }, { status: 500 });
-    }
+    // Buscar perfil criado automaticamente
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .maybeSingle();
 
-    // Inserir dados do usuário em nossa tabela personalizada
-    const { error: insertError } = await supabase
-      .from('users')
-      .insert([
-        {
-          id: authData.user.id,
-          email,
-          name,
-          phone: phone || null,
-          role: 'user', // Papel padrão para novos usuários
-          created_at: new Date().toISOString()
-        }
-      ]);
+    // Montar resposta
+    const user = {
+      ...data.user,
+      name: profile?.name || name,
+      email: data.user.email || email,
+      role: data.user.role || 'user',
+      created_at: data.user.created_at ? new Date(data.user.created_at) : new Date(),
+      updated_at: data.user.updated_at ? new Date(data.user.updated_at) : undefined,
+      profile
+    };
+    const token = data.session?.access_token || '';
 
-    if (insertError) {
-      console.error('Erro ao salvar dados do usuário:', insertError);
-      
-      // Tentar remover o usuário auth se não conseguirmos criar o perfil
-      // para manter consistência
-      await supabase.auth.admin.deleteUser(authData.user.id);
-      
-      return NextResponse.json({ error: 'Erro ao criar perfil do usuário' }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Usuário registrado com sucesso. Por favor, verifique seu email para confirmar sua conta.'
+    // Criar resposta com cookie
+    const response = NextResponse.json<AuthResponse>({
+      message: 'User registered successfully',
+      token,
+      user
     }, { status: 201 });
 
+    if (token) {
+      response.cookies.set('YUKZ_ACCESS_TOKEN', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+      });
+    }
+
+    return response;
   } catch (error) {
-    console.error('Erro no registro:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    console.error('Error during registration:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
+}
+
+// Bloquear outros métodos
+export async function GET() {
+  return methodNotAllowed();
+}
+
+export async function PUT() {
+  return methodNotAllowed();
+}
+
+export async function DELETE() {
+  return methodNotAllowed();
+}
+
+export async function PATCH() {
+  return methodNotAllowed();
+}
+
+function methodNotAllowed() {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  );
 } 

@@ -61,24 +61,6 @@ interface Driver {
   driver_vehicles?: VehicleAssignment[];
 }
 
-// Função para estruturar respostas de erro de forma consistente
-function errorResponse(message: string, details?: any, status: number = 400) {
-  return NextResponse.json({ 
-    success: false,
-    error: message,
-    details: details || undefined
-  }, { status });
-}
-
-// Função para estruturar respostas de sucesso de forma consistente
-function successResponse(data: any, message?: string, status: number = 200) {
-  return NextResponse.json({ 
-    success: true,
-    message,
-    data
-  }, { status });
-}
-
 /**
  * @swagger
  * /api/drivers:

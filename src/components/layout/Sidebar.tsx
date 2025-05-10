@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { useSidebar } from '@/lib/sidebar-context';
+import { useAuth } from '@/lib/auth';
 import { 
   Home, 
   Map, 
@@ -44,6 +45,7 @@ export default function Sidebar({ className = '' }: SidebarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isSidebarCollapsed, toggleSidebar, isMobile } = useSidebar();
   const [alertCount, setAlertCount] = useState(0);
+  const { user } = useAuth();
   
   // Simular alertas para exemplo
   useEffect(() => {
@@ -118,6 +120,14 @@ export default function Sidebar({ className = '' }: SidebarProps) {
       ariaLabel: 'Gerenciar perfil de usuário',
       emoji: '👤'
     },
+    // Adicionar item de administração de usuários apenas para administradores
+    ...(user?.role === 'Administrador' ? [{
+      name: 'Usuários',
+      href: '/dashboard/users',
+      icon: <PanelTop className="w-6 h-6" />,
+      ariaLabel: 'Administração de usuários',
+      emoji: '🧑‍💼'
+    }] : []),
   ];
 
   const isActive = (path: string) => {
@@ -252,7 +262,7 @@ export default function Sidebar({ className = '' }: SidebarProps) {
               {navItems.map((item) => (
                 <li key={item.name} className={isMobile ? 'text-center' : ''}>
                   {isSidebarCollapsed && !isMobile ? (
-                    <Tooltip content={item.name} placement="right">
+                    <Tooltip content={item.name}>
                       <Link
                         href={item.href}
                         className={cn(

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from './jwt';
+import { supabase } from '@/lib/supabase';
 
 interface AuthResult {
   user: { id: string; email: string; name: string } | null;
@@ -25,18 +25,18 @@ export async function verifyAuth(request: NextRequest): Promise<AuthResult> {
     return { user: null, error: 'Token não fornecido', status: 401 };
   }
 
-  const decoded = verifyToken(token);
-
-  if (!decoded) {
+  // Validação via Supabase
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
     return { user: null, error: 'Token inválido ou expirado', status: 401 };
   }
 
-  // Token is valid, return user payload
+  // Token válido, retorna dados do usuário
   return {
     user: {
-      id: decoded.userId,
-      email: decoded.email,
-      name: decoded.name,
+      id: data.user.id,
+      email: data.user.email || '',
+      name: data.user.user_metadata?.name || '',
     },
   };
 }

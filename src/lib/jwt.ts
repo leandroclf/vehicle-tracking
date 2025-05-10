@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 // Use environment variable for JWT secret in production
-const JWT_SECRET = process.env.JWT_SECRET || 'yukz-secret-dev-key-please-change-in-production';
+export const JWT_SECRET = process.env.JWT_SECRET || 'yukz-secret-dev-key-please-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d'; // Token expiration time (e.g., 1 day)
 
 // Log warning if using default secret in production

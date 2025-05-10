@@ -22,7 +22,7 @@ function LoginForm() {
 
   // Verificar se o usuário acabou de se registrar
   useEffect(() => {
-    const registered = searchParams.get('registered');
+    const registered = searchParams?.get('registered');
     if (registered === 'true') {
       setSuccess('Registro realizado com sucesso! Faça login para continuar.');
     }
@@ -35,27 +35,12 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      console.log('Tentando login com:', { email });
-      
-      // Adicionar delay para garantir que logs anteriores sejam exibidos
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Tentar fazer login
-      const result = await login(email, password);
-      console.log('Resultado do login:', result);
-      
-      if (result.success) {
-        console.log('Login bem-sucedido, redirecionando para dashboard');
-        // Adicionar pequeno delay para garantir que o token seja armazenado
-        await new Promise(resolve => setTimeout(resolve, 300));
-        router.push('/dashboard');
-      } else {
-        console.error('Falha no login:', result.error);
-        setError(result.error || 'Erro ao fazer login');
-      }
-    } catch (err) {
-      console.error('Exceção durante login:', err);
-      setError('Ocorreu um erro ao tentar fazer login');
+      await login(email, password);
+      // Pequeno delay para garantir atualização de estado
+      await new Promise(resolve => setTimeout(resolve, 300));
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err?.message || 'Ocorreu um erro ao tentar fazer login');
     } finally {
       setIsLoading(false);
     }

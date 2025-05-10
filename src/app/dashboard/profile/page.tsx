@@ -5,8 +5,17 @@ import { useAuth } from '@/lib/auth';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Alert from '@/components/ui/Alert';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 export default function ProfilePage() {
+  return (
+    <ProtectedRoute>
+      <ProfileContent />
+    </ProtectedRoute>
+  );
+}
+
+function ProfileContent() {
   const { user, isAuthenticated, isLoading, token } = useAuth();
   const [name, setName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -45,14 +54,31 @@ export default function ProfilePage() {
     setMessage({ type: '', text: '' });
 
     try {
-      // Por enquanto apenas simula o envio de dados
-      setTimeout(() => {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: `${name} ${lastName}`.trim(),
+          phone,
+          preferences: {
+            emailNotifications,
+            smsNotifications
+          }
+        })
+      });
+
+      const data: { success?: boolean; error?: string; user?: any } = await response.json();
+
+      if (response.ok && data.success) {
         setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
-        setIsSubmitting(false);
-      }, 1000);
-      
-      // Aqui seria implementada a chamada real à API
-      // const response = await fetch('/api/profile', {...});
+        // Atualizar estados locais se necessário, ex: setName(data.user.name)
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Erro ao atualizar perfil.' });
+      }
+      setIsSubmitting(false);
     } catch (error) {
       setMessage({ type: 'error', text: 'Erro ao atualizar perfil.' });
       setIsSubmitting(false);
@@ -234,12 +260,9 @@ export default function ProfilePage() {
           {/* Main content */}
           <div className="md:w-2/3 p-6">
             {message.text && (
-              <div className={`mb-4 p-3 rounded-md ${
-                message.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 
-                'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-              }`}>
+              <Alert variant={message.type === 'success' ? 'success' : 'error'}>
                 {message.text}
-              </div>
+              </Alert>
             )}
             
             <form onSubmit={handleSubmit}>
@@ -323,12 +346,9 @@ export default function ProfilePage() {
                 <h3 className="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200">Alterar Senha</h3>
                 
                 {passwordMessage.text && (
-                  <div className={`mb-4 p-3 rounded-md ${
-                    passwordMessage.type === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 
-                    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                  }`}>
+                  <Alert variant={passwordMessage.type === 'success' ? 'success' : 'error'}>
                     {passwordMessage.text}
-                  </div>
+                  </Alert>
                 )}
                 
                 <div className="space-y-4">

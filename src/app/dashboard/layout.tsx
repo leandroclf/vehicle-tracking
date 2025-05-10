@@ -12,8 +12,9 @@ import { ReportProvider } from '@/lib/reports';
 import { useSidebar } from '@/lib/sidebar-context';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import Header from '@/components/layout/Header';
-import Sidebar from '@/components/layout/Sidebar';
+// Removendo importações redundantes
+// import Header from '@/components/layout/Header';
+// import Sidebar from '@/components/layout/Sidebar';
 import BottomNav from '@/components/navigation/BottomNav';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
