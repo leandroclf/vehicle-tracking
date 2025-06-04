@@ -157,7 +157,7 @@ Para adicionar novos endpoints à suíte de testes, edite o arquivo `__tests__/a
 
 ## Docker
 
-A aplicação principal (`yukz-app`) possui um `Dockerfile` que pode ser usado para criar uma imagem Docker. O servidor de rastreadores (`tracker-server`) ainda não possui um Dockerfile dedicado, mas pode ser adicionado.
+A aplicação principal (`yukz-app`) possui um `Dockerfile` que pode ser usado para criar uma imagem Docker. O servidor de rastreadores (`tracker-server`) também conta com um `Dockerfile`, localizado em `tracker-server/Dockerfile`.
 
 Para construir a imagem da aplicação principal:
 
@@ -174,7 +174,7 @@ docker build -t yukz-app .
 *   Implementar a visualização de geocercas no mapa Google Maps.
 *   Substituir os dados simulados de veículos no frontend por dados reais do Supabase.
 *   Adicionar testes automatizados.
-*   Criar um `Dockerfile` para o `tracker-server`.
+*   Revisar e otimizar o `Dockerfile` existente do `tracker-server` (`tracker-server/Dockerfile`).
 *   Configurar `docker-compose` para orquestrar os serviços.
 
 ---
