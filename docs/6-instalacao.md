@@ -164,7 +164,7 @@ Ambos os contêineres executam como usuários não-root para maior segurança e 
 - Docker Engine 20.10 ou superior
 - Docker Compose 2.0 ou superior
 - Arquivo `.env` configurado com todas as variáveis necessárias
-- Portas 3000 e 8090 disponíveis no servidor
+- Portas 3000, 5027 (Teltonika TCP), 5029 (Queclink TCP), 5030 (Concox TCP) e 5028 (UDP) disponíveis no servidor
 
 ### 6.5.3 Implantação com Docker Compose (Recomendado)
 
@@ -220,7 +220,11 @@ Ambos os contêineres executam como usuários não-root para maior segurança e 
 
 2. **Executar o contêiner**:
    ```bash
-   docker run -d -p 8090:8090 \
+   docker run -d \
+     -p 5027:5027 \
+     -p 5028:5028/udp \
+     -p 5029:5029 \
+     -p 5030:5030 \
      -e SUPABASE_URL=sua_url_supabase \
      -e SUPABASE_SERVICE_ROLE_KEY=sua_chave_service_role_supabase \
      --name yukz-tracker-server \
