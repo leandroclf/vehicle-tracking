@@ -10,8 +10,8 @@
 
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase'; // supabaseRealtime pode não ser mais necessário aqui
-import { RealtimeUpdater } from '@/lib/realtime-subscription'; // RealtimeSubscriptionManager foi removido
+import { supabase } from '@/lib/supabase';
+import { RealtimeUpdater } from '@/lib/realtime-subscription';
 import { useRealtimeContext, ConnectionState } from '@/lib/providers/RealtimeProvider'; // Importar o contexto
 import { useOfflineSync } from '@/lib/offline-sync';
 import { Alert } from '../ui/Alert';
