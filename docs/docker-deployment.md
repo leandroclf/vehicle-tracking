@@ -103,7 +103,7 @@ O arquivo `docker-compose.yml` orquestra os serviços:
 
 - Docker Engine 20.10+ e Docker Compose 2.0+
 - Arquivo `.env` configurado com todas as variáveis necessárias
-- Portas 3000 (aplicação web) e 8090 (servidor de rastreamento) disponíveis
+- Portas 3000 (aplicação web), 5027 (Teltonika TCP), 5029 (Queclink TCP), 5030 (Concox TCP) e 5028 (UDP) disponíveis
 
 ### Passos para Implantação
 
