@@ -8,15 +8,6 @@
  * offline de dados críticos.
  */
 
-"use client";
-
-/**
- * Componente de integração Realtime para o sistema de rastreamento de veículos
- * 
- * Este componente integra as Edge Functions do Supabase e o sistema Realtime
- * na interface do usuário, permitindo atualizações em tempo real e sincronização
- * offline de dados críticos.
- */
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase'; // supabaseRealtime pode não ser mais necessário aqui
