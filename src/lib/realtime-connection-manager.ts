@@ -131,29 +131,29 @@ export class RealtimeConnectionManager {
     
     // Configurar listeners para eventos online/offline do navegador
     if (typeof window !== 'undefined') {
-      window.addEventListener('online', this.handleOnline.bind(this));
-      window.addEventListener('offline', this.handleOffline.bind(this));
+      window.addEventListener('online', this.handleOnline);
+      window.addEventListener('offline', this.handleOffline);
     }
   }
   
   /**
    * Manipula evento online do navegador
    */
-  private handleOnline(): void {
+  private handleOnline = (): void => {
     this.log('INFO', 'Conexão de rede restaurada', { previousState: this.connectionState });
-    
+
     if (this.connectionState === 'DISCONNECTED' || this.connectionState === 'FAILED') {
       this.reconnect();
     }
-  }
+  };
   
   /**
    * Manipula evento offline do navegador
    */
-  private handleOffline(): void {
+  private handleOffline = (): void => {
     this.log('WARN', 'Conexão de rede perdida', { previousState: this.connectionState });
     this.updateConnectionState('DISCONNECTED');
-  }
+  };
   
   /**
    * Inicia verificação periódica de saúde das inscrições
@@ -551,8 +551,8 @@ export class RealtimeConnectionManager {
     
     // Remover event listeners
     if (typeof window !== 'undefined') {
-      window.removeEventListener('online', this.handleOnline.bind(this));
-      window.removeEventListener('offline', this.handleOffline.bind(this));
+      window.removeEventListener('online', this.handleOnline);
+      window.removeEventListener('offline', this.handleOffline);
     }
     
     // Cancelar todas as inscrições
