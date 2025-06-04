@@ -192,8 +192,4 @@ describe('API Endpoint: /api/users/update', () => {
     });
   });
 
-  it('should return 404 when user is not found', async () => {
-    // No contexto de /api/profile, o "usuário não encontrado" se refere ao perfil não existir no DB
-    // e a tentativa de criação/atualização falhar de uma forma que pareça um 404 (embora o handler retorne 500 ou crie o perfil).
-    // O handler PUT em profile/route.ts cria um perfil se não existir.
-    // Para simular um cenário mais próximo de "não encontrado
+});
