@@ -38,15 +38,22 @@ services:
     container_name: yukz-tracker-server
     restart: unless-stopped
     ports:
-      - "8090:8090"
+      - "5027:5027" # Teltonika TCP
+      - "5028:5028" # UDP
+      - "5029:5029" # Queclink TCP
+      - "5030:5030" # Concox TCP
     environment:
       - NODE_ENV=production
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - TRACKER_TCP_PORT=5027
+      - TRACKER_UDP_PORT=5028
+      - QUECLINK_TCP_PORT=5029
+      - CONCOX_TCP_PORT=5030
     depends_on:
       - app
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8090"]
+      test: ["CMD", "nc", "-z", "localhost", "5027"]
       interval: 30s
       timeout: 10s
       retries: 3
