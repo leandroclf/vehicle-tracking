@@ -13,12 +13,12 @@ export async function PUT(request: NextRequest) {
     
     const userId = authResult.user.id;
 
-    // Atualizar o status 'read' de TODOS os alertas do usuário usando Supabase
+    // Atualizar a flag 'read' de TODOS os alertas do usuário usando Supabase
     const { error, count } = await supabase
       .from('alerts')
-      .update({ status: 'read', updated_at: new Date().toISOString() })
+      .update({ read: true, updated_at: new Date().toISOString() })
       .eq('user_id', userId)
-      .eq('status', 'unread');
+      .eq('read', false);
 
     if (error) {
       console.error('Erro ao marcar todos os alertas como lidos:', error);
