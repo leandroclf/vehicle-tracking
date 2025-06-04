@@ -51,7 +51,8 @@ describe('/api/auth/me', () => {
   });
 
   it('should return user data for an authenticated user', async () => {
-    (verifyToken as jest.Mock).mockResolvedValue({ id: mockUser.id, role: mockUser.role });
+    const tokenPayload = { sub: mockUser.id, role: mockUser.role };
+    (verifyToken as jest.Mock).mockResolvedValue(tokenPayload);
     (findUserById as jest.Mock).mockResolvedValue(mockUser);
 
     const req = new NextRequest('http://localhost/api/auth/me', {
@@ -68,7 +69,7 @@ describe('/api/auth/me', () => {
     const { password: _, ...expectedUser } = mockUser;
     expect(body).toEqual(expectedUser);
     expect(verifyToken).toHaveBeenCalledWith('valid.token.here');
-    expect(findUserById).toHaveBeenCalledWith(mockUser.id);
+    expect(findUserById).toHaveBeenCalledWith(tokenPayload.sub);
   });
 
   it('should return 401 if user is not authenticated (no token)', async () => {
@@ -104,7 +105,8 @@ describe('/api/auth/me', () => {
   });
 
   it('should return 404 if authenticated user is not found in DB', async () => {
-    (verifyToken as jest.Mock).mockResolvedValue({ id: 'nonexistent-user-id', role: 'user' });
+    const tokenPayload = { sub: 'nonexistent-user-id', role: 'user' };
+    (verifyToken as jest.Mock).mockResolvedValue(tokenPayload);
     (findUserById as jest.Mock).mockResolvedValue(null);
 
     const req = new NextRequest('http://localhost/api/auth/me', {
@@ -120,7 +122,7 @@ describe('/api/auth/me', () => {
     expect(response.status).toBe(404);
     expect(body).toEqual({ error: 'User not found' });
     expect(verifyToken).toHaveBeenCalledWith('valid.token.for.nonexistent.user');
-    expect(findUserById).toHaveBeenCalledWith('nonexistent-user-id');
+    expect(findUserById).toHaveBeenCalledWith(tokenPayload.sub);
   });
 
   it('should return 405 for non-GET methods', async () => {
@@ -167,7 +169,8 @@ describe('/api/auth/me', () => {
   });
 
   it('should return 500 if user lookup throws an error', async () => {
-    (verifyToken as jest.Mock).mockResolvedValue({ id: mockUser.id, role: mockUser.role });
+    const tokenPayload = { sub: mockUser.id, role: mockUser.role };
+    (verifyToken as jest.Mock).mockResolvedValue(tokenPayload);
     (findUserById as jest.Mock).mockRejectedValue(new Error('Database connection error'));
 
     const req = new NextRequest('http://localhost/api/auth/me', {
@@ -183,6 +186,6 @@ describe('/api/auth/me', () => {
     expect(response.status).toBe(500);
     expect(body).toEqual({ error: 'Internal server error' });
     expect(verifyToken).toHaveBeenCalledWith('valid.token.here');
-    expect(findUserById).toHaveBeenCalledWith(mockUser.id);
+    expect(findUserById).toHaveBeenCalledWith(tokenPayload.sub);
   });
 });

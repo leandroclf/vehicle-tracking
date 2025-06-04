@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Buscar usuário
-    const user = await findUserById(payload.id);
+    const user = await findUserById(payload.sub);
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
