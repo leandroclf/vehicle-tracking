@@ -1,29 +1,55 @@
+import http from 'http';
 import request from 'supertest';
+import { GET as apiHandler } from '@/app/api/route';
+import { verifyAuth } from '@/lib/auth-middleware';
+import { createClient } from '@supabase/supabase-js';
 
-// Placeholder for the app or server instance
-// For App Router, you might test against a running dev server or adapt route handlers.
-// Example for a running server: const server = 'http://localhost:3000';
-
-/**
- * TODO: Replace with actual server/handler import and setup for supertest.
- * The method for integrating supertest with Next.js App Router API routes
- * needs to be determined. It might involve:
- * 1. Testing against a running development server.
- * 2. Adapting the exported route handler functions (GET, POST, etc.) for supertest.
- *    (e.g., using something like `node-mocks-http` or a custom wrapper).
- * Check `src/lib/api-test-utils.ts` for any existing utilities.
- */
+jest.mock('@supabase/supabase-js');
+jest.mock('@/lib/auth-middleware');
 
 describe('API: /api (index)', () => {
-  // Example for testing a GET request to the root API endpoint
-  // This assumes 'src/app/api/route.ts' handles requests to '/api'
-  it('GET /api - should respond appropriately (placeholder)', async () => {
-    // const response = await request(server).get('/api');
-    // expect(response.status).toBe(200); 
-    // expect(response.body).toEqual({ message: 'API base endpoint' });
-    expect(true).toBe(true); // Placeholder assertion
-  });
+  it('GET /api - should return alerts for an authenticated user', async () => {
+    const mockAlerts = [
+      { id: 1, timestamp: '2024-01-01T00:00:00Z', vehicles: { name: 'Truck' }, read: false }
+    ];
 
-  // Add more tests for other HTTP methods (POST, PUT, DELETE, etc.) if defined
-  // in 'src/app/api/route.ts'
+    (verifyAuth as jest.Mock).mockResolvedValue({
+      user: { id: 'user1', email: 'test@example.com', name: 'Test User' }
+    });
+
+    const builder = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockResolvedValue({ data: mockAlerts, error: null })
+    };
+
+    (createClient as jest.Mock).mockReturnValue({
+      from: jest.fn().mockReturnValue(builder)
+    });
+
+    const server = http.createServer(async (req, res) => {
+      if (req.url === '/api' && req.method === 'GET') {
+        const nextReq = new Request('http://localhost/api', {
+          method: 'GET',
+          headers: req.headers as any
+        });
+        const nextRes = await apiHandler(nextReq);
+        res.statusCode = nextRes.status;
+        nextRes.headers.forEach((v, k) => res.setHeader(k, v));
+        const body = await nextRes.text();
+        res.end(body);
+      } else {
+        res.statusCode = 404;
+        res.end();
+      }
+    });
+
+    const response = await request(server)
+      .get('/api')
+      .set('Authorization', 'Bearer token');
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body[0]).toMatchObject({ id: 1, vehicleName: 'Truck' });
+  });
 });
