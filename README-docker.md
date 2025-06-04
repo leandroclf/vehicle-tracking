@@ -12,7 +12,7 @@ Este documento fornece instruções para implantar o sistema de rastreamento vei
 - Docker Engine 20.10+ e Docker Compose 2.0+
 - Credenciais do Supabase configuradas
 - Chave de API do Google Maps (para funcionalidades de mapa)
-- Portas 3000 e 8090 disponíveis no servidor
+- Portas 3000, 5027–5030 disponíveis no servidor
 
 ## Implantação Rápida
 
@@ -42,7 +42,10 @@ Para uma implantação rápida do sistema, siga estes passos:
 
 5. **Acesse a aplicação em**:
    - Aplicação Web: `http://localhost:3000`
-   - Servidor de Rastreamento: `tcp://localhost:8090`
+   - Servidor de Rastreamento (Teltonika): `tcp://localhost:5027`
+   - Servidor UDP: `udp://localhost:5028`
+   - Servidor Queclink: `tcp://localhost:5029`
+   - Servidor Concox: `tcp://localhost:5030`
 
 ## Características da Solução Docker
 

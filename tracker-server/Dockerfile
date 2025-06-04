@@ -28,9 +28,12 @@ WORKDIR /app
 
 # Definir variáveis de ambiente para runtime
 ENV NODE_ENV=production
-ENV PORT=8090
 ENV SUPABASE_URL=${SUPABASE_URL}
 ENV SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+ENV TRACKER_TCP_PORT=5027
+ENV TRACKER_UDP_PORT=5028
+ENV QUECLINK_TCP_PORT=5029
+ENV CONCOX_TCP_PORT=5030
 
 # Criar usuário não-root
 RUN addgroup --system --gid 1001 nodejs && \
@@ -47,8 +50,11 @@ COPY --from=builder --chown=nodeapp:nodejs /app/teltonika-decoder.js ./
 # Mudar para usuário não-root
 USER nodeapp
 
-# Expor porta do servidor de rastreamento
-EXPOSE 8090
+# Expor portas do servidor de rastreamento
+EXPOSE 5027
+EXPOSE 5028
+EXPOSE 5029
+EXPOSE 5030
 
 # Comando para iniciar o servidor
 CMD ["node", "server.js"]
