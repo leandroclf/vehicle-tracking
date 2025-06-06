@@ -25,7 +25,10 @@ Os principais arquivos de teste estão localizados em:
 
 Os testes utilizam funções utilitárias definidas em `src/lib/api-test-utils.ts`:
 
-- `makeRequest`: Faz requisições à API com diferentes configurações de autenticação
+- `makeRequest`: Executa o handler do endpoint (arquivo `route.ts`) de forma direta
+  usando `NextRequest`, retornando o status real, cabeçalhos e corpo. Ele aceita
+  parâmetros para definir o método HTTP, corpo e se deve usar ou não um token
+  válido.
 - `testEndpointProtection`: Realiza um conjunto completo de testes de proteção em um endpoint
 - `getValidToken`: Gera um token JWT válido para testes
 - `getInvalidToken`: Retorna um token inválido para testes
