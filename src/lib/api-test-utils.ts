@@ -1,15 +1,6 @@
 import { generateToken } from './jwt';
-
-// Substituindo node-fetch por uma implementação mock mais simples para os testes
-const mockFetch = async (url: string, options: any) => {
-  // Simular uma resposta básica para os testes
-  return {
-    status: 200,
-    ok: true,
-    headers: new Headers(),
-    json: async () => ({ message: 'Mock response' })
-  };
-};
+import path from 'path';
+import { NextRequest } from 'next/server';
 
 // URL base para os testes
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
@@ -39,7 +30,7 @@ export function getInvalidToken(): string {
  * Faz uma requisição à API com ou sem token de autenticação
  */
 export async function makeRequest(
-  endpoint: string, 
+  endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
   body?: any,
   useValidToken: boolean = true,
@@ -51,31 +42,50 @@ export async function makeRequest(
     'Content-Type': 'application/json',
   };
 
-  // Adicionar token de autenticação se necessário
   if (useValidToken) {
     headers['Authorization'] = `Bearer ${getValidToken()}`;
   } else if (useInvalidToken) {
     headers['Authorization'] = `Bearer ${getInvalidToken()}`;
   }
 
-  const options: any = {
+  const reqInit: RequestInit = {
     method,
     headers,
   };
 
   if (body) {
-    options.body = asObject ? body : JSON.stringify(body);
+    reqInit.body = asObject ? JSON.stringify(body) : body;
   }
 
-  // Usar o mock em vez do fetch real para testes
-  const response = await mockFetch(url, options);
+  const request = new NextRequest(url, reqInit);
+
+  const routePath = path.join(
+    process.cwd(),
+    'src/app/api',
+    endpoint.split('?')[0].replace(/^\//, ''),
+    'route'
+  );
+
+  const handlerModule = await import(routePath);
+  const handler = handlerModule[method];
+
+  if (typeof handler !== 'function') {
+    return {
+      status: 405,
+      data: { error: 'Method not allowed' },
+      headers: new Headers(),
+      ok: false,
+    };
+  }
+
+  const response = await handler(request);
   const responseData = await response.json().catch(() => ({}));
 
   return {
     status: response.status,
     data: responseData,
     headers: response.headers,
-    ok: response.ok
+    ok: response.ok,
   };
 }
 
