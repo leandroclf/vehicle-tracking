@@ -1,29 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
 // Mock functions for user queries
-export const findUserByEmail = async (email: string) => {
-  // Busca todos os usuários e filtra pelo email
-  let page = 1;
-  let perPage = 100;
-  let foundUser = null;
-  while (true) {
-    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
-    if (error || !data || !data.users.length) break;
-    foundUser = data.users.find((u) => u.email === email);
-    if (foundUser) break;
-    if (data.users.length < perPage) break;
-    page++;
-  }
-  if (!foundUser) return null;
-  // Busca perfil vinculado
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', foundUser.id)
-    .maybeSingle();
-  return { ...foundUser, profile };
-};
-
 export const findUserById = async (id: string) => {
   const { data, error } = await supabase.auth.admin.getUserById(id);
   if (error || !data || !data.user) return null;
