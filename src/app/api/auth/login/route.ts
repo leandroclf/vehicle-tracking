@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { findUserByEmail } from '@/lib/db/queries/users';
 import { LoginRequest, AuthResponse } from '@/types/auth';
 
 export async function POST(request: NextRequest) {
@@ -48,13 +47,6 @@ export async function POST(request: NextRequest) {
       message: 'Login successful',
       token,
       user
-    });
-
-    response.cookies.set('YUKZ_ACCESS_TOKEN', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/'
     });
 
     return response;

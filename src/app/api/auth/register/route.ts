@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { findUserByEmail } from '@/lib/db/queries/users';
 import { RegisterRequest, AuthResponse } from '@/types/auth';
 
 export async function POST(request: NextRequest) {
@@ -15,15 +14,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se usuário já existe
-    const existingUser = await findUserByEmail(email);
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'Email already in use' },
-        { status: 409 }
-      );
-    }
-
     // Registro nativo Supabase
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -32,9 +22,27 @@ export async function POST(request: NextRequest) {
         data: { name, phone, role: 'user' }
       }
     });
-    if (error || !data || !data.user) {
+
+    if (error) {
+      // Check if the error message indicates that the user already exists
+      if (error.message && error.message.includes('User already registered')) {
+        return NextResponse.json(
+          { error: 'Email already in use' },
+          { status: 409 }
+        );
+      }
+      // For other errors from signUp
       return NextResponse.json(
-        { error: 'Failed to create user' },
+        { error: error.message || 'Failed to create user' },
+        { status: 500 } // Or a more specific status if available from the error
+      );
+    }
+
+    if (!data || !data.user) {
+      // This case should ideally be covered by the error above,
+      // but as a fallback if no error is thrown but data is incomplete.
+      return NextResponse.json(
+        { error: 'Failed to create user: Incomplete data' },
         { status: 500 }
       );
     }
@@ -64,15 +72,6 @@ export async function POST(request: NextRequest) {
       token,
       user
     }, { status: 201 });
-
-    if (token) {
-      response.cookies.set('YUKZ_ACCESS_TOKEN', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/'
-      });
-    }
 
     return response;
   } catch (error) {
