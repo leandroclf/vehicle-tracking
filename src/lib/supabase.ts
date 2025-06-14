@@ -102,30 +102,3 @@ export const createAdminClient = (options = {}): SupabaseClient | null => {
 export const supabase = createClient();
 export const supabaseRealtime = createRealtimeClient();
 export const supabaseAdmin = createAdminClient();
-
-// Validar conexão com Supabase
-const testSupabaseConnection = async () => {
-  try {
-    // Testa uma operação simples para verificar se a conexão está funcionando
-    const { data, error } = await supabase.from('profiles').select('id').limit(1).maybeSingle();
-    
-    if (error) {
-      if (error.message.includes('relation "profiles" does not exist')) {
-        console.log('Conexão com Supabase OK, mas tabela profiles não existe (normal para primeira inicialização)');
-        return;
-      }
-      console.error('Erro na conexão com Supabase:', error.message);
-      return;
-    }
-    
-    console.log('Conexão com Supabase estabelecida com sucesso');
-  } catch (err) {
-    console.error('Erro ao testar conexão com Supabase:', err);
-  }
-};
-
-// Executar o teste se não estiver em ambiente de teste
-if (process.env.NODE_ENV !== 'test' && typeof window !== 'undefined') {
-  // Executar teste de conexão após carregamento da página
-  setTimeout(testSupabaseConnection, 1000);
-}

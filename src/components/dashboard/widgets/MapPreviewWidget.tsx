@@ -54,7 +54,7 @@ export default function MapPreviewWidget({ previewOnly = true }: MapPreviewWidge
             </div>
             <button 
               className="text-blue-600 dark:text-blue-400 hover:underline"
-              onClick={() => setIsLoading(prev => !prev)} // Para teste de loading
+              onClick={() => setIsLoading(prev => !prev)}
             >
               Atualizar visualização
             </button>
@@ -63,4 +63,4 @@ export default function MapPreviewWidget({ previewOnly = true }: MapPreviewWidge
       )}
     </DashboardWidget>
   );
-} 
+}

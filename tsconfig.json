@@ -3,7 +3,6 @@
     "target": "ES2017",
     "types": [
       "@cloudflare/workers-types/2023-07-01",
-      "jest",
       "node"
     ],
     "lib": [
@@ -40,9 +39,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "next.config.mjs",
-    "src/types/**/*.d.ts",
-    "jest.setup.js",
-    "jest.config.js"
+    "src/types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules"

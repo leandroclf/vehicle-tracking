@@ -326,7 +326,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
         className={`flex items-center text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md px-3 py-1.5 text-sm ${className}`}
         onClick={() => setIsOpen(true)}
         aria-label="Abrir pesquisa global"
-        data-testid="global-search-button"
+
       >
         <Search className="h-4 w-4 mr-2" aria-hidden="true" />
         <span className="hidden sm:inline">Pesquisar</span>
