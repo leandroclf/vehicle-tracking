@@ -1,0 +1,33 @@
+# Dependências do Projeto - Arquivo de Referência
+# Este arquivo lista as principais dependências usadas no projeto
+# A instalação real é feita via npm usando o package.json
+
+# Banco de dados e autenticação
+@supabase/supabase-js@^2.49.4
+
+# Mapeamento e geolocalização
+@react-google-maps/api@^2.19.3
+
+# Autenticação e segurança
+bcryptjs@^3.0.2
+jsonwebtoken@^9.0.2
+
+# UI e componentes
+@radix-ui/react-*
+class-variance-authority@^0.7.1
+clsx@^2.1.1
+lucide-react@^0.364.0
+tailwind-merge@^2.6.0
+tailwindcss-animate@^1.0.7
+
+# Formulários e validação
+@hookform/resolvers@^3.10.0
+react-hook-form@^7.54.2
+zod@^3.24.3
+
+# Utilidades
+date-fns@^3.6.0
+uuid@^11.1.0
+
+# Nota: Este arquivo é usado como referência para as dependências.
+# A instalação real é feita via npm usando o package.json
