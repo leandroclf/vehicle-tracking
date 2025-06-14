@@ -7,7 +7,7 @@ yarn-error.log
 .github
 .gitignore
 .vscode
-__tests__
+
 
 # Arquivos de ambiente
 .env
@@ -40,4 +40,4 @@ docker-compose.yml
 
 # Outros
 .DS_Store
-*.log 
+*.log
