@@ -1,3 +1,0 @@
-refactor(realtime): migrate realtime subscription logic to useSupabaseRealtime hook
-
-Refactor the realtime subscription logic into a custom hook `useSupabaseRealtime` to centralize and simplify realtime data handling. This includes removing deprecated components like `RealtimeSubscriptionManager` and updating the `RealtimeIntegration` component to use the new hook. The changes improve maintainability and reduce redundancy in realtime subscription management.
