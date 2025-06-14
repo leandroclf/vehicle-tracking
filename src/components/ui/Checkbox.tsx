@@ -1,78 +1,30 @@
-import React, { forwardRef } from 'react';
-import { twMerge } from 'tailwind-merge';
-import { Check } from 'lucide-react';
+"use client"
 
-interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
-  label?: string;
-  helperText?: string;
-  error?: string;
-  indeterminate?: boolean;
-}
+import * as React from "react"
+import * as CheckboxPrimitive from "@radix-ui/react-checkbox"
+import { Check } from "lucide-react"
 
-export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((
-  {
-    label,
-    helperText,
-    error,
-    className,
-    id,
-    indeterminate = false,
-    ...props
-  },
-  ref
-) => {
-  const checkboxId = id || `checkbox-${Math.random().toString(36).substring(2, 9)}`;
-  const hasError = !!error;
+import { cn } from "@/lib/utils"
 
-  const handleRef = (element: HTMLInputElement) => {
-    if (element) {
-      element.indeterminate = indeterminate;
-      if (typeof ref === 'function') {
-        ref(element);
-      } else if (ref) {
-        ref.current = element;
-      }
-    }
-  };
-  
-  return (
-    <div className="flex items-start">
-      <div className="flex items-center h-5">
-        <input
-          ref={handleRef}
-          id={checkboxId}
-          type="checkbox"
-          className={twMerge(
-            'h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500',
-            hasError ? 'border-red-300 focus:ring-red-500' : '',
-            className
-          )}
-          aria-invalid={hasError}
-          aria-describedby={hasError ? `${checkboxId}-error` : helperText ? `${checkboxId}-description` : undefined}
-          {...props}
-        />
-      </div>
-      <div className="ml-3 text-sm">
-        {label && (
-          <label htmlFor={checkboxId} className="font-medium text-gray-700">
-            {label}
-          </label>
-        )}
-        {helperText && !hasError && (
-          <p className="text-gray-500" id={`${checkboxId}-description`}>
-            {helperText}
-          </p>
-        )}
-        {hasError && (
-          <p className="text-red-600" id={`${checkboxId}-error`}>
-            {error}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-});
+const Checkbox = React.forwardRef<
+  React.ElementRef<typeof CheckboxPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <CheckboxPrimitive.Root
+    ref={ref}
+    className={cn(
+      "peer h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
+      className
+    )}
+    {...props}
+  >
+    <CheckboxPrimitive.Indicator
+      className={cn("flex items-center justify-center text-current")}
+    >
+      <Check className="h-4 w-4" />
+    </CheckboxPrimitive.Indicator>
+  </CheckboxPrimitive.Root>
+))
+Checkbox.displayName = CheckboxPrimitive.Root.displayName
 
-Checkbox.displayName = 'Checkbox';
-
-export default Checkbox; 
+export { Checkbox }

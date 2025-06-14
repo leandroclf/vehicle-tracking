@@ -1,85 +1,50 @@
-import React from 'react';
-import { twMerge } from 'tailwind-merge';
+"use client"
 
-interface AvatarProps {
-  src?: string;
-  alt?: string;
-  name?: string;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  shape?: 'circle' | 'square';
-  status?: 'online' | 'offline' | 'busy' | 'away';
-  border?: boolean;
-  className?: string;
-}
+import * as React from "react"
+import * as AvatarPrimitive from "@radix-ui/react-avatar"
 
-const sizeClasses = {
-  xs: 'w-6 h-6 text-xs',
-  sm: 'w-8 h-8 text-sm',
-  md: 'w-10 h-10 text-base',
-  lg: 'w-12 h-12 text-lg',
-  xl: 'w-16 h-16 text-xl',
-};
+import { cn } from "@/lib/utils"
 
-const statusColors = {
-  online: 'bg-green-500',
-  offline: 'bg-gray-500',
-  busy: 'bg-red-500',
-  away: 'bg-yellow-500',
-};
+const Avatar = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Root
+    ref={ref}
+    className={cn(
+      "relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full",
+      className
+    )}
+    {...props}
+  />
+))
+Avatar.displayName = AvatarPrimitive.Root.displayName
 
-const Avatar: React.FC<AvatarProps> = ({
-  src,
-  alt = '',
-  name,
-  size = 'md',
-  shape = 'circle',
-  status,
-  border = false,
-  className,
-}) => {
-  const getInitials = (name: string) => {
-    if (!name) return '';
-    
-    const names = name.split(' ');
-    if (names.length === 1) return names[0].charAt(0).toUpperCase();
-    
-    return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
-  };
-  
-  const shapeClass = shape === 'circle' ? 'rounded-full' : 'rounded-md';
-  const sizeClass = sizeClasses[size];
-  const borderClass = border ? 'border-2 border-white' : '';
-  
-  return (
-    <div className="relative inline-flex flex-shrink-0">
-      {src ? (
-        <img
-          src={src}
-          alt={alt}
-          className={twMerge(`${sizeClass} ${shapeClass} ${borderClass} object-cover`, className)}
-        />
-      ) : (
-        <div 
-          className={twMerge(
-            `${sizeClass} ${shapeClass} ${borderClass} bg-blue-500 text-white flex items-center justify-center font-medium`, 
-            className
-          )}
-          aria-label={name || alt}
-        >
-          {name ? getInitials(name) : ''}
-        </div>
-      )}
-      
-      {status && (
-        <span 
-          className={twMerge(
-            `absolute block rounded-full ${statusColors[status]}`,
-            size === 'xs' ? 'w-1.5 h-1.5 right-0 bottom-0' : 'w-2.5 h-2.5 -right-0.5 -bottom-0.5 ring-2 ring-white'
-          )}
-        />
-      )}
-    </div>
-  );
-};
+const AvatarImage = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Image>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Image
+    ref={ref}
+    className={cn("aspect-square h-full w-full", className)}
+    {...props}
+  />
+))
+AvatarImage.displayName = AvatarPrimitive.Image.displayName
 
-export default Avatar; 
+const AvatarFallback = React.forwardRef<
+  React.ElementRef<typeof AvatarPrimitive.Fallback>,
+  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
+>(({ className, ...props }, ref) => (
+  <AvatarPrimitive.Fallback
+    ref={ref}
+    className={cn(
+      "flex h-full w-full items-center justify-center rounded-full bg-muted",
+      className
+    )}
+    {...props}
+  />
+))
+AvatarFallback.displayName = AvatarPrimitive.Fallback.displayName
+
+export { Avatar, AvatarImage, AvatarFallback }
