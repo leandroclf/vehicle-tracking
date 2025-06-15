@@ -1,0 +1,173 @@
+version: '3.8'
+
+services:
+  # Banco de dados PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: yukz-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vehicle_tracking
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+      - ./scripts/init-data.sql:/docker-entrypoint-initdb.d/99-init-data.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vehicle_tracking"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - yukz-network
+
+  # Redis para cache e sessões
+  redis:
+    image: redis:7-alpine
+    container_name: yukz-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - yukz-network
+
+  # Aplicação principal Next.js
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-http://localhost:54321}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+        - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-key}
+    container_name: yukz-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres123@postgres:5432/vehicle_tracking
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL:-http://localhost:54321}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-key}
+      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - yukz-network
+
+  # Servidor de rastreamento de dispositivos
+  tracker-server:
+    build:
+      context: ./tracker-server
+      dockerfile: Dockerfile
+      args:
+        - DATABASE_URL=postgresql://postgres:postgres123@postgres:5432/vehicle_tracking
+        - SUPABASE_URL=${SUPABASE_URL:-http://localhost:54321}
+        - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    container_name: yukz-tracker-server
+    restart: unless-stopped
+    ports:
+      - "5027:5027" # Teltonika TCP
+      - "5028:5028" # UDP
+      - "5029:5029" # Queclink TCP
+      - "5030:5030" # Concox TCP
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres123@postgres:5432/vehicle_tracking
+      - REDIS_URL=redis://redis:6379
+      - SUPABASE_URL=${SUPABASE_URL:-http://localhost:54321}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - TRACKER_TCP_PORT=5027
+      - TRACKER_UDP_PORT=5028
+      - QUECLINK_TCP_PORT=5029
+      - CONCOX_TCP_PORT=5030
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "5027"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - yukz-network
+
+  # Supabase Local (opcional - para desenvolvimento)
+  supabase:
+    image: supabase/supabase:latest
+    container_name: yukz-supabase
+    restart: unless-stopped
+    ports:
+      - "54321:8000"
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=vehicle_tracking
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres123
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-key}
+      - ANON_KEY=${SUPABASE_ANON_KEY}
+      - SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - yukz-network
+    profiles:
+      - development
+
+  # Adminer para administração do banco de dados
+  adminer:
+    image: adminer:latest
+    container_name: yukz-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+    depends_on:
+      - postgres
+    networks:
+      - yukz-network
+    profiles:
+      - development
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  yukz-network:
+    driver: bridge
+    name: yukz-network
