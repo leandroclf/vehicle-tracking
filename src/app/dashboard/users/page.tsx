@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useEffect, useState } from 'react';
 import AdminRoute from '@/components/auth/AdminRoute';
 
@@ -116,4 +118,4 @@ const UsersAdminPage = () => {
   );
 };
 
-export default UsersAdminPage; 
+export default UsersAdminPage;

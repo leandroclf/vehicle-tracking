@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
-import Select, { SelectOption } from '@/components/ui/Select';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/Select';
 
 interface VehicleFormProps {
   isEdit?: boolean;
@@ -135,14 +141,18 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
         <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Status
         </label>
-        <Select
-          id="status"
-          name="status"
-          value={formData.status}
-          onChange={handleChange}
-          options={statusOptions}
-          disabled={isLoading}
-        />
+        <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))} disabled={isLoading}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione o status" />
+          </SelectTrigger>
+          <SelectContent>
+            {statusOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex justify-end space-x-3 pt-4">
@@ -156,14 +166,13 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
         </Button>
         <Button
           type="submit"
-          variant="primary"
-          isLoading={isLoading}
+          disabled={isLoading}
         >
-          {isEdit ? 'Atualizar Veículo' : 'Adicionar Veículo'}
+          {isLoading ? 'Processando...' : (isEdit ? 'Atualizar Veículo' : 'Adicionar Veículo')}
         </Button>
       </div>
     </form>
   );
 };
 
-export default VehicleForm; 
+export default VehicleForm;

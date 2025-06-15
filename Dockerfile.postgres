@@ -1,0 +1,66 @@
+# Dockerfile para PostgreSQL com extensões e configurações específicas
+FROM postgres:15-alpine
+
+# Instalar extensões adicionais
+RUN apk add --no-cache \
+    postgresql-contrib \
+    postgis \
+    && rm -rf /var/cache/apk/*
+
+# Definir variáveis de ambiente
+ENV POSTGRES_DB=vehicle_tracking
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=postgres123
+ENV PGDATA=/var/lib/postgresql/data/pgdata
+
+# Criar diretório para scripts de inicialização
+RUN mkdir -p /docker-entrypoint-initdb.d
+
+# Copiar scripts de migração e inicialização
+COPY ./migrations/unified_schema.sql /docker-entrypoint-initdb.d/01-schema.sql
+COPY ./migrations/create_rpc_functions.sql /docker-entrypoint-initdb.d/02-functions.sql
+COPY ./scripts/init-data.sql /docker-entrypoint-initdb.d/99-init-data.sql
+
+# Script para configurar extensões adicionais
+COPY <<EOF /docker-entrypoint-initdb.d/00-extensions.sql
+-- Habilitar extensões necessárias
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "postgis";
+
+-- Configurações de performance
+ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements';
+ALTER SYSTEM SET max_connections = 200;
+ALTER SYSTEM SET shared_buffers = '256MB';
+ALTER SYSTEM SET effective_cache_size = '1GB';
+ALTER SYSTEM SET maintenance_work_mem = '64MB';
+ALTER SYSTEM SET checkpoint_completion_target = 0.9;
+ALTER SYSTEM SET wal_buffers = '16MB';
+ALTER SYSTEM SET default_statistics_target = 100;
+ALTER SYSTEM SET random_page_cost = 1.1;
+ALTER SYSTEM SET effective_io_concurrency = 200;
+
+-- Configurações de logging
+ALTER SYSTEM SET log_destination = 'stderr';
+ALTER SYSTEM SET logging_collector = on;
+ALTER SYSTEM SET log_directory = 'pg_log';
+ALTER SYSTEM SET log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log';
+ALTER SYSTEM SET log_statement = 'mod';
+ALTER SYSTEM SET log_min_duration_statement = 1000;
+
+-- Recarregar configurações
+SELECT pg_reload_conf();
+EOF
+
+# Configurar permissões
+RUN chmod +x /docker-entrypoint-initdb.d/*.sql
+
+# Expor porta padrão do PostgreSQL
+EXPOSE 5432
+
+# Configurar healthcheck
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=5 \
+  CMD pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+
+# Usar o entrypoint padrão do PostgreSQL
+CMD ["postgres"]
