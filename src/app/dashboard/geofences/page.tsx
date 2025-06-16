@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Card from '@/components/ui/Card';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
-import Badge from '@/components/ui/Badge';
-import Grid from '@/components/ui/Grid';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Grid } from '@/components/ui/grid';
 import { Search, MapPin, Edit, Trash2, Plus } from 'lucide-react';
 import { useGeofences } from '@/lib/geofences';
-import Tabs from '@/components/ui/Tabs';
+import { Tabs } from '@/components/ui/tabs';
 import dynamic from 'next/dynamic';
 
 // Carregamento dinâmico do componente do mapa para evitar erros de SSR

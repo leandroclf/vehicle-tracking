@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Alert from '@/components/ui/Alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert } from '@/components/ui/alert';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 export default function ProfilePage() {

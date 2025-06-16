@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Alert } from '@/components/ui/Alert';
-import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
+import { Card } from '@/components/ui/card';
 import { Plus, Trash2, ArrowRight } from 'lucide-react';
 
 interface Vehicle {

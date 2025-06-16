@@ -1,57 +1,72 @@
-import React, { ReactNode } from 'react';
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
-interface GridProps {
-  children: ReactNode;
-  cols?: 1 | 2 | 3 | 4 | 5 | 6;
-  gap?: 'none' | 'sm' | 'md' | 'lg';
-  className?: string;
+export interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
+  cols?: 1 | 2 | 3 | 4 | 5 | 6 | 12
+  gap?: "none" | "sm" | "md" | "lg" | "xl"
+  responsive?: boolean
 }
 
-export const Grid: React.FC<GridProps> = ({
-  children,
-  cols = 3,
-  gap = 'md',
-  className = '',
-}) => {
-  const getColsClass = () => {
-    switch (cols) {
-      case 1:
-        return 'grid-cols-1';
-      case 2:
-        return 'grid-cols-1 sm:grid-cols-2';
-      case 3:
-        return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3';
-      case 4:
-        return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4';
-      case 5:
-        return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
-      case 6:
-        return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6';
-      default:
-        return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3';
-    }
-  };
+const Grid = React.forwardRef<HTMLDivElement, GridProps>(
+  ({ className, cols = 1, gap = "md", responsive = true, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "grid",
+          {
+            "grid-cols-1": cols === 1,
+            "grid-cols-2": cols === 2,
+            "grid-cols-3": cols === 3,
+            "grid-cols-4": cols === 4,
+            "grid-cols-5": cols === 5,
+            "grid-cols-6": cols === 6,
+            "grid-cols-12": cols === 12,
+            "gap-0": gap === "none",
+            "gap-2": gap === "sm",
+            "gap-4": gap === "md",
+            "gap-6": gap === "lg",
+            "gap-8": gap === "xl",
+            "sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4": responsive && cols >= 4,
+            "sm:grid-cols-2 md:grid-cols-3": responsive && cols === 3,
+            "sm:grid-cols-2": responsive && cols === 2,
+          },
+          className
+        )}
+        {...props}
+      />
+    )
+  }
+)
+Grid.displayName = "Grid"
 
-  const getGapClass = () => {
-    switch (gap) {
-      case 'none':
-        return 'gap-0';
-      case 'sm':
-        return 'gap-2';
-      case 'md':
-        return 'gap-4';
-      case 'lg':
-        return 'gap-6';
-      default:
-        return 'gap-4';
-    }
-  };
+export interface GridItemProps extends React.HTMLAttributes<HTMLDivElement> {
+  span?: 1 | 2 | 3 | 4 | 5 | 6 | 12
+}
 
-  return (
-    <div className={`grid ${getColsClass()} ${getGapClass()} ${className}`}>
-      {children}
-    </div>
-  );
-};
+const GridItem = React.forwardRef<HTMLDivElement, GridItemProps>(
+  ({ className, span = 1, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          {
+            "col-span-1": span === 1,
+            "col-span-2": span === 2,
+            "col-span-3": span === 3,
+            "col-span-4": span === 4,
+            "col-span-5": span === 5,
+            "col-span-6": span === 6,
+            "col-span-12": span === 12,
+          },
+          className
+        )}
+        {...props}
+      />
+    )
+  }
+)
+GridItem.displayName = "GridItem"
 
-export default Grid; 
+export { Grid, GridItem }
+export default Grid

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { ExternalLink, Download, AlertCircle, CheckCircle, Clock, Calendar, XCircle } from 'lucide-react';
 import { useReports } from '@/lib/reports';
 import { format, parseISO } from 'date-fns';

@@ -1,16 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Container from '@/components/ui/Container';
+import { Container } from '@/components/ui/container';
 import RealTimeUpdater from '@/components/dashboard/RealTimeUpdater';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import dynamic from 'next/dynamic';
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/ResizablePanels';
 import { getFromStorage, saveToStorage } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { Tooltip } from '@/components/ui/Tooltip';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Settings, Sliders, PlusCircle, RotateCcw } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { DashboardConfigurator, WidgetConfig, UserProfile } from '@/components/dashboard/DashboardConfigurator';
 
 // Importar widgets de forma dinâmica para melhorar performance inicial

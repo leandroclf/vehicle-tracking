@@ -4,11 +4,11 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Alert from '@/components/ui/Alert';
-import Container from '@/components/ui/Container';
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert } from '@/components/ui/alert';
+import { Container } from '@/components/ui/container';
+import { Card } from '@/components/ui/card';
 
 function RegisterForm() {
   const router = useRouter();
