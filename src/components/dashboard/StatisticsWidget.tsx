@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { useDashboard, DashboardStatistics } from '@/lib/dashboard';
 import { Car, Activity, AlertTriangle, Droplet, MapPin } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/TabsFixed';

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
-import { Progress } from '@/components/ui/Progress';
+import { Progress } from '@/components/ui/progress';
 import { Droplet, TrendingDown, TrendingUp, BarChart3, Calendar, Fuel } from 'lucide-react';
 
 interface FuelConsumptionData {

@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import Alert from '@/components/ui/Alert';
-import Card from '@/components/ui/Card';
-import Badge from '@/components/ui/Badge';
+import { Alert } from '@/components/ui/alert';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Bell, Trash2 } from 'lucide-react';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { useAlerts } from '@/lib/alerts';
 import AlertNotifications from '@/components/dashboard/AlertNotifications';
 
@@ -150,4 +150,4 @@ export default function AlertsPage() {
       )}
     </div>
   );
-} 
+}

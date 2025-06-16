@@ -105,6 +105,14 @@ const TableCaption = React.forwardRef<
 ))
 TableCaption.displayName = "TableCaption"
 
+// For backward compatibility
+export interface TableColumn {
+  key: string
+  title: string
+  dataIndex?: string
+  render?: (value: any, record: any, index: number) => React.ReactNode
+}
+
 export {
   Table,
   TableHeader,
@@ -115,3 +123,4 @@ export {
   TableCell,
   TableCaption,
 }
+export default Table

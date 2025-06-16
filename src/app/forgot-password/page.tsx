@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Alert from '@/components/ui/Alert';
-import Container from '@/components/ui/Container';
-import Card from '@/components/ui/Card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert } from '@/components/ui/alert';
+import { Container } from '@/components/ui/container';
+import { Card } from '@/components/ui/card';
 
 // Componente de reCAPTCHA simulado
 function RecaptchaSimulator() {

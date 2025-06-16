@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Table from '@/components/ui/Table';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
-import Badge from '@/components/ui/Badge';
-import Modal from '@/components/ui/Modal';
+import { Table } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Modal } from '@/components/ui/modal';
 import VehicleForm from '@/components/vehicle/VehicleForm';
 import { Search, Eye, Edit, AlertCircle, Trash2, Plus, Filter, Car } from 'lucide-react';
-import { TableColumn } from '@/components/ui/Table';
+import { TableColumn } from '@/components/ui/table';
 import { toast } from 'sonner';
-import Card from '@/components/ui/Card';
+import { Card } from '@/components/ui/card';
 import VehicleTelemetry from '@/components/vehicle/VehicleTelemetry';
 import VehicleHistory from '@/components/vehicle/VehicleHistory';
 import VehicleStatusFilters from '@/components/ui/VehicleStatusFilters';

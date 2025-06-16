@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, FormEvent } from 'react';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Alert } from '@/components/ui/Alert';
-import Table from '@/components/ui/Table';
-import Pagination from '@/components/ui/Pagination';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
+import { Table } from '@/components/ui/table';
+import { Pagination } from '@/components/ui/pagination';
 import { Eye, Download, RefreshCw, Plus, Calendar, ListFilter } from 'lucide-react';
 import { useReports } from '@/lib/reports';
 import ReportDetails from '@/components/dashboard/ReportDetails';
