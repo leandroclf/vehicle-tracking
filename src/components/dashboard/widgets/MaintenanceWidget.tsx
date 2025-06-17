@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
-import Tabs, { TabsList, TabsTrigger, TabsContent } from '@/components/ui/TabsFixed';
+import Tabs, { TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs-fixed';
 import { Progress } from '@/components/ui/progress';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Calendar, AlertTriangle, CheckCircle, Clock, ArrowRight, Wrench } from 'lucide-react';
 
 interface MaintenanceItem {

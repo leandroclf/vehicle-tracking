@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { Settings, Plus, X, Save, RotateCcw } from 'lucide-react';
-import { Button } from '../ui/Button';
-import { Card } from '../ui/Card';
-import { Tooltip } from '../ui/Tooltip';
-import { StatusBadge } from '../ui/StatusBadge';
+import { Button } from '../ui/button';
+import { Card } from '../ui/card';
+import { Tooltip } from '../ui/tooltip';
+import { StatusBadge } from '../ui/status-badge';
 import { saveToStorage, getFromStorage } from '@/lib/storage';
 
 // Tipos de widgets disponíveis

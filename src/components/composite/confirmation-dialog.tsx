@@ -1,4 +1,4 @@
-import * as React from "react"
+﻿import * as React from "react"
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button'
 import { AlertTriangle, Info, CheckCircle, XCircle } from "lucide-react"
 
 interface ConfirmationDialogProps {

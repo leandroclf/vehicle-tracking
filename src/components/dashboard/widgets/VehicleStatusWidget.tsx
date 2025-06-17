@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Truck, Battery, Thermometer, Fuel, MapPin, Clock, AlertTriangle } from 'lucide-react';
 import { ConfigurableWidget } from '@/components/dashboard/ConfigurableWidget';
 import { motion } from 'framer-motion';

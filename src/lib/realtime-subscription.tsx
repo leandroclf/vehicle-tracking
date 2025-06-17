@@ -8,8 +8,7 @@
  * como veículos, motoristas e relatórios.
  */
 
-import React from 'react';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createClient, RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { Database } from '../types/database.types';
 

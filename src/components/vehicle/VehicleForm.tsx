@@ -1,13 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Button } from '@/components/ui/button';
+import { Form } from '@/components/ui/form';
+import { FormFieldWithValidation } from '@/components/ui/form-field-with-validation';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/Select';
+} from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LoadingOverlay } from '@/components/ui/loading-overlay';
+import { cn } from '@/lib/utils';
+
+// Schema de validação
+const vehicleSchema = z.object({
+  plate: z.string()
+    .min(1, 'Placa é obrigatória')
+    .regex(/^[A-Z]{3}-?[0-9]{4}$|^[A-Z]{3}[0-9][A-Z][0-9]{2}$/, 'Formato de placa inválido (AAA-0000 ou AAA0A00)'),
+  model: z.string()
+    .min(1, 'Modelo é obrigatório')
+    .min(2, 'Modelo deve ter pelo menos 2 caracteres'),
+  year: z.string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      const year = parseInt(val);
+      const currentYear = new Date().getFullYear();
+      return year >= 1900 && year <= currentYear + 1;
+    }, 'Ano deve estar entre 1900 e o próximo ano'),
+  color: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'maintenance'], {
+    required_error: 'Status é obrigatório'
+  })
+});
+
+type VehicleFormData = z.infer<typeof vehicleSchema>;
 
 interface VehicleFormProps {
   isEdit?: boolean;
@@ -19,9 +50,11 @@ interface VehicleFormProps {
     color?: string;
     status?: string;
   };
-  onSubmit: (data: any) => void;
+  onSubmit: (data: VehicleFormData & { id?: string }) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  className?: string;
+  "data-testid"?: string;
 }
 
 const VehicleForm: React.FC<VehicleFormProps> = ({
@@ -29,149 +62,147 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
   initialData = {},
   onSubmit,
   onCancel,
-  isLoading = false
+  isLoading = false,
+  className,
+  "data-testid": testId
 }) => {
-  const [formData, setFormData] = useState({
-    plate: '',
-    model: '',
-    year: '',
-    color: '',
-    status: 'active'
+  const form = useForm<VehicleFormData>({
+    resolver: zodResolver(vehicleSchema),
+    defaultValues: {
+      plate: initialData.plate || '',
+      model: initialData.model || '',
+      year: initialData.year || '',
+      color: initialData.color || '',
+      status: (initialData.status as 'active' | 'inactive' | 'maintenance') || 'active'
+    }
   });
 
-  const statusOptions: SelectOption[] = [
+  const statusOptions = [
     { value: 'active', label: 'Ativo' },
     { value: 'inactive', label: 'Inativo' },
     { value: 'maintenance', label: 'Em Manutenção' }
-  ];
+  ] as const;
 
-  useEffect(() => {
-    if (isEdit && initialData) {
-      setFormData({
-        plate: initialData.plate || '',
-        model: initialData.model || '',
-        year: initialData.year || '',
-        color: initialData.color || '',
-        status: initialData.status || 'active'
-      });
-    }
-  }, [isEdit, initialData]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFormSubmit = (data: VehicleFormData) => {
     onSubmit({
-      ...formData,
+      ...data,
       ...(isEdit && initialData.id ? { id: initialData.id } : {})
     });
   };
 
+  // Validação customizada para placa
+  const validatePlate = (value: string) => {
+    if (!value) return 'Placa é obrigatória';
+    
+    // Remove hífens e espaços para validação
+    const cleanPlate = value.replace(/[-\s]/g, '').toUpperCase();
+    
+    // Formato antigo: AAA0000
+    const oldFormat = /^[A-Z]{3}[0-9]{4}$/.test(cleanPlate);
+    // Formato Mercosul: AAA0A00
+    const mercosulFormat = /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(cleanPlate);
+    
+    if (oldFormat || mercosulFormat) {
+      return true; // Válido
+    }
+    
+    return 'Formato de placa inválido. Use AAA-0000 ou AAA0A00';
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="plate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Placa*
-        </label>
-        <Input
-          id="plate"
-          name="plate"
-          value={formData.plate}
-          onChange={handleChange}
-          placeholder="AAA-0000"
-          required
-          disabled={isLoading}
-        />
-      </div>
+    <Card className={cn("relative", className)} data-testid={testId}>
+      {isLoading && <LoadingOverlay />}
+      
+      <CardHeader>
+        <CardTitle>
+          {isEdit ? 'Editar Veículo' : 'Novo Veículo'}
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormFieldWithValidation
+                control={form.control}
+                name="plate"
+                label="Placa"
+                placeholder="ABC-1234 ou ABC1A23"
+                required
+                validate={validatePlate}
+                className="uppercase"
+                data-testid="vehicle-form-plate"
+              />
 
-      <div>
-        <label htmlFor="model" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Modelo*
-        </label>
-        <Input
-          id="model"
-          name="model"
-          value={formData.model}
-          onChange={handleChange}
-          placeholder="Ex: Ford F-350"
-          required
-          disabled={isLoading}
-        />
-      </div>
+              <FormFieldWithValidation
+                control={form.control}
+                name="model"
+                label="Modelo"
+                placeholder="Ex: Honda Civic"
+                required
+                data-testid="vehicle-form-model"
+              />
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="year" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Ano
-          </label>
-          <Input
-            id="year"
-            name="year"
-            value={formData.year}
-            onChange={handleChange}
-            placeholder="Ex: 2023"
-            type="number"
-            min="1900"
-            max={new Date().getFullYear() + 1}
-            disabled={isLoading}
-          />
-        </div>
-        <div>
-          <label htmlFor="color" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Cor
-          </label>
-          <Input
-            id="color"
-            name="color"
-            value={formData.color}
-            onChange={handleChange}
-            placeholder="Ex: Branco"
-            disabled={isLoading}
-          />
-        </div>
-      </div>
+              <FormFieldWithValidation
+                control={form.control}
+                name="year"
+                label="Ano"
+                type="number"
+                placeholder="2023"
+                min={1900}
+                max={new Date().getFullYear() + 1}
+                data-testid="vehicle-form-year"
+              />
 
-      <div>
-        <label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Status
-        </label>
-        <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))} disabled={isLoading}>
-          <SelectTrigger>
-            <SelectValue placeholder="Selecione o status" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+              <FormFieldWithValidation
+                control={form.control}
+                name="color"
+                label="Cor"
+                placeholder="Ex: Branco"
+                data-testid="vehicle-form-color"
+              />
 
-      <div className="flex justify-end space-x-3 pt-4">
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={onCancel}
-          disabled={isLoading}
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          disabled={isLoading}
-        >
-          {isLoading ? 'Processando...' : (isEdit ? 'Atualizar Veículo' : 'Adicionar Veículo')}
-        </Button>
-      </div>
-    </form>
+              <div className="md:col-span-2">
+                <FormFieldWithValidation
+                  control={form.control}
+                  name="status"
+                  label="Status"
+                  type="select"
+                  placeholder="Selecione o status"
+                  required
+                  data-testid="vehicle-form-status"
+                >
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </FormFieldWithValidation>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                disabled={isLoading}
+                data-testid="vehicle-form-cancel"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading || !form.formState.isValid}
+                data-testid="vehicle-form-submit"
+              >
+                {isLoading ? 'Salvando...' : (isEdit ? 'Atualizar' : 'Criar')}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 };
 

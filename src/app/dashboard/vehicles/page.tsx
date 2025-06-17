@@ -2,19 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Table } from '@/components/ui/table';
+import { DataTable, DataTableColumn } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import VehicleForm from '@/components/vehicle/VehicleForm';
 import { Search, Eye, Edit, AlertCircle, Trash2, Plus, Filter, Car } from 'lucide-react';
-import { TableColumn } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Card } from '@/components/ui/card';
 import VehicleTelemetry from '@/components/vehicle/VehicleTelemetry';
 import VehicleHistory from '@/components/vehicle/VehicleHistory';
-import VehicleStatusFilters from '@/components/ui/VehicleStatusFilters';
+import VehicleStatusFilters from '@/components/ui/vehicle-status-filters';
 import { useVehicles } from '@/lib/vehicles';
 
 // Tipo para os dados de veículos
@@ -175,23 +175,25 @@ export default function VehiclesPage() {
   };
   
   const confirmDelete = async () => {
+    if (!selectedVehicle) return;
+    
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
+      // Aqui você faria a chamada para a API para deletar o veículo
+      console.log('Deletando veículo:', selectedVehicle.id);
       
-      if (!selectedVehicle) return;
+      // Simular delay da API
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Simular envio para API
-      setTimeout(() => {
-        refreshVehicles(prev => prev.filter(vehicle => vehicle.id !== selectedVehicle.id));
-        setIsDeleteModalOpen(false);
-        setSelectedVehicle(null);
-        setIsSubmitting(false);
-        toast.success('Veículo excluído com sucesso!');
-      }, 1000);
+      toast.success('Veículo excluído com sucesso!');
+      refreshVehicles();
     } catch (error) {
       console.error('Erro ao excluir veículo:', error);
-      toast.error('Erro ao excluir veículo. Tente novamente.');
+      toast.error('Erro ao excluir veículo');
+    } finally {
       setIsSubmitting(false);
+      setIsDeleteModalOpen(false);
+      setSelectedVehicle(null);
     }
   };
   
@@ -217,57 +219,74 @@ export default function VehiclesPage() {
     setSelectedVehicle(null);
   };
   
-  // Definição das colunas da tabela
-  const columns: TableColumn<Vehicle>[] = [
+  // Definir colunas da tabela
+  const columns: DataTableColumn<Vehicle>[] = [
     {
-      header: 'Placa',
-      accessor: 'plate',
+      key: 'name',
+      label: 'Veículo',
+      sortable: true,
+      render: (vehicle) => (
+        <div className="flex items-center">
+          <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
+            <Car size={24} className="text-gray-500" />
+          </div>
+          <div className="ml-4">
+            <div className="text-sm font-medium text-gray-900">{vehicle.name}</div>
+            <div className="text-sm text-gray-500">{vehicle.type}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'plate',
+      label: 'Placa',
       sortable: true,
     },
     {
-      header: 'Modelo',
-      accessor: 'model',
+      key: 'status',
+      label: 'Status',
+      render: (vehicle) => (
+        <Badge 
+          variant={vehicle.status === 'online' ? 'success' : 'destructive'}
+          className="capitalize"
+        >
+          {vehicle.status === 'online' ? 'Online' : 'Offline'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'lastUpdate',
+      label: 'Última Atualização',
       sortable: true,
     },
     {
-      header: 'Status',
-      accessor: (vehicle: Vehicle) => {
-        if (vehicle.status === 'moving') {
-          return <Badge variant="success">Em movimento</Badge>;
-        } else if (vehicle.status === 'stopped') {
-          return <Badge variant="warning">Parado</Badge>;
-        } else {
-          return <Badge variant="default">Offline</Badge>;
-        }
-      },
-    },
-    {
-      header: 'Última Atualização',
-      accessor: 'lastUpdate',
-    },
-    {
-      header: 'Ações',
-      accessor: (vehicle: Vehicle) => (
+      key: 'actions',
+      label: 'Ações',
+      render: (vehicle) => (
         <div className="flex space-x-2">
-          <Button 
-            variant="primary" 
+          <Button
+            variant="ghost"
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleShowDetails(vehicle);
-            }}
+            onClick={() => handleShowDetails(vehicle)}
+            data-testid={`view-vehicle-${vehicle.id}`}
           >
-            Ver
+            <Eye className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="ghost"
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditVehicle(vehicle);
-            }}
+            onClick={() => handleEditVehicle(vehicle)}
+            data-testid={`edit-vehicle-${vehicle.id}`}
           >
-            Editar
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDeleteVehicle(vehicle)}
+            data-testid={`delete-vehicle-${vehicle.id}`}
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ),
@@ -311,105 +330,18 @@ export default function VehiclesPage() {
         </div>
       )}
       
-      <Card
-        title="Lista de Veículos"
-        elevated={true}
-        className="mb-6"
-      >
-        {isLoading ? (
-          <div className="p-4 text-center">
-            <p>Carregando veículos...</p>
-          </div>
-        ) : filteredVehicles.length === 0 ? (
-          <div className="p-4 text-center">
-            <p>Nenhum veículo encontrado.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Veículo
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Placa
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Última Atualização
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredVehicles.map((vehicle) => (
-                  <tr key={vehicle.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
-                          <Car size={24} className="text-gray-500" />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{vehicle.name}</div>
-                          <div className="text-sm text-gray-500">{vehicle.type}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{vehicle.plate}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        vehicle.status === 'online' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {vehicle.status === 'online' ? 'Online' : 'Offline'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {vehicle.lastUpdate}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button 
-                          className="text-indigo-600 hover:text-indigo-900"
-                          onClick={() => handleShowDetails(vehicle)}
-                        >
-                          Detalhes
-                        </button>
-                        <button 
-                          className="text-blue-600 hover:text-blue-900"
-                          onClick={() => handleEditVehicle(vehicle)}
-                        >
-                          Editar
-                        </button>
-                        <button 
-                          className="text-red-600 hover:text-red-900"
-                          onClick={() => handleDeleteVehicle(vehicle)}
-                        >
-                          Excluir
-                        </button>
-                        <button 
-                          className="text-green-600 hover:text-green-900"
-                          onClick={() => handleShowHistory(vehicle)}
-                        >
-                          Histórico
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+      <DataTable
+        data={filteredVehicles}
+        columns={columns}
+        searchable
+        sortable
+        pagination
+        isLoading={isLoading}
+        emptyMessage="Nenhum veículo encontrado."
+        loadingMessage="Carregando veículos..."
+        className="bg-white shadow rounded-lg"
+        data-testid="vehicles-table"
+      />
       
       {/* Modal para adicionar veículo */}
       <Modal
@@ -514,40 +446,20 @@ export default function VehiclesPage() {
       </Modal>
       
       {/* Modal para confirmar exclusão */}
-      <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={handleCloseModal}
-        title="Excluir Veículo"
-        size="sm"
-      >
-        {selectedVehicle && (
-          <div className="space-y-4">
-            <p className="text-gray-700 dark:text-gray-300">
-              Tem certeza que deseja excluir o veículo <strong>{selectedVehicle.plate}</strong>?
-            </p>
-            <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Esta ação não pode ser desfeita.
-            </p>
-            
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button
-                variant="secondary"
-                onClick={handleCloseModal}
-                disabled={isSubmitting}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="danger"
-                onClick={confirmDelete}
-                isLoading={isSubmitting}
-              >
-                Excluir
-              </Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      {selectedVehicle && (
+        <ConfirmationDialog
+          open={isDeleteModalOpen}
+          onOpenChange={setIsDeleteModalOpen}
+          title="Excluir Veículo"
+          description={`Tem certeza que deseja excluir o veículo ${selectedVehicle.plate}? Esta ação não pode ser desfeita.`}
+          confirmText="Excluir"
+          cancelText="Cancelar"
+          variant="destructive"
+          onConfirm={confirmDelete}
+          isLoading={isSubmitting}
+          data-testid="delete-vehicle-dialog"
+        />
+      )}
       
       {/* Modal de Filtros */}
       {isViewModalOpen && (
@@ -576,4 +488,4 @@ export default function VehiclesPage() {
       )}
     </div>
   );
-} 
+}

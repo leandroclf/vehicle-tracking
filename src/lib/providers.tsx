@@ -5,7 +5,7 @@ import { VehicleProvider } from '@/lib/vehicles';
 import { AlertProvider } from '@/lib/alerts';
 import { ReportProvider } from '@/lib/reports';
 import { SettingsProvider } from '@/lib/settings';
-import { ThemeProvider } from '@/components/ui/ThemeProvider';
+import { ThemeProvider } from '@/components/ui/theme-provider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (

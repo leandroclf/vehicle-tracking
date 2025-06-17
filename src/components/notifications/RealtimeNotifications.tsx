@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabaseRealtime } from '@/lib/supabase';
-import { Toast } from '@/components/ui/Toast';
+import { Toast } from '@/components/ui/toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { checkTableExists } from '@/lib/db-setup';

@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { DataTable, DataTableColumn } from '@/components/ui/data-table';
 import { Droplet, TrendingDown, TrendingUp, BarChart3, Calendar, Fuel } from 'lucide-react';
 
 interface FuelConsumptionData {
@@ -338,28 +340,31 @@ export default function FuelConsumptionWidget() {
               <TabsContent value="history" className="space-y-4">
                 {/* Seletor de período */}
                 <div className="flex justify-center mb-4">
-                  <div className="inline-flex rounded-md shadow-sm" role="group">
-                    <button
-                      type="button"
+                  <div className="inline-flex rounded-md" role="group">
+                    <Button
+                      variant={timeRange === 'week' ? 'default' : 'outline'}
+                      size="sm"
                       onClick={() => setTimeRange('week')}
-                      className={`px-4 py-2 text-sm font-medium rounded-l-lg ${timeRange === 'week' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'}`}
+                      className="rounded-r-none"
                     >
                       Semana
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant={timeRange === 'month' ? 'default' : 'outline'}
+                      size="sm"
                       onClick={() => setTimeRange('month')}
-                      className={`px-4 py-2 text-sm font-medium ${timeRange === 'month' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-t border-b border-gray-300 dark:border-gray-600'}`}
+                      className="rounded-none border-x-0"
                     >
                       Mês
-                    </button>
-                    <button
-                      type="button"
+                    </Button>
+                    <Button
+                      variant={timeRange === 'year' ? 'default' : 'outline'}
+                      size="sm"
                       onClick={() => setTimeRange('year')}
-                      className={`px-4 py-2 text-sm font-medium rounded-r-lg ${timeRange === 'year' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'}`}
+                      className="rounded-l-none"
                     >
                       Ano
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 
@@ -415,47 +420,42 @@ export default function FuelConsumptionWidget() {
                 
                 {/* Tabela de histórico */}
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                      <tr>
-                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Data
-                        </th>
-                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Distância
-                        </th>
-                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Combustível
-                        </th>
-                        <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Consumo
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                      {getFilteredHistory().map((item, index) => (
-                        <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                            <div className="flex items-center">
-                              <Calendar className="h-3 w-3 text-gray-400 mr-1" />
-                              {formatDate(item.date)}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                            {item.distance.toFixed(1)} km
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                            {item.fuelAmount.toFixed(2)} L
-                          </td>
-                          <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
-                            <span className={item.consumption > selectedVehicleData.averageConsumption ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                              {item.consumption.toFixed(1)} km/l
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <DataTable
+                    data={getFilteredHistory()}
+                    columns={[
+                      {
+                        header: 'Data',
+                        accessorKey: 'date',
+                        cell: (row) => (
+                          <div className="flex items-center">
+                            <Calendar className="h-3 w-3 text-muted-foreground mr-1" />
+                            {formatDate(row.date)}
+                          </div>
+                        ),
+                      },
+                      {
+                        header: 'Distância',
+                        accessorKey: 'distance',
+                        cell: (row) => `${row.distance.toFixed(1)} km`,
+                      },
+                      {
+                        header: 'Combustível',
+                        accessorKey: 'fuelAmount',
+                        cell: (row) => `${row.fuelAmount.toFixed(2)} L`,
+                      },
+                      {
+                        header: 'Consumo',
+                        accessorKey: 'consumption',
+                        cell: (row) => (
+                          <span className={row.consumption > selectedVehicleData.averageConsumption ? 'text-green-600 dark:text-green-400 font-medium' : 'text-red-600 dark:text-red-400 font-medium'}>
+                            {row.consumption.toFixed(1)} km/l
+                          </span>
+                        ),
+                      },
+                    ] as DataTableColumn<any>[]}
+                    emptyState="Nenhum dado de histórico encontrado para o período selecionado"
+                    data-testid="fuel-consumption-history-table"
+                  />
                 </div>
               </TabsContent>
             </Tabs>

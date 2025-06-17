@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Card from '@/components/ui/Card';
-import Badge from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import VehicleTelemetry from '@/components/vehicle/VehicleTelemetry';
 import VehicleHistory from '@/components/vehicle/VehicleHistory';
 import VehicleCommands from '@/components/vehicle/VehicleCommands';
@@ -305,4 +305,4 @@ export default function VehicleDetailsPage() {
       </div>
     </div>
   );
-} 
+}
