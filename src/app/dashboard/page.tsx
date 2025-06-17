@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { Container } from '@/components/ui/container';
 import RealTimeUpdater from '@/components/dashboard/RealTimeUpdater';
-import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import dynamic from 'next/dynamic';
-import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/ResizablePanels';
+import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable-panels';
 import { getFromStorage, saveToStorage } from '@/lib/utils';
-import { StatusBadge } from '@/components/ui/StatusBadge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Settings, Sliders, PlusCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -497,4 +497,4 @@ export default function DashboardPage() {
       `}</style>
     </Container>
   );
-} 
+}

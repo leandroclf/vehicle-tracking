@@ -114,4 +114,4 @@ export function TabsContent({ value, children, className = '' }: TabsContentProp
   if (!isSelected) return null;
 
   return <div className={className}>{children}</div>;
-} 
+}

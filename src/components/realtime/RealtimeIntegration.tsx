@@ -14,8 +14,8 @@ import { supabase } from '@/lib/supabase';
 import { RealtimeUpdater } from '@/lib/realtime-subscription';
 import { useRealtimeContext, ConnectionState } from '@/lib/providers/RealtimeProvider'; // Importar o contexto
 import { useOfflineSync } from '@/lib/offline-sync';
-import { Alert } from '../ui/Alert';
-import { Spinner } from '../ui/Spinner';
+import { Alert } from '../ui/alert';
+import { Skeleton } from '../ui/skeleton';
 import Layout from '../layout/Layout';
 
 // Status de sincronização
@@ -80,8 +80,10 @@ export default function RealtimeIntegration({ children }: { children: React.Reac
     return (
       <Layout>
         <div className="flex items-center justify-center h-screen">
-          <Spinner size="lg" />
-          <p className="ml-2 text-gray-600">Conectando ao sistema em tempo real...</p>
+          <div className="flex flex-col items-center space-y-4">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <p className="text-gray-600">Conectando ao sistema em tempo real...</p>
+          </div>
         </div>
       </Layout>
     );

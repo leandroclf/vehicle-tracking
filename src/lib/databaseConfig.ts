@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 
 // Reexportando o cliente supabase tipado

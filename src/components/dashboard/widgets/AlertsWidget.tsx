@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, AlertCircle, AlertTriangle, Info, ChevronRight } from 'lucide-react';
 import DashboardWidget from '../DashboardWidget';
-import { ScrollArea } from '@/components/ui/ScrollArea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Alert {
   id: string;
@@ -274,4 +274,4 @@ export default function AlertsWidget() {
       )}
     </DashboardWidget>
   );
-} 
+}

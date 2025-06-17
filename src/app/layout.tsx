@@ -1,6 +1,6 @@
 import '@/styles/globals.css'
 import type { Metadata } from 'next'
-import { ThemeProvider } from '@/components/ui/ThemeProvider'
+import { ThemeProvider } from '@/components/ui/theme-provider'
 import { HighContrastProvider } from '@/components/ui/HighContrastProvider'
 import { AuthProvider } from '@/lib/auth'
 import NotificationProvider from '@/components/ui/NotificationProvider'

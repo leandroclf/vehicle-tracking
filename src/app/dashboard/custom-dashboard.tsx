@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Grid, GridItem } from '@/components/ui/Grid';
+import { Grid, GridItem } from '@/components/ui/grid';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AccessibleTabs } from '@/components/ui/AccessibleTabs';
 import { WeatherWidget } from '@/components/dashboard/widgets/WeatherWidget';
 import { MaintenanceWidget } from '@/components/dashboard/widgets/MaintenanceWidget';

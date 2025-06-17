@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import Tabs, { TabsList, TabsTrigger, TabsContent } from '@/components/ui/TabsFixed';
+import Tabs, { TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs-fixed';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
@@ -159,4 +159,4 @@ export default function AlertNotifications({
       </Tabs>
     </div>
   );
-} 
+}

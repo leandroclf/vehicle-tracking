@@ -1,7 +1,7 @@
-import * as React from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+﻿import * as React from "react"
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { 
@@ -26,7 +26,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// Tipos para o veículo
+// Tipos para o veÃ­culo
 interface Vehicle {
   id: string
   name: string
@@ -51,7 +51,7 @@ interface VehicleCardProps {
   className?: string
 }
 
-// Configurações de status
+// ConfiguraÃ§Ãµes de status
 const statusConfig = {
   online: {
     label: 'Online',
@@ -78,20 +78,20 @@ const statusConfig = {
     icon: MapPin
   },
   maintenance: {
-    label: 'Manutenção',
+    label: 'ManutenÃ§Ã£o',
     variant: 'destructive' as const,
     color: 'bg-red-500',
     icon: AlertTriangle
   }
 }
 
-// Ícones por tipo de veículo
+// Ãcones por tipo de veÃ­culo
 const vehicleTypeIcons = {
   car: Car,
-  truck: Car, // Pode ser substituído por ícone específico
-  motorcycle: Car, // Pode ser substituído por ícone específico
-  van: Car, // Pode ser substituído por ícone específico
-  boat: Car, // Pode ser substituído por ícone específico
+  truck: Car, // Pode ser substituÃ­do por Ã­cone especÃ­fico
+  motorcycle: Car, // Pode ser substituÃ­do por Ã­cone especÃ­fico
+  van: Car, // Pode ser substituÃ­do por Ã­cone especÃ­fico
+  boat: Car, // Pode ser substituÃ­do por Ã­cone especÃ­fico
 }
 
 function formatDateTime(date: string | Date): string {
@@ -112,13 +112,13 @@ function getTimeAgo(date: string | Date): string {
   const diffMins = Math.floor(diffMs / (1000 * 60))
   
   if (diffMins < 1) return 'Agora'
-  if (diffMins < 60) return `${diffMins}min atrás`
+  if (diffMins < 60) return `${diffMins}min atrÃ¡s`
   
   const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours}h atrás`
+  if (diffHours < 24) return `${diffHours}h atrÃ¡s`
   
   const diffDays = Math.floor(diffHours / 24)
-  return `${diffDays}d atrás`
+  return `${diffDays}d atrÃ¡s`
 }
 
 export function VehicleCard({
@@ -146,7 +146,7 @@ export function VehicleCard({
           "flex flex-row items-center space-y-0",
           compact ? "pb-2 px-0" : "pb-3"
         )}>
-          {/* Avatar e informações básicas */}
+          {/* Avatar e informaÃ§Ãµes bÃ¡sicas */}
           <div className="flex items-center space-x-3 flex-1 min-w-0">
             <div className="relative">
               <Avatar className={cn(compact ? "h-8 w-8" : "h-12 w-12")}>
@@ -193,7 +193,7 @@ export function VehicleCard({
             </div>
           </div>
 
-          {/* Menu de ações */}
+          {/* Menu de aÃ§Ãµes */}
           {showActions && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -227,7 +227,7 @@ export function VehicleCard({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => onEdit(vehicle)}>
                       <Settings className="mr-2 h-4 w-4" />
-                      Configurações
+                      ConfiguraÃ§Ãµes
                     </DropdownMenuItem>
                   </>
                 )}
@@ -238,7 +238,7 @@ export function VehicleCard({
 
         {!compact && (
           <CardContent className="pt-0">
-            {/* Métricas do veículo */}
+            {/* MÃ©tricas do veÃ­culo */}
             <div className="flex justify-between items-center mb-3">
               <div className="flex gap-4 text-sm">
                 {vehicle.speed !== undefined && (
@@ -264,7 +264,7 @@ export function VehicleCard({
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Nível de combustível</p>
+                      <p>NÃ­vel de combustÃ­vel</p>
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -278,14 +278,14 @@ export function VehicleCard({
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Nível da bateria</p>
+                      <p>NÃ­vel da bateria</p>
                     </TooltipContent>
                   </Tooltip>
                 )}
               </div>
             </div>
 
-            {/* Última atualização */}
+            {/* Ãšltima atualizaÃ§Ã£o */}
             <div className="flex justify-between items-center text-xs text-muted-foreground">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -317,7 +317,7 @@ export function VehicleCard({
   )
 }
 
-// Componente para lista de veículos
+// Componente para lista de veÃ­culos
 interface VehicleListProps {
   vehicles: Vehicle[]
   onSelectVehicle?: (vehicle: Vehicle) => void
@@ -339,7 +339,7 @@ export function VehicleList({
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Car className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p>Nenhum veículo encontrado</p>
+        <p>Nenhum veÃ­culo encontrado</p>
       </div>
     )
   }

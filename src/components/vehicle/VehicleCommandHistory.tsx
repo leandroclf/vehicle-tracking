@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useVehicles } from '@/lib/vehicles';
+import { DataTable, DataTableColumn } from '@/components/ui/data-table';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Terminal, RefreshCw, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Tipo para os comandos
 interface Command {
@@ -23,8 +30,18 @@ interface CommandResponse {
   };
 }
 
+interface VehicleCommandHistoryProps {
+  vehicleId: number | string;
+  className?: string;
+  'data-testid'?: string;
+}
+
 // Componente para exibir o histórico de comandos
-export default function VehicleCommandHistory({ vehicleId }: { vehicleId: number | string }) {
+export default function VehicleCommandHistory({ 
+  vehicleId, 
+  className,
+  'data-testid': dataTestId 
+}: VehicleCommandHistoryProps) {
   const { fetchCommandHistory } = useVehicles();
   const [commandHistory, setCommandHistory] = useState<Command[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,14 +116,14 @@ export default function VehicleCommandHistory({ vehicleId }: { vehicleId: number
   };
 
   // Função para obter classe de cores baseado no status
-  const getStatusColorClass = (status: string) => {
-    const statusMap: Record<string, { bg: string; text: string }> = {
-      'pending': { bg: 'bg-yellow-50', text: 'text-yellow-700' },
-      'sent': { bg: 'bg-blue-50', text: 'text-blue-700' },
-      'executed': { bg: 'bg-green-50', text: 'text-green-700' },
-      'failed': { bg: 'bg-red-50', text: 'text-red-700' },
+  const getStatusVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    const statusMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+      'pending': 'outline',
+      'sent': 'secondary',
+      'executed': 'default',
+      'failed': 'destructive',
     };
-    return statusMap[status] || { bg: 'bg-gray-50', text: 'text-gray-700' };
+    return statusMap[status] || 'secondary';
   };
 
   // Função para traduzir status
@@ -120,136 +137,161 @@ export default function VehicleCommandHistory({ vehicleId }: { vehicleId: number
     return statusMap[status] || status;
   };
 
+  // Definir colunas da tabela
+  const columns: DataTableColumn<Command>[] = [
+    {
+      key: 'type',
+      label: 'Comando',
+      sortable: true,
+      render: (command) => (
+        <div className="flex items-center space-x-2">
+          <Terminal className="h-4 w-4 text-gray-500" />
+          <span className="font-medium">{translateCommandType(command.type)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (command) => (
+        <Badge variant={getStatusVariant(command.status)}>
+          {translateStatus(command.status)}
+        </Badge>
+      ),
+    },
+    {
+      key: 'sent_at',
+      label: 'Enviado em',
+      sortable: true,
+      render: (command) => (
+        <span className="text-sm text-gray-600">
+          {formatDate(command.sent_at)}
+        </span>
+      ),
+    },
+    {
+      key: 'executed_at',
+      label: 'Executado em',
+      render: (command) => (
+        <span className="text-sm text-gray-600">
+          {command.executed_at ? formatDate(command.executed_at) : '-'}
+        </span>
+      ),
+    },
+  ];
+
   // Renderizar indicador de carregamento
   if (isLoading && commandHistory.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-4">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">Histórico de Comandos</h2>
-        <div className="flex justify-center my-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
-        </div>
-      </div>
+      <Card className={cn("w-full", className)} data-testid={dataTestId}>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Terminal className="h-5 w-5" />
+            <span>Histórico de Comandos</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center my-8">
+            <RefreshCw className="h-6 w-6 animate-spin text-blue-500" />
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   // Renderizar mensagem de erro
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-4">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">Histórico de Comandos</h2>
-        <div className="bg-red-50 border border-red-200 p-3 rounded-md">
-          <p className="text-red-700">{error}</p>
-          <button
-            className="mt-2 px-3 py-1 bg-white text-red-700 border border-red-300 rounded-md text-sm"
+      <Card className={cn("w-full", className)} data-testid={dataTestId}>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Terminal className="h-5 w-5" />
+            <span>Histórico de Comandos</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error}
+            </AlertDescription>
+          </Alert>
+          <Button
+            variant="outline"
             onClick={loadCommandHistory}
+            className="mt-4"
+            data-testid="retry-button"
           >
+            <RefreshCw className="h-4 w-4 mr-2" />
             Tentar novamente
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Renderizar mensagem quando não há comandos
-  if (commandHistory.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-md p-4">
-        <h2 className="text-lg font-semibold text-gray-800 mb-3">Histórico de Comandos</h2>
-        <p className="text-center text-gray-500 my-4">Nenhum comando foi enviado para este veículo.</p>
-      </div>
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
-      <h2 className="text-lg font-semibold text-gray-800 mb-3">Histórico de Comandos</h2>
+    <Card className={cn("w-full", className)} data-testid={dataTestId}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardTitle className="flex items-center space-x-2">
+          <Terminal className="h-5 w-5" />
+          <span>Histórico de Comandos</span>
+        </CardTitle>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={loadCommandHistory}
+          disabled={isLoading}
+          data-testid="refresh-commands"
+        >
+          <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+          Atualizar
+        </Button>
+      </CardHeader>
       
-      {/* Tabela de comandos */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Comando
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Enviado em
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Executado em
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {commandHistory.map((command) => {
-              const statusColors = getStatusColorClass(command.status);
-              
-              return (
-                <tr key={command.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {translateCommandType(command.type)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors.bg} ${statusColors.text}`}>
-                      {translateStatus(command.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(command.sent_at)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {command.executed_at ? formatDate(command.executed_at) : '-'}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      
-      {/* Paginação */}
-      {pagination.total > pagination.limit && (
-        <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-200">
-          <div className="text-sm text-gray-500">
-            Exibindo {pagination.offset + 1}-{Math.min(pagination.offset + pagination.limit, pagination.total)} de {pagination.total}
+      <CardContent>
+        <DataTable
+          data={commandHistory}
+          columns={columns}
+          searchable
+          sortable
+          pagination
+          isLoading={isLoading}
+          emptyMessage="Nenhum comando foi enviado para este veículo."
+          loadingMessage="Carregando histórico de comandos..."
+          className="border rounded-lg"
+          data-testid="commands-table"
+        />
+        
+        {/* Informações de paginação customizada se necessário */}
+        {pagination.total > pagination.limit && (
+          <div className="flex justify-between items-center mt-4 pt-3 border-t">
+            <div className="text-sm text-gray-500">
+              Exibindo {pagination.offset + 1}-{Math.min(pagination.offset + pagination.limit, pagination.total)} de {pagination.total}
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={prevPage}
+                disabled={pagination.offset === 0}
+                data-testid="prev-page"
+              >
+                Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={nextPage}
+                disabled={pagination.offset + pagination.limit >= pagination.total}
+                data-testid="next-page"
+              >
+                Próxima
+              </Button>
+            </div>
           </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={prevPage}
-              disabled={pagination.offset === 0}
-              className={`px-3 py-1 border rounded-md text-sm ${
-                pagination.offset === 0
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'
-              }`}
-            >
-              Anterior
-            </button>
-            <button
-              onClick={nextPage}
-              disabled={pagination.offset + pagination.limit >= pagination.total}
-              className={`px-3 py-1 border rounded-md text-sm ${
-                pagination.offset + pagination.limit >= pagination.total
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'
-              }`}
-            >
-              Próxima
-            </button>
-          </div>
-        </div>
-      )}
-      
-      {/* Botão de atualização */}
-      <button
-        className="mt-4 w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-sm transition-colors"
-        onClick={loadCommandHistory}
-      >
-        Atualizar histórico
-      </button>
-    </div>
+        )}
+      </CardContent>
+    </Card>
   );
-} 
+}

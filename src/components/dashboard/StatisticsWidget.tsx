@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { useDashboard, DashboardStatistics } from '@/lib/dashboard';
 import { Car, Activity, AlertTriangle, Droplet, MapPin } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/TabsFixed';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs-fixed';
 
 interface StatisticsWidgetProps {
   type: 'vehicle_count' | 'active_vehicles' | 'total_distance' | 'alerts' | 'fuel';

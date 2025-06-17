@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
-import 'swagger-ui-react/swagger-ui.css';
 
 // Importar SwaggerUI com dynamic import e SSR desabilitado
 const SwaggerUI = dynamic(() => import('swagger-ui-react'), {
@@ -20,4 +19,4 @@ export default function ApiDoc() {
       </div>
     </div>
   );
-} 
+}

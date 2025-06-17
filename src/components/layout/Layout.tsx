@@ -2,14 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/ResizablePanels';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable-panels';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import { cn } from '@/lib/utils';
 import { SkipToContent } from '@/components/ui/SkipToContent';
-import { ThemeProvider } from '../ui/ThemeProvider';
+import { ThemeProvider } from '../ui/theme-provider';
 import { NotificationProvider } from '../ui/NotificationProvider';
-import { AccessibilityPanel } from '../ui/AccessibilityPanel';
+// AccessibilityPanel removido - funcionalidade de acessibilidade integrada diretamente
 import { KeyboardNavigationProvider } from '../ui/KeyboardNavigationProvider';
 import { HighContrastProvider } from '../ui/HighContrastProvider';
 import { AccessibleNotificationsProvider } from '../ui/AccessibleNotifications';
@@ -252,7 +252,6 @@ export default function Layout({ children }: LayoutProps) {
             <KeyboardNavigationProvider>
               <SidebarProvider initialMobile={isMobileDevice}>
                 <LayoutContent children={children} />
-                <AccessibilityPanel />
               </SidebarProvider>
             </KeyboardNavigationProvider>
           </NotificationProvider>
