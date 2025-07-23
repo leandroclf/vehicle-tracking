@@ -1,5 +1,5 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
 export interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "full"
@@ -24,10 +24,10 @@ const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
         )}
         {...props}
       />
-    )
+    );
   }
-)
+);
 Container.displayName = "Container"
 
-export { Container }
-export default Container
+export { Container };
+export default Container;

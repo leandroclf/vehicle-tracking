@@ -8,6 +8,19 @@ const nextConfig = {
     // Desabilitando a verificação de tipos durante o build
     ignoreBuildErrors: true,
   },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-eval' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https: fonts.googleapis.com; font-src 'self' data: https: fonts.gstatic.com; connect-src 'self' https: wss: ws:;"
+          }
+        ]
+      }
+    ]
+  },
   async redirects() {
     return [
       {

@@ -5,29 +5,57 @@ import { supabase } from '@/lib/supabase';
 // Função para verificar se a tabela existe
 export async function checkTableExists(tableName: string): Promise<boolean> {
   try {
-    // Tentar consultar a tabela diretamente para ver se ela existe
-    const { data, error } = await supabase
+    // Usar uma consulta mais segura para verificar a existência da tabela
+    const { data, error } = await supabase.rpc('check_table_exists', {
+      table_name: tableName
+    });
+    
+    if (error) {
+      // Se a função RPC não existir, usar método alternativo
+      if (error.message?.includes('function check_table_exists')) {
+        return await checkTableExistsAlternative(tableName);
+      }
+      console.error(`Erro ao verificar tabela ${tableName}:`, error);
+      return false;
+    }
+    
+    console.log(`Tabela ${tableName} ${data ? 'existe' : 'não existe'}`);
+    return Boolean(data);
+  } catch (error) {
+    console.error(`Erro ao verificar tabela ${tableName}:`, error);
+    return await checkTableExistsAlternative(tableName);
+  }
+}
+
+// Método alternativo para verificar se a tabela existe
+async function checkTableExistsAlternative(tableName: string): Promise<boolean> {
+  try {
+    // Tentar uma consulta simples com count para verificar se a tabela existe
+    const { count, error } = await supabase
       .from(tableName)
-      .select('*')
-      .limit(1);
+      .select('*', { count: 'exact', head: true });
       
     // Se não houver erro, a tabela existe
     if (!error) {
-      console.log(`Tabela ${tableName} existe`);
+      console.log(`Tabela ${tableName} existe (método alternativo)`);
       return true;
     }
     
     // Verificar se o erro indica que a tabela não existe
-    if (error.message && error.message.includes('does not exist')) {
-      console.log(`Tabela ${tableName} não existe`);
+    if (error.message && (
+      error.message.includes('does not exist') ||
+      error.message.includes('relation') ||
+      error.message.includes('table')
+    )) {
+      console.log(`Tabela ${tableName} não existe (método alternativo)`);
       return false;
     }
     
     // Se for outro tipo de erro, logar e assumir que a tabela não existe
-    console.error(`Erro ao verificar tabela ${tableName}:`, error);
+    console.error(`Erro ao verificar tabela ${tableName} (método alternativo):`, error);
     return false;
   } catch (error) {
-    console.error(`Erro ao verificar tabela ${tableName}:`, error);
+    console.error(`Erro ao verificar tabela ${tableName} (método alternativo):`, error);
     return false;
   }
 }
@@ -176,4 +204,4 @@ export function useRequiredTables() {
   return { verifyTables };
 }
 
-export default { initializeDatabase, checkTableExists, useRequiredTables }; 
+export default { initializeDatabase, checkTableExists, useRequiredTables };

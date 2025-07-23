@@ -9,10 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
+import { SocialAuthError } from '@/types/social-auth';
 
 function RegisterForm() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, socialSignup } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -36,6 +38,34 @@ function RegisterForm() {
     } catch (err) {
       setError('Ocorreu um erro ao tentar registrar');
       console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSocialSignup = async (provider: string) => {
+    setError(null);
+    setIsLoading(true);
+    
+    try {
+      // Simulação de tokens para demonstração
+      // Em produção, estes seriam obtidos do SDK do provedor
+      const accessToken = 'demo-access-token';
+      const idToken = provider === 'apple' || provider === 'google' ? 'demo-id-token' : undefined;
+      
+      // Dados do usuário que seriam obtidos do provedor social
+      const userData = {
+        name: 'Usuário Demo',
+        email: 'demo@example.com',
+        phone: '(11) 99999-9999'
+      };
+      
+      await socialSignup(provider, accessToken, idToken, userData);
+      router.push('/dashboard');
+    } catch (err: any) {
+      const socialError = err as SocialAuthError;
+      setError(socialError.message || 'Erro ao realizar registro social');
+      console.error('Erro de registro social:', socialError);
     } finally {
       setIsLoading(false);
     }
@@ -121,6 +151,12 @@ function RegisterForm() {
               {isLoading ? 'Registrando...' : 'Criar Conta'}
             </Button>
             
+            {/* Botões de registro social */}
+            <div className="mt-4">
+              <p className="text-center text-sm text-gray-600 dark:text-gray-400 mb-2">Ou registre-se com</p>
+              <SocialLoginButtons onSocialLogin={handleSocialSignup} isLoading={isLoading} />
+            </div>
+            
             <div className="mt-6 text-center">
               <p className="text-gray-700 dark:text-gray-300">
                 Já tem uma conta?{' '}
@@ -142,4 +178,4 @@ export default function RegisterPage() {
       <RegisterForm />
     </Suspense>
   );
-} 
+}
