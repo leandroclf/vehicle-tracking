@@ -9,11 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
+import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
+import { SocialAuthError } from '@/types/social-auth';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const { login, socialLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,25 @@ function LoginForm() {
       setError(err?.message || 'Ocorreu um erro ao tentar fazer login');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (provider: string) => {
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      // Simulação de tokens para demonstração
+      // Em produção, estes seriam obtidos do SDK do provedor
+      const accessToken = 'demo-access-token';
+      const idToken = provider === 'apple' || provider === 'google' ? 'demo-id-token' : undefined;
+      
+      await socialLogin(provider, accessToken, idToken);
+      router.push('/dashboard');
+    } catch (err: any) {
+      const socialError = err as SocialAuthError;
+      setError(socialError.message || 'Erro ao realizar login social');
+      console.error('Erro de login social:', socialError);
     }
   };
 
@@ -107,6 +128,9 @@ function LoginForm() {
             >
               {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
+            
+            {/* Botões de login social */}
+            <SocialLoginButtons onSocialLogin={handleSocialLogin} isLoading={isLoading} />
             
             <div className="mt-6 text-center">
               <p className="text-gray-700 dark:text-gray-300">
