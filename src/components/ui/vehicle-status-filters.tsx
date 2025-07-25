@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, X, Filter, Car, Truck, Bus, Bike, Ship, Tractor, Smartphone, PawPrint, Package, Motorcycle } from 'lucide-react';
+import { CheckCircle, X, Filter, Car, Truck, Bus, Bike, Ship, Tractor, Smartphone, PawPrint, Package } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -65,7 +65,7 @@ export default function VehicleStatusFilters({
   // Tipos de veículos com ícones do Lucide
   const typeOptions: VehicleTypeOption[] = [
     { id: 'carro', label: 'Carro / Utilitário Pequeno', icon: 'Car' },
-    { id: 'moto', label: 'Motocicleta', icon: 'Motorcycle' },
+    { id: 'moto', label: 'Motocicleta', icon: 'Bike' },
     { id: 'caminhao', label: 'Caminhão', icon: 'Truck' },
     { id: 'onibus', label: 'Ônibus e Micro-Ônibus', icon: 'Bus' },
     { id: 'jetski', label: 'Jetski', icon: 'Ship' },
@@ -83,12 +83,11 @@ export default function VehicleStatusFilters({
     const iconProps = { className: cn('h-4 w-4', className) };
     switch (iconName) {
       case 'Car': return <Car {...iconProps} />;
-      case 'Motorcycle': return <Motorcycle {...iconProps} />;
+      case 'Bike': return <Bike {...iconProps} />;
       case 'Truck': return <Truck {...iconProps} />;
       case 'Bus': return <Bus {...iconProps} />;
       case 'Ship': return <Ship {...iconProps} />;
       case 'Tractor': return <Tractor {...iconProps} />;
-      case 'Bike': return <Bike {...iconProps} />;
       case 'PawPrint': return <PawPrint {...iconProps} />;
       case 'Smartphone': return <Smartphone {...iconProps} />;
       case 'Package': return <Package {...iconProps} />;

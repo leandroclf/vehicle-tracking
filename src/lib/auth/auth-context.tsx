@@ -13,7 +13,7 @@ interface AuthContextType {
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  register: (data: { email: string; password: string; name?: string }) => Promise<void>;
+  register: (name: string, email: string, phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   socialLogin: (provider: string, accessToken: string, idToken?: string) => Promise<void>;
   socialSignup: (data: SocialSignupRequest) => Promise<void>;
   getLinkedAccounts: () => Promise<any[]>;
@@ -92,18 +92,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
   };
 
-  const register = async (data: { email: string; password: string; name?: string }) => {
+  const register = async (name: string, email: string, phone: string, password: string) => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: { name: data.name || '' }
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { 
+            name: name || '',
+            phone: phone || ''
+          }
+        }
+      });
+      
+      setIsLoading(false);
+      
+      if (error) {
+        return { success: false, error: error.message };
       }
-    });
-    setIsLoading(false);
-    if (error) throw new Error(error.message);
-    // O usuário pode precisar confirmar o e-mail antes de autenticar
+      
+      // Se o usuário foi criado com sucesso
+      if (data.user) {
+        // Criar perfil na tabela profiles
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            email: email,
+            name: name,
+            phone: phone,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+          
+        if (profileError) {
+          console.error('Erro ao criar perfil:', profileError);
+          // Não falha o registro se o perfil não for criado
+        }
+      }
+      
+      return { success: true };
+    } catch (err: any) {
+      setIsLoading(false);
+      return { success: false, error: err.message || 'Erro ao registrar usuário' };
+    }
   };
 
   // Métodos de autenticação social

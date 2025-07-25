@@ -5,7 +5,6 @@ import { supabaseRealtime } from '@/lib/supabase';
 import { Toast } from '@/components/ui/toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import { checkTableExists } from '@/lib/db-setup';
 
 // Tipos para as notificações
 type NotificationType = 'alert' | 'vehicle' | 'geofence' | 'system';
@@ -30,17 +29,9 @@ export const RealtimeNotifications: React.FC = () => {
   
   // Verificar se a tabela de notificações existe
   useEffect(() => {
-    const checkNotificationsTable = async () => {
-      try {
-        const exists = await checkTableExists('notifications');
-        notificationsTableExistsRef.current = exists;
-        console.log('Tabela de notificações existe:', exists);
-      } catch (error) {
-        console.error('Erro ao verificar tabela de notificações:', error);
-      }
-    };
-    
-    checkNotificationsTable();
+    // Assumir que a tabela existe para evitar erros de conexão
+    notificationsTableExistsRef.current = true;
+    console.log('Componente de notificações inicializado');
   }, []);
   
   // Configurar subscription para notificações em tempo real

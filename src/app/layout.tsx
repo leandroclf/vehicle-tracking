@@ -13,6 +13,7 @@ import RealtimeIntegration from '@/components/realtime/RealtimeIntegration';
 import { RealtimeProvider } from '@/lib/providers/RealtimeProvider';
 import { RadixPatchProvider } from '@/components/ui/RadixPatchProvider'
 import { UpdateLoopDetector } from '@/components/ui/UpdateLoopDetector'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import Script from 'next/script'
 
 export const metadata: Metadata = {
@@ -51,21 +52,23 @@ export default function RootLayout({
             >
               <HighContrastProvider>
                 <AccessibleNotificationsProvider>
-                  <AuthProvider>
-                    <NotificationsProvider>
-                      <NotificationProvider>
-                        <KeyboardNavigationProvider>
-                          <SidebarProvider>
-                            <RealtimeProvider>
-                              <RealtimeIntegration>
-                                {children}
-                              </RealtimeIntegration>
-                            </RealtimeProvider>
-                          </SidebarProvider>
-                        </KeyboardNavigationProvider>
-                      </NotificationProvider>
-                    </NotificationsProvider>
-                  </AuthProvider>
+                  <TooltipProvider>
+                    <AuthProvider>
+                      <NotificationsProvider>
+                        <NotificationProvider>
+                          <KeyboardNavigationProvider>
+                            <SidebarProvider>
+                              <RealtimeProvider>
+                                <RealtimeIntegration>
+                                  {children}
+                                </RealtimeIntegration>
+                              </RealtimeProvider>
+                            </SidebarProvider>
+                          </KeyboardNavigationProvider>
+                        </NotificationProvider>
+                      </NotificationsProvider>
+                    </AuthProvider>
+                  </TooltipProvider>
                 </AccessibleNotificationsProvider>
               </HighContrastProvider>
             </ThemeProvider>

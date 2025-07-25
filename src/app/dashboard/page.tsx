@@ -12,6 +12,9 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { Settings, Sliders, PlusCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardConfigurator, WidgetConfig, UserProfile } from '@/components/dashboard/DashboardConfigurator';
+import { RealTimeUpdater } from '@/components/dashboard/realtime-updater';
+import { TrackingDashboard } from '@/components/tracking/tracking-dashboard';
+import { RealtimeMap } from '@/components/tracking/realtime-map';
 
 // Importar widgets de forma dinâmica para melhorar performance inicial
 const VehicleSummaryWidget = dynamic(() => import('@/components/dashboard/widgets/VehicleSummaryWidget'), {
@@ -80,7 +83,9 @@ const widgetComponents: Record<string, React.ComponentType<any>> = {
   'telemetry': TelemetryWidget,
   'weather': WeatherWidget,
   'maintenance': MaintenanceWidget,
-  'fuel-consumption': FuelConsumptionWidget
+  'fuel-consumption': FuelConsumptionWidget,
+  'tracking-dashboard': TrackingDashboard,
+  'realtime-map': RealtimeMap
 };
 
 export default function DashboardPage() {
@@ -496,5 +501,5 @@ export default function DashboardPage() {
         }
       `}</style>
     </Container>
-  );
-}
+    );
+  }

@@ -5,60 +5,79 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: production
+      cache_from:
+        - node:20-alpine
+        - vehicle-tracking-app:latest
       args:
-        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-        - JWT_SECRET=${JWT_SECRET}
+        BUILDKIT_INLINE_CACHE: 1
+    image: vehicle-tracking-app:latest
     container_name: yukz-app
-    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
       - JWT_SECRET=${JWT_SECRET}
-      - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+      - SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    networks:
+      - yukz-network
+    depends_on:
+      tracker-server:
+        condition: service_healthy
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   tracker-server:
     build:
       context: ./tracker-server
       dockerfile: Dockerfile
+      cache_from:
+        - node:20-alpine
+        - vehicle-tracking-tracker-server:latest
       args:
-        - SUPABASE_URL=${SUPABASE_URL}
-        - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+        BUILDKIT_INLINE_CACHE: 1
+    image: vehicle-tracking-tracker-server:latest
     container_name: yukz-tracker-server
-    restart: unless-stopped
     ports:
-      - "5027:5027" # Teltonika TCP
-      - "5028:5028" # UDP
-      - "5029:5029" # Queclink TCP
-      - "5030:5030" # Concox TCP
+      - "8080:8080"  # Teltonika
+      - "8081:8081"  # Queclink  
+      - "8082:8082"  # Concox
+      - "8083:8083"  # UDP
     environment:
       - NODE_ENV=production
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - TRACKER_TCP_PORT=5027
-      - TRACKER_UDP_PORT=5028
-      - QUECLINK_TCP_PORT=5029
-      - CONCOX_TCP_PORT=5030
-    depends_on:
-      - app
+      - SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    networks:
+      - yukz-network
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "5027"]
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
 
 networks:
-  default:
-    name: yukz-network
+  yukz-network:
+    driver: bridge

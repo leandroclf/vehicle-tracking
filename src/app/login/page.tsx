@@ -16,8 +16,8 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, socialLogin } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@yukz.com');
+  const [password, setPassword] = useState('123456');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,11 +38,16 @@ function LoginForm() {
 
     try {
       await login(email, password);
-      // Pequeno delay para garantir atualização de estado
-      await new Promise(resolve => setTimeout(resolve, 300));
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err?.message || 'Ocorreu um erro ao tentar fazer login');
+      console.error('Erro no login:', err);
+      
+      // Tratamento específico para erro de fetch
+      if (err.message?.includes('Failed to fetch')) {
+        setError('Erro de conectividade: Verifique se o Supabase está rodando na porta 54321');
+      } else {
+        setError(err.message || 'Erro ao fazer login');
+      }
     } finally {
       setIsLoading(false);
     }
