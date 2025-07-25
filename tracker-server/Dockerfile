@@ -1,12 +1,14 @@
 # Estágio de build
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 # Definir variáveis de ambiente para build
 ARG SUPABASE_URL
+ARG SUPABASE_ANON_KEY
 ARG SUPABASE_SERVICE_ROLE_KEY
 
 # Definir variáveis de ambiente
 ENV SUPABASE_URL=${SUPABASE_URL}
+ENV SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
 ENV SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
 
 WORKDIR /app
@@ -22,13 +24,14 @@ RUN npm install --only=production && \
 COPY . .
 
 # Estágio de execução
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 
 # Definir variáveis de ambiente para runtime
 ENV NODE_ENV=production
 ENV SUPABASE_URL=${SUPABASE_URL}
+ENV SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
 ENV SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
 ENV TRACKER_TCP_PORT=5027
 ENV TRACKER_UDP_PORT=5028

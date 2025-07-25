@@ -1,30 +1,49 @@
-# Arquivos e diretórios de desenvolvimento
+# Dependências e cache
 node_modules
 npm-debug.log
 yarn-debug.log
 yarn-error.log
+.npm
+.yarn
+
+# Git e controle de versão
 .git
 .github
 .gitignore
+
+# IDEs e editores
 .vscode
+.idea
+*.swp
+*.swo
+*~
 
-
-# Arquivos de ambiente
+# Arquivos de ambiente (manter .env.example)
 .env
 .env.local
 .env.development
 .env.test
 .env.production
-.env.example
 
-# Diretórios de cache e build
+# Build e cache
 .next
 out
 build
 dist
 coverage
+.turbo
+.cache
 
-# Arquivos de documentação e não-produção
+# Logs
+*.log
+logs
+
+# Arquivos temporários
+tmp
+temp
+.tmp
+
+# Documentação e arquivos não-produção
 *.md
 !README.md
 docs
@@ -33,11 +52,36 @@ plano_desenvolvimento.md
 todo.md
 pasted_content*.txt
 
-# Arquivos Docker (para evitar cópias recursivas)
-Dockerfile
-docker-compose.yml
+# Arquivos Docker (evitar cópias recursivas)
+Dockerfile*
+docker-compose*.yml
 .dockerignore
 
-# Outros
+# Arquivos de sistema
 .DS_Store
-*.log
+Thumbs.db
+*.pid
+*.seed
+*.pid.lock
+
+# Arquivos de teste
+test
+tests
+__tests__
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Arquivos de configuração de desenvolvimento
+.eslintrc*
+.prettierrc*
+jest.config.*
+cypress.json
+cypress
+
+# Arquivos grandes desnecessários
+*.tar
+*.zip
+*.gz
+*.rar

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert } from '@/components/ui/alert';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import MfaSettings from '@/components/auth/mfa-settings';
 
 export default function ProfilePage() {
   return (
@@ -406,6 +407,16 @@ function ProfileContent() {
             
             <hr className="my-8 border-gray-200 dark:border-gray-700" />
             
+            {/* Seção de Configurações de Segurança */}
+            <div className="mb-6">
+              <h3 className="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200">Configurações de Segurança</h3>
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                <MfaSettings />
+              </div>
+            </div>
+            
+            <hr className="my-8 border-gray-200 dark:border-gray-700" />
+            
             <div className="mb-6">
               <h3 className="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200">Preferências</h3>
               <div className="space-y-2">
@@ -440,4 +451,4 @@ function ProfileContent() {
       </div>
     </div>
   );
-} 
+}

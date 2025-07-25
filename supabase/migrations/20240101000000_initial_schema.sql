@@ -52,11 +52,18 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 -- Política de segurança em nível de linha
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "Public profiles are viewable by everyone." 
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone." ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile." ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile." ON public.profiles;
+
+-- Create new policies
+CREATE POLICY "Public profiles are viewable by everyone." 
   ON public.profiles FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "Users can insert their own profile." 
+CREATE POLICY "Users can insert their own profile." 
   ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
-CREATE POLICY IF NOT EXISTS "Users can update own profile." 
+CREATE POLICY "Users can update own profile." 
   ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- Função para criar automaticamente um perfil quando um usuário se registra
@@ -91,7 +98,12 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 
 -- Política de segurança em nível de linha
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "Users can manage their own notifications." ON public.notifications
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can manage their own notifications." ON public.notifications;
+
+-- Create new policies
+CREATE POLICY "Users can manage their own notifications." ON public.notifications
   FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
@@ -113,7 +125,12 @@ CREATE TABLE IF NOT EXISTS public.alerts (
 
 -- Política de segurança em nível de linha
 ALTER TABLE public.alerts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "Users can manage their own alerts." ON public.alerts
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can manage their own alerts." ON public.alerts;
+
+-- Create new policies
+CREATE POLICY "Users can manage their own alerts." ON public.alerts
   FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
@@ -141,7 +158,12 @@ CREATE TABLE IF NOT EXISTS public.settings (
 
 -- Política de segurança em nível de linha
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "Users can manage their own settings." ON public.settings
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can manage their own settings." ON public.settings;
+
+-- Create new policies
+CREATE POLICY "Users can manage their own settings." ON public.settings
   FOR ALL
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);

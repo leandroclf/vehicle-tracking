@@ -1,6 +1,7 @@
 import { statusIndicatorVariants, type StatusIndicatorVariants } from "@/lib/variants";
 import { cn } from "@/lib/utils";
 import { forwardRef } from "react";
+import { cva } from "class-variance-authority";
 
 const statusBadgeVariants = cva(
   "inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium",

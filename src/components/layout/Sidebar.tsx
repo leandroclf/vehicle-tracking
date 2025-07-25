@@ -69,6 +69,14 @@ export default function Sidebar({ className = '' }: SidebarProps) {
     
     // Grupo de Monitoramento
     { 
+      name: 'Rastreamento', 
+      href: '/tracking', 
+      icon: <MapPin className="w-6 h-6" />,
+      ariaLabel: 'Rastreamento em tempo real',
+      emoji: '📡',
+      highlight: true
+    },
+    { 
       name: 'Mapa', 
       href: '/dashboard/map', 
       icon: <Map className="w-6 h-6" />,

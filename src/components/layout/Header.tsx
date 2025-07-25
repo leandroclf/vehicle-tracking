@@ -49,6 +49,29 @@ const navigationSections = [
     ]
   },
   {
+    id: 'tracking',
+    title: 'Rastreamento',
+    path: '/tracking',
+    shortcut: 't',
+    icon: <MapPin className="h-4 w-4" />,
+    children: [
+      {
+        id: 'tracking-realtime',
+        title: 'Tempo Real',
+        path: '/tracking',
+        shortcut: 't',
+        icon: <MapPin className="h-4 w-4" />
+      },
+      {
+        id: 'tracking-history',
+        title: 'Histórico',
+        path: '/tracking/history',
+        shortcut: 'h',
+        icon: <MapPin className="h-4 w-4" />
+      }
+    ]
+  },
+  {
     id: 'geofences',
     title: 'Geocercas',
     path: '/dashboard/geofences',

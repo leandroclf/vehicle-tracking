@@ -1,0 +1,82 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+      cache_from:
+        - node:20-alpine
+      args:
+        - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
+      - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}
+    volumes:
+      # Hot reload - código fonte
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+      # Cache persistente
+      - nextjs-cache:/app/.next/cache
+    depends_on:
+      - tracker-server
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  tracker-server:
+    build:
+      context: ./tracker-server
+      dockerfile: Dockerfile
+      cache_from:
+        - node:20-alpine
+      args:
+        - SUPABASE_URL=${SUPABASE_URL}
+        - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+        - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+    ports:
+      - "5027:5027"  # Teltonika TCP
+      - "5028:5028"  # UDP
+      - "5029:5029"  # Queclink TCP
+      - "5030:5030"  # Concox TCP
+    environment:
+      - NODE_ENV=development
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    volumes:
+      # Hot reload - código fonte
+      - ./tracker-server:/app
+      - /app/node_modules
+      # Cache persistente
+      - npm-cache-tracker:/root/.npm
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5027/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  nextjs-cache:
+    driver: local
+  npm-cache:
+    driver: local
+  npm-cache-tracker:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
