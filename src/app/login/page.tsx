@@ -17,7 +17,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const { signIn, socialLogin } = useAuth();
   const [email, setEmail] = useState('admin@yukz.com');
-  const [password, setPassword] = useState('123456');
+  const [password, setPassword] = useState('admin123');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);

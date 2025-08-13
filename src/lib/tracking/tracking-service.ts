@@ -87,7 +87,7 @@ export interface TrackingEvent {
 export class TrackingService {
   private wsManager: WebSocketManager | null = null;
   private isListening = false;
-  private eventCallbacks: Map<string, Function[]> = new Map();
+  private eventCallbacks: Map<string, ((data: any) => void)[]> = new Map();
   private apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
   constructor() {
@@ -156,7 +156,7 @@ export class TrackingService {
   /**
    * Registra um callback para eventos específicos
    */
-  on(event: string, callback: Function): void {
+  on(event: string, callback: (data: any) => void): void {
     if (!this.eventCallbacks.has(event)) {
       this.eventCallbacks.set(event, []);
     }
@@ -166,7 +166,7 @@ export class TrackingService {
   /**
    * Remove um callback de evento
    */
-  off(event: string, callback: Function): void {
+  off(event: string, callback: (data: any) => void): void {
     const callbacks = this.eventCallbacks.get(event);
     if (callbacks) {
       const index = callbacks.indexOf(callback);

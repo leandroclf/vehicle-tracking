@@ -10,6 +10,7 @@ interface MockUser {
   createdAt: Date;
   updatedAt: Date;
   phone?: string;
+  role?: string;
 }
 
 class MockDatabaseClass {
@@ -22,6 +23,7 @@ class MockDatabaseClass {
       emailVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
+      role: 'admin',
     },
   ];
 

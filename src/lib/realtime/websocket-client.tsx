@@ -346,7 +346,7 @@ export interface RealtimeEvent<T = any> {
 export class WebSocketManager {
   private url: string;
   private ws: WebSocket | null = null;
-  private listeners: { [key: string]: Function[] } = {};
+  private listeners: { [key: string]: ((...args: any[]) => void)[] } = {};
 
   constructor(url: string) {
     this.url = url;
@@ -397,12 +397,12 @@ export class WebSocketManager {
   }
 
   // Método genérico 'on' para compatibilidade
-  on(event: string, callback: Function) {
+  on(event: string, callback: (...args: any[]) => void) {
     this.addEventListener(event, callback);
   }
 
   // Método genérico 'off' para compatibilidade
-  off(event: string, callback: Function) {
+  off(event: string, callback: (...args: any[]) => void) {
     if (this.listeners[event]) {
       const index = this.listeners[event].indexOf(callback);
       if (index > -1) {
@@ -411,7 +411,7 @@ export class WebSocketManager {
     }
   }
 
-  private addEventListener(event: string, callback: Function) {
+  private addEventListener(event: string, callback: (...args: any[]) => void) {
     if (!this.listeners[event]) {
       this.listeners[event] = [];
     }

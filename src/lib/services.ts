@@ -195,7 +195,7 @@ export const TelemetryService = {
     try {
       // Definir intervalo de tempo baseado no período
       const now = new Date();
-      let startDate = new Date();
+      const startDate = new Date();
       
       switch (period) {
         case 'day':
@@ -230,7 +230,7 @@ export const TelemetryService = {
       // Gerar dados simulados para demonstração
       const historyPoints = [];
       const now = new Date();
-      let startDate = new Date();
+      const startDate = new Date();
       
       switch (period) {
         case 'day':
