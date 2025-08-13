@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/auth-middleware';
-import { db } from '@/lib/database';
-import { users, profiles } from '@/lib/schema';
-import { eq, ilike, or, and } from 'drizzle-orm';
+import { AuthService } from '@/lib/auth/auth-service-mock';
+import { UsersService } from '@/lib/services/users-service-mock';
 
 // GET /api/users
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticação
-    const authResult = await requireAuth(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    // Extrair token de autenticação
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Token de autenticação necessário' }, { status: 401 });
     }
-
-    const { user } = authResult;
+    
+    // Verificar token e obter usuário
+    const user = await AuthService.verifyToken(token);
 
     // Verificar se é administrador
     if (user.role !== 'admin') {
@@ -30,41 +31,13 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const roleFilter = searchParams.get('role') || '';
 
-    // Construir query
-    let whereConditions = [];
-
-    if (search) {
-      whereConditions.push(
-        or(
-          ilike(profiles.name, `%${search}%`),
-          ilike(users.email, `%${search}%`)
-        )
-      );
-    }
-
-    if (roleFilter) {
-      whereConditions.push(eq(users.role, roleFilter));
-    }
-
-    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
-
-    // Buscar usuários com perfis
-    const result = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        role: users.role,
-        createdAt: users.createdAt,
-        name: profiles.name,
-        phone: profiles.phone,
-        avatarUrl: profiles.avatarUrl,
-      })
-      .from(users)
-      .leftJoin(profiles, eq(users.id, profiles.userId))
-      .where(whereClause)
-      .limit(limit)
-      .offset(offset)
-      .orderBy(profiles.name);
+    // Buscar usuários usando serviço mock
+    const result = await UsersService.getUsers({
+      limit,
+      offset,
+      search,
+      role: roleFilter
+    });
 
     return NextResponse.json(result);
   } catch (error: any) {

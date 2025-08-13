@@ -70,7 +70,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       const pool = getDbPool();
-      const { data: session } = await // TODO: Implementar autenticação JWT // getSession();
+      // TODO: Implementar autenticação JWT
+      const { data: session } = await getSession();
 
       if (!session?.session) {
         throw new Error('Sessão não encontrada');
@@ -106,18 +107,21 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       
       const pool = getDbPool();
-      const { data: session } = await // TODO: Implementar autenticação JWT // getSession();
+      // TODO: Implementar autenticação JWT
+      const { data: session } = await getSession();
 
       if (!session?.session) {
         throw new Error('Sessão não encontrada');
       }
 
       // TODO: Implementar query SQL direta
-    const data = null; const error = null; // await pool.query(...)
-        .from('user_settings')
-        .select('dashboard_widgets')
-        .eq('user_id', session.session.user.id)
-        .single();
+      const data = null;
+      const error = null;
+      // await pool.query(...)
+      //   .from('user_settings')
+      //   .select('dashboard_widgets')
+      //   .eq('user_id', session.session.user.id)
+      //   .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = No rows returned
         throw error;
@@ -144,20 +148,22 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       
       const pool = getDbPool();
-      const { data: session } = await // TODO: Implementar autenticação JWT // getSession();
+      // TODO: Implementar autenticação JWT
+      const { data: session } = await getSession();
 
       if (!session?.session) {
         throw new Error('Sessão não encontrada');
       }
 
       // TODO: Implementar query SQL direta
-    const error = null; // await pool.query(...)
-        .from('user_settings')
-        .upsert({
-          user_id: session.session.user.id,
-          dashboard_widgets: updatedWidgets,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
+      const error = null;
+      // await pool.query(...)
+      //   .from('user_settings')
+      //   .upsert({
+      //     user_id: session.session.user.id,
+      //     dashboard_widgets: updatedWidgets,
+      //     updated_at: new Date().toISOString(),
+      //   }, { onConflict: 'user_id' });
 
       if (error) {
         throw error;

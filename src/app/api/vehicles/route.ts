@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/auth-middleware';
-import { db } from '@/lib/database';
-import { vehicles } from '@/lib/schema';
-import { eq, and, ilike } from 'drizzle-orm';
+// Usando vehicles-service mock temporariamente até resolver problema do PostgreSQL
+import { VehiclesService } from '@/lib/vehicles-mock';
+import { AuthService } from '@/lib/auth/auth-service-mock';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
@@ -28,13 +27,16 @@ const vehicleSchema = z.object({
 // Handler para listar veículos (GET)
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
-    const authResult = await requireAuth(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    // Extrair token de autenticação
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Token de autenticação necessário' }, { status: 401 });
     }
     
-    const { user } = authResult;
+    // Verificar token e obter usuário
+    const user = await AuthService.verifyToken(token);
     
     // Extrair e validar parâmetros de consulta
     const url = new URL(request.url);
@@ -46,38 +48,16 @@ export async function GET(request: NextRequest) {
     
     const { limit, offset, status, sort } = queryResult.data;
     
-    // Construir condições WHERE
-    let whereConditions = [eq(vehicles.userId, user.id)];
-    
-    // Aplicar filtro de status se não for 'all'
-    if (status !== 'all') {
-      whereConditions.push(eq(vehicles.status, status));
-    }
-    
-    // Executar consulta
-    const result = await db
-      .select()
-      .from(vehicles)
-      .where(and(...whereConditions))
-      .limit(limit)
-      .offset(offset)
-      .orderBy(sort === 'asc' ? vehicles.name : vehicles.name);
-    
-    // Contar total de registros
-    const totalResult = await db
-      .select({ count: vehicles.id })
-      .from(vehicles)
-      .where(and(...whereConditions));
+    // Buscar veículos usando o serviço mock
+    const result = await VehiclesService.getVehicles(user.id, {
+      limit,
+      offset,
+      status,
+      sort
+    });
     
     // Retornar resultados
-    return NextResponse.json({
-      vehicles: result,
-      pagination: {
-        total: totalResult.length,
-        limit,
-        offset
-      }
-    });
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
@@ -87,53 +67,39 @@ export async function GET(request: NextRequest) {
 // Handler para criar veículo (POST)
 export async function POST(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
-    const authResult = await requireAuth(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    // Extrair token de autenticação
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Token de autenticação necessário' }, { status: 401 });
     }
     
-    const { user } = authResult;
+    // Verificar token e obter usuário
+    const user = await AuthService.verifyToken(token);
     
-    // Extrair e validar corpo da requisição
+    // Extrair e validar dados do corpo da requisição
     const body = await request.json();
-    const vehicleResult = vehicleSchema.safeParse(body);
+    const bodyResult = vehicleSchema.safeParse(body);
     
-    if (!vehicleResult.success) {
-      return NextResponse.json({ error: 'Dados inválidos', details: vehicleResult.error.format() }, { status: 400 });
+    if (!bodyResult.success) {
+      return NextResponse.json({ error: 'Dados inválidos', details: bodyResult.error.format() }, { status: 400 });
     }
     
-    const vehicleData = vehicleResult.data;
+    const vehicleData = bodyResult.data;
     
-    // Verificar se já existe veículo com a mesma placa
-    const existingVehicle = await db
-      .select()
-      .from(vehicles)
-      .where(
-        and(
-          eq(vehicles.licensePlate, vehicleData.licensePlate),
-          eq(vehicles.userId, user.id)
-        )
-      )
-      .limit(1);
-    
-    if (existingVehicle.length > 0) {
-      return NextResponse.json({ error: 'Já existe um veículo com esta placa' }, { status: 409 });
+    try {
+      // Criar novo veículo usando o serviço mock
+      const newVehicle = await VehiclesService.createVehicle(user.id, vehicleData);
+      return NextResponse.json(newVehicle, { status: 201 });
+    } catch (serviceError: any) {
+      if (serviceError.message === 'Já existe um veículo com esta placa') {
+        return NextResponse.json({ error: serviceError.message }, { status: 409 });
+      }
+      throw serviceError;
     }
-    
-    // Inserir novo veículo
-    const newVehicle = await db
-      .insert(vehicles)
-      .values({
-        ...vehicleData,
-        userId: user.id,
-      })
-      .returning();
-    
-    // Retornar veículo criado
-    return NextResponse.json(newVehicle[0], { status: 201 });
   } catch (error: any) {
-    console.error('Erro ao processar requisição:', error);
+    console.error('Erro ao criar veículo:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }
@@ -141,13 +107,16 @@ export async function POST(request: NextRequest) {
 // Handler para atualizar veículo (PUT)
 export async function PUT(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
-    const authResult = await requireAuth(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    // Extrair token de autenticação
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Token de autenticação necessário' }, { status: 401 });
     }
     
-    const { user } = authResult;
+    // Verificar token e obter usuário
+    const user = await AuthService.verifyToken(token);
     
     // Extrair e validar corpo da requisição
     const body = await request.json() as { id: string; [key: string]: unknown };
@@ -163,41 +132,18 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Dados inválidos', details: vehicleResult.error.format() }, { status: 400 });
     }
     
-    // Verificar se o veículo existe e pertence ao usuário
-    const existingVehicle = await db
-      .select()
-      .from(vehicles)
-      .where(
-        and(
-          eq(vehicles.id, id),
-          eq(vehicles.userId, user.id)
-        )
-      )
-      .limit(1);
-    
-    if (existingVehicle.length === 0) {
-      return NextResponse.json({ error: 'Veículo não encontrado' }, { status: 404 });
+    try {
+       // Atualizar veículo usando o serviço mock
+       const updatedVehicle = await VehiclesService.updateVehicle(user.id, id, vehicleData);
+       return NextResponse.json(updatedVehicle);
+    } catch (serviceError: any) {
+      if (serviceError.message === 'Veículo não encontrado') {
+        return NextResponse.json({ error: serviceError.message }, { status: 404 });
+      }
+      throw serviceError;
     }
-    
-    // Atualizar veículo
-    const updatedVehicle = await db
-      .update(vehicles)
-      .set({
-        ...vehicleResult.data,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(vehicles.id, id),
-          eq(vehicles.userId, user.id)
-        )
-      )
-      .returning();
-    
-    // Retornar veículo atualizado
-    return NextResponse.json(updatedVehicle[0]);
   } catch (error: any) {
-    console.error('Erro ao processar requisição:', error);
+    console.error('Erro ao atualizar veículo:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }

@@ -27,7 +27,7 @@ export const ensureDatabaseStructure = async () => {
       'geofences'
     ];
     
-    let missingTables = [];
+    const missingTables = [];
     
     // Tentamos consultar cada tabela para verificar se existe
     for (const table of requiredTables) {

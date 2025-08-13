@@ -10,6 +10,7 @@ export interface AuthUser {
   email: string;
   name: string;
   emailVerified: boolean;
+  role?: string;
 }
 
 export interface AuthResponse {
@@ -106,6 +107,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         emailVerified: user.emailVerified || false,
+        role: user.role,
       };
     } catch (error) {
       if (error instanceof jwt.JsonWebTokenError) {
@@ -129,17 +131,11 @@ export class AuthService {
     return this.generateToken(currentUser);
   }
 
-  static async updatePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
-    // Buscar usuário
-    const user = await MockDatabase.findUserById(userId);
+  static async updatePassword(email: string, newPassword: string): Promise<void> {
+    // Buscar usuário por email
+    const user = await MockDatabase.findUserByEmail(email);
     if (!user) {
       throw new Error('Usuário não encontrado');
-    }
-
-    // Verificar senha atual
-    const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!isValidPassword) {
-      throw new Error('Senha atual incorreta');
     }
 
     // Validar nova senha
@@ -151,7 +147,7 @@ export class AuthService {
     const newPasswordHash = await bcrypt.hash(newPassword, 12);
 
     // Atualizar senha
-    await MockDatabase.updateUser(userId, {
+    await MockDatabase.updateUser(user.id, {
       passwordHash: newPasswordHash,
     });
   }
@@ -171,8 +167,20 @@ export class AuthService {
     };
   }
 
-  static async updateProfile(userId: string, updates: { name?: string; phone?: string }): Promise<void> {
-    await MockDatabase.updateUser(userId, updates);
+  static async updateProfile(userId: string, updates: { name?: string; phone?: string; avatar_url?: string }): Promise<{ profile: any }> {
+    const updatedUser = await MockDatabase.updateUser(userId, updates);
+    
+    if (!updatedUser) {
+      throw new Error('Usuário não encontrado');
+    }
+    
+    return {
+      profile: {
+        name: updatedUser.name,
+        phone: updatedUser.phone,
+        avatar_url: updates.avatar_url, // Mock - não temos esse campo no banco mock
+      }
+    };
   }
 
   static extractTokenFromHeader(authHeader: string): string | null {

@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/auth-middleware';
+import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
 // Usando auth-service mock temporariamente até resolver problema do PostgreSQL
 import { AuthService } from '@/lib/auth/auth-service-mock';
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: AuthenticatedRequest) => {
   try {
-    // Verificar autenticação
-    const authResult = await requireAuth(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    const user = request.user;
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuário não autenticado' },
+        { status: 401 }
+      );
     }
 
-    const { user } = authResult;
-
-    return NextResponse.json(user.profile || {});
+    return NextResponse.json({ user });
   } catch (error: any) {
     console.error('Erro ao buscar perfil:', error);
     return NextResponse.json(
@@ -21,17 +21,18 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function PUT(request: NextRequest) {
+export const PUT = withAuth(async (request: AuthenticatedRequest) => {
   try {
-    // Verificar autenticação
-    const authResult = await requireAuth(request);
-    if (authResult instanceof NextResponse) {
-      return authResult;
+    const user = request.user;
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuário não autenticado' },
+        { status: 401 }
+      );
     }
 
-    const { user } = authResult;
     const body = await request.json();
     const { name, phone, avatar_url } = body;
 
@@ -44,7 +45,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       message: 'Perfil atualizado com sucesso',
-      profile: updatedUser.profile,
+      ...updatedUser,
     });
   } catch (error: any) {
     console.error('Erro ao atualizar perfil:', error);
@@ -53,4 +54,4 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

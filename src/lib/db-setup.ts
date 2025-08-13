@@ -18,9 +18,11 @@ async function checkTableExistsAlternative(tableName: string): Promise<boolean> 
   try {
     // Tentar uma consulta simples com count para verificar se a tabela existe
     // TODO: Implementar query SQL direta
-    const count = null;`r`n    const error = null;`r`n    // await pool.query(...)
-      .from(tableName)
-      .select('*', { count: 'exact', head: true });
+    const count = null;
+    const error = null;
+    // await pool.query(...)
+    //   .from(tableName)
+    //   .select('*', { count: 'exact', head: true });
       
     // Se não houver erro, a tabela existe
     if (!error) {

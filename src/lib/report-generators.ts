@@ -274,7 +274,7 @@ export const generateExcel = (reportData: ReportData): Blob => {
   const headerLines = formatReportHeader(reportData);
   
   // Preparar dados para filtros
-  let filterLines: string[] = [];
+  const filterLines: string[] = [];
   
   if (reportData.reportType === 'custom' && reportData.customFilters && reportData.customFilters.length > 0) {
     filterLines.push('Filtros aplicados:');
@@ -346,4 +346,4 @@ export const generateExcel = (reportData: ReportData): Blob => {
 // Função para escolher o gerador apropriado com base no formato solicitado
 export const generateReport = (reportData: ReportData, format: 'PDF' | 'Excel'): Blob => {
   return format === 'PDF' ? generatePDF(reportData) : generateExcel(reportData);
-}; 
+};
