@@ -1,14 +1,8 @@
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
-// Importar RealtimeServer usando require dinâmico para TypeScript
-let RealtimeServer;
-try {
-  RealtimeServer = require('./src/lib/realtime/websocket-server.ts').RealtimeServer;
-} catch (error) {
-  console.warn('Não foi possível carregar RealtimeServer:', error.message);
-  console.log('Continuando sem servidor WebSocket...');
-}
+// WebSocket será inicializado separadamente via Docker
+console.log('ℹ️ WebSocket será gerenciado via Docker na porta 3001');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -32,19 +26,8 @@ app.prepare().then(() => {
     }
   });
 
-  // Inicializar servidor WebSocket se disponível
-  let realtimeServer;
-  if (RealtimeServer) {
-    try {
-      realtimeServer = new RealtimeServer(wsPort);
-      console.log(`🚀 Servidor WebSocket iniciado na porta ${wsPort}`);
-    } catch (error) {
-      console.error('Erro ao inicializar servidor WebSocket:', error.message);
-      console.log('Continuando sem servidor WebSocket...');
-    }
-  } else {
-    console.log('⚠️ Servidor WebSocket não disponível');
-  }
+  // WebSocket será gerenciado via Docker
+  console.log(`ℹ️ WebSocket configurado para porta ${wsPort} (gerenciado via Docker)`);
 
   // Iniciar servidor HTTP
   server.listen(port, (err) => {

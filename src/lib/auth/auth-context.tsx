@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { AuthUser, AuthClientService } from './auth-client';
+import { socialAuthService } from './social-auth-service';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -10,6 +11,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => void;
+  socialLogin: (provider: string, accessToken: string, idToken?: string) => Promise<void>;
   updateProfile: (updates: { name?: string; phone?: string }) => Promise<void>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -84,6 +86,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
     toast.success('Logout realizado com sucesso!');
+  };
+
+  const socialLogin = async (provider: string, accessToken: string, idToken?: string) => {
+    try {
+      setLoading(true);
+      const response = await socialAuthService.login({
+        provider: provider as 'google' | 'facebook' | 'apple',
+        accessToken,
+        idToken
+      });
+      
+      if (response.accessToken && response.email) {
+        // Criar objeto AuthUser compatível com o formato esperado
+        const userData: AuthUser = {
+          id: response.providerId,
+          email: response.email,
+          name: response.name || '',
+          role: 'user' as const,
+          avatar: response.avatar,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        localStorage.setItem(TOKEN_KEY, response.accessToken);
+        setUser(userData);
+        toast.success('Login social realizado com sucesso!');
+      } else {
+        throw new Error('Resposta inválida do servidor');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao fazer login social');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const updateProfile = async (updates: { name?: string; phone?: string }) => {
@@ -165,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     signUp,
     signOut,
+    socialLogin,
     updateProfile,
     updatePassword,
     refreshUser,
