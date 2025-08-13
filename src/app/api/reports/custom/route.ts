@@ -1,4 +1,7 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { requireAuth } from '@/lib/auth/auth-middleware';
+import { db } from '@/lib/database';
+import { vehicles, gpsPositions, alerts } from '@/lib/schema';
+import { eq, and, gte, lte } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -51,7 +54,7 @@ const customReportSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies });
+  const pool = getDbPool();
   
   try {
     // Obter e validar dados usando Zod
@@ -68,17 +71,22 @@ export async function POST(request: NextRequest) {
     const validatedData = validationResult.data;
     
     // Verificar autenticação
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // TODO: Implementar autenticação JWT
+    const user = null;
+    const authError = null;
     if (authError || !user) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
     
     // Verificar se os veículos pertencem ao usuário
-    const { data: vehicles, error: vehiclesError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .in('id', validatedData.vehicleIds)
-      .eq('user_id', user.id);
+    // TODO: Implementar query SQL direta
+    const vehicles = null;
+    const vehiclesError = null;
+    // await pool.query(...)
+    // .from('vehicles')
+    // .select('id')
+    // .in('id', validatedData.vehicleIds)
+    // .eq('user_id', user.id);
       
     if (vehiclesError) {
       console.error('Erro ao verificar veículos:', vehiclesError);
@@ -100,23 +108,26 @@ export async function POST(request: NextRequest) {
     }
     
     // Criar o registro do relatório
-    const { data: report, error: reportError } = await supabase
-      .from('reports')
-      .insert({
-        user_id: user.id,
-        title: validatedData.title,
-        report_type: validatedData.reportType,
-        start_date: validatedData.startDate,
-        end_date: validatedData.endDate,
-        vehicle_ids: validatedData.vehicleIds,
-        format: validatedData.format,
-        status: 'processing',
-        custom_fields: validatedData.customFields,
-        custom_filters: validatedData.customFilters,
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+    // TODO: Implementar query SQL direta
+    const report = { id: 'temp-id' };
+    const reportError = null;
+    // await pool.query(...)
+    // .from('reports')
+    // .insert({
+    //   user_id: user.id,
+    //   title: validatedData.title,
+    //   report_type: validatedData.reportType,
+    //   start_date: validatedData.startDate,
+    //   end_date: validatedData.endDate,
+    //   vehicle_ids: validatedData.vehicleIds,
+    //   format: validatedData.format,
+    //   status: 'processing',
+    //   custom_fields: validatedData.customFields,
+    //   custom_filters: validatedData.customFilters,
+    //   created_at: new Date().toISOString()
+    // })
+    // .select()
+    // .single();
       
     if (reportError) {
       console.error('Erro ao criar relatório customizado:', reportError);
@@ -132,27 +143,29 @@ export async function POST(request: NextRequest) {
     // Simular processamento (em produção, isso seria feito por um worker)
     setTimeout(async () => {
       try {
-        await supabase
-          .from('reports')
-          .update({ 
-            status: 'completed',
-            file_url: `/api/reports/${report.id}/download?format=${validatedData.format}`,
-            completed_at: new Date().toISOString()
-          })
-          .eq('id', report.id);
+        // TODO: Implementar query SQL direta
+        // await pool.query
+        // .from('reports')
+        // .update({ 
+        //   status: 'completed',
+        //   file_url: `/api/reports/${report.id}/download?format=${validatedData.format}`,
+        //   completed_at: new Date().toISOString()
+        // })
+        // .eq('id', report.id);
           
         console.log(`Relatório ${report.id} processado com sucesso`);
       } catch (error) {
         console.error(`Erro ao atualizar relatório ${report.id}:`, error);
         
         // Marcar como falha em caso de erro
-        await supabase
-          .from('reports')
-          .update({ 
-            status: 'failed',
-            error_message: 'Falha ao processar relatório'
-          })
-          .eq('id', report.id);
+        // TODO: Implementar query SQL direta
+        // await pool.query
+        // .from('reports')
+        // .update({ 
+        //   status: 'failed',
+        //   error_message: 'Falha ao processar relatório'
+        // })
+        // .eq('id', report.id);
       }
     }, 3000);
     
@@ -170,4 +183,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

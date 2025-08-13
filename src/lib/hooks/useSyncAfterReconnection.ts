@@ -1,16 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { Database } from '../../types/database.types';
 import { useRealtimeContext } from '../providers/RealtimeProvider';
 
 /**
  * Interface para configuração da sincronização
  */
 interface SyncConfig<T> {
-  // Tabela a ser sincronizada
-  table: string;
+  // Endpoint da API a ser sincronizado
+  apiEndpoint: string;
   // Coluna de timestamp para verificar atualizações
   timestampColumn: string;
   // Função para buscar dados atualizados
@@ -32,7 +30,6 @@ interface SyncConfig<T> {
  * @returns Objeto com estado da sincronização e funções de controle
  */
 export function useSyncAfterReconnection<T>(
-  supabaseClient: ReturnType<typeof createClient<Database>>,
   config: SyncConfig<T>
 ) {
   // Obter contexto Realtime
@@ -66,11 +63,11 @@ export function useSyncAfterReconnection<T>(
         config.onDataSynced(updatedData);
       }
       
-      console.log(`[Sync] Sincronizados ${updatedData.length} registros de ${config.table}`);
+      console.log(`[Sync] Sincronizados ${updatedData.length} registros de ${config.apiEndpoint}`);
       
       return updatedData;
     } catch (error) {
-      console.error(`[Sync] Erro ao sincronizar ${config.table}:`, error);
+      console.error(`[Sync] Erro ao sincronizar ${config.apiEndpoint}:`, error);
       setSyncError(error instanceof Error ? error : new Error(String(error)));
       throw error;
     } finally {
@@ -122,36 +119,46 @@ export function useSyncAfterReconnection<T>(
 }
 
 /**
- * Hook simplificado para sincronização de uma tabela específica
+ * Hook simplificado para sincronização de uma API específica
  * 
  * Este hook é uma abstração sobre o useSyncAfterReconnection que facilita
- * a sincronização de uma tabela específica após reconexão.
+ * a sincronização de uma API específica após reconexão.
  * 
- * @param table Nome da tabela
+ * @param apiEndpoint Endpoint da API
  * @param timestampColumn Nome da coluna de timestamp
  * @param onDataSynced Callback para dados sincronizados
  * @returns Estado da sincronização e funções de controle
  */
-export function useTableSyncAfterReconnection<T extends Record<string, any>>(
-  supabaseClient: ReturnType<typeof createClient<Database>>,
-  table: string,
+export function useApiSyncAfterReconnection<T extends Record<string, any>>(
+  apiEndpoint: string,
   timestampColumn: string = 'updated_at',
   onDataSynced?: (data: T[]) => void,
   minSyncInterval: number = 2000
 ) {
   // Função para buscar dados atualizados
   const fetchUpdatedData = useCallback(async (lastSyncTimestamp: Date) => {
-    const { data, error } = await supabaseClient
-      .from(table)
-      .select('*')
-      .gt(timestampColumn, lastSyncTimestamp.toISOString());
-      
-    if (error) throw error;
+    const params = new URLSearchParams({
+      [`${timestampColumn}_gt`]: lastSyncTimestamp.toISOString()
+    });
+    
+    const response = await fetch(`${apiEndpoint}?${params}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+      },
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erro HTTP: ${response.status}`);
+    }
+    
+    const data = await response.json();
     return (data || []) as T[];
-  }, [supabaseClient, table, timestampColumn]);
+  }, [apiEndpoint, timestampColumn]);
   
-  return useSyncAfterReconnection<T>(supabaseClient, {
-    table,
+  return useSyncAfterReconnection<T>({
+    apiEndpoint,
     timestampColumn,
     fetchUpdatedData,
     onDataSynced,

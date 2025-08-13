@@ -5,7 +5,7 @@ import { LazyLoading } from '@/lib/lazy';
 import DashboardLoading from '@/components/ui/DashboardLoading';
 import PrefetchLinks from '@/components/dashboard/PrefetchLinks';
 import { SkipToContent } from '@/components/ui/SkipToContent';
-import { VehicleProvider } from '@/lib/vehicles';
+import { VehicleProvider } from '@/lib/vehicles-client';
 import PanelLayout from '@/components/dashboard/PanelLayout';
 import { AlertProvider } from '@/lib/alerts';
 import { ReportProvider } from '@/lib/reports';

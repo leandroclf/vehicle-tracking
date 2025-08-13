@@ -1,7 +1,7 @@
-import { getAdminClient } from './databaseConfig';
+import { db } from './db';
+import { sql } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
-import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Inicializa o banco de dados aplicando as migrações necessárias
@@ -9,8 +9,6 @@ import { SupabaseClient } from '@supabase/supabase-js';
 export async function initializeDatabase() {
   try {
     console.log('Inicializando banco de dados...');
-    
-    const admin = getAdminClient();
     
     // Verificar se as tabelas principais existem
     console.log('Verificando estado atual do banco de dados...');
@@ -24,26 +22,24 @@ export async function initializeDatabase() {
     ];
     
     // Verificamos se pelo menos uma das tabelas principais já existe
-    const { data, error } = await admin.from('profiles').select('id').limit(1);
-    const tablesExist = !error;
-    
-    if (tablesExist) {
+    try {
+      await db.execute(sql`SELECT 1 FROM profiles LIMIT 1`);
       console.log('Banco de dados já inicializado');
       
       // Verificar se há tabelas faltando
-      const missingTables = await checkMissingTables(admin, requiredTables);
+      const missingTables = await checkMissingTables(requiredTables);
       
       if (missingTables.length > 0) {
         console.log(`Tabelas faltantes detectadas: ${missingTables.join(', ')}`);
-        await applyMigration(admin);
+        await applyMigration();
       }
       
       return true;
+    } catch (error) {
+      // Tabela não existe, aplicar migração
+      console.log('Aplicando migração unificada...');
+      await applyMigration();
     }
-    
-    // Aplicar o script de migração unificado
-    console.log('Aplicando migração unificada...');
-    await applyMigration(admin);
     
     console.log('Banco de dados inicializado com sucesso!');
     return true;
@@ -56,13 +52,17 @@ export async function initializeDatabase() {
 /**
  * Verifica quais tabelas estão faltando no banco de dados
  */
-async function checkMissingTables(admin: SupabaseClient, tables: string[]): Promise<string[]> {
+async function checkMissingTables(tables: string[]): Promise<string[]> {
   const missingTables = [];
   
   for (const table of tables) {
-    const { error } = await admin.from(table).select('id').limit(1);
-    if (error && error.message.includes(`relation "${table}" does not exist`)) {
-      missingTables.push(table);
+    try {
+      await db.execute(sql.raw(`SELECT 1 FROM ${table} LIMIT 1`));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes(`relation "${table}" does not exist`)) {
+        missingTables.push(table);
+      }
     }
   }
   
@@ -72,7 +72,7 @@ async function checkMissingTables(admin: SupabaseClient, tables: string[]): Prom
 /**
  * Aplica a migração usando o arquivo unificado
  */
-async function applyMigration(admin: SupabaseClient) {
+async function applyMigration() {
   try {
     // Define os possíveis caminhos para o arquivo de migração (desenvolvimento e produção)
     const migrationFile = 'unified_schema.sql';
@@ -109,14 +109,10 @@ async function applyMigration(admin: SupabaseClient) {
     
     // Executa cada comando separadamente
     for (let i = 0; i < sqlCommands.length; i++) {
-      const sql = sqlCommands[i] + ';'; // Adiciona o ponto e vírgula de volta
+      const sqlCommand = sqlCommands[i] + ';'; // Adiciona o ponto e vírgula de volta
       
       try {
-        const { error } = await admin.rpc('pg_execute', { query: sql });
-        
-        if (error) {
-          console.warn(`Aviso: Comando ${i+1} falhou: ${error.message.substring(0, 100)}...`);
-        }
+        await db.execute(sql.raw(sqlCommand));
       } catch (cmdError: unknown) {
         const errorMessage = cmdError instanceof Error ? cmdError.message : String(cmdError);
         console.warn(`Aviso: Erro ao executar comando ${i+1}: ${errorMessage.substring(0, 100)}...`);
@@ -125,7 +121,7 @@ async function applyMigration(admin: SupabaseClient) {
     
     // Verificação final
     const requiredTables = ['profiles', 'vehicles', 'alerts', 'settings', 'notifications', 'geofences'];
-    const missingTables = await checkMissingTables(admin, requiredTables);
+    const missingTables = await checkMissingTables(requiredTables);
     
     if (missingTables.length > 0) {
       throw new Error(`Algumas tabelas não foram criadas: ${missingTables.join(', ')}`);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { verifyAuth } from '@/lib/auth-middleware';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
@@ -41,19 +41,22 @@ export async function POST(request: NextRequest) {
     }
 
     const { user } = authResult;
-    const supabase = createClient();
+    const pool = getDbPool();
 
     // Validar dados de entrada
     const body = await request.json();
     const validatedData = createCommandSchema.parse(body);
 
     // Verificar se o usuário possui o veículo
-    const { data: vehicle, error: vehicleError } = await supabase
-      .from('vehicles')
-      .select('id, name, user_id')
-      .eq('id', validatedData.vehicle_id)
-      .eq('user_id', user.id)
-      .single();
+    // TODO: Implementar query SQL direta
+    const vehicle = null;
+    const vehicleError = null;
+    // await pool.query(...)
+    //   .from('vehicles')
+    //   .select('id, name, user_id')
+    //   .eq('id', validatedData.vehicle_id)
+    //   .eq('user_id', user.id)
+    //   .single();
 
     if (vehicleError || !vehicle) {
       return NextResponse.json(
@@ -72,20 +75,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Criar comando no banco
-    const { data: command, error: commandError } = await supabase
-      .from('vehicle_commands')
-      .insert({
-        vehicle_id: validatedData.vehicle_id,
-        user_id: user.id,
-        type: validatedData.type,
-        confirmation_required: validatedData.confirmation_required,
-        confirmation_token: confirmationToken,
-        confirmation_expires_at: confirmationExpiresAt,
-        metadata: validatedData.metadata,
-        status: validatedData.confirmation_required ? 'pending_confirmation' : 'confirmed'
-      })
-      .select()
-      .single();
+    // TODO: Implementar query SQL direta
+    const command = null;
+    const commandError = null;
+    // await pool.query(...)
+    //   .from('vehicle_commands')
+    //   .insert({
+    //     vehicle_id: validatedData.vehicle_id,
+    //     user_id: user.id,
+    //     type: validatedData.type,
+    //     confirmation_required: validatedData.confirmation_required,
+    //     confirmation_token: confirmationToken,
+    //     confirmation_expires_at: confirmationExpiresAt,
+    //     metadata: validatedData.metadata,
+    //     status: validatedData.confirmation_required ? 'pending_confirmation' : 'confirmed'
+    //   })
+    //   .select()
+    //   .single();
 
     if (commandError) {
       console.error('Erro ao criar comando:', commandError);
@@ -153,7 +159,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { user } = authResult;
-    const supabase = createClient();
+    const pool = getDbPool();
     const { searchParams } = new URL(request.url);
 
     // Parâmetros de consulta
@@ -163,17 +169,18 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     // Construir query
-    let query = supabase
-      .from('vehicle_commands')
-      .select(`
-        *,
-        vehicles:vehicle_id (id, name, plate),
-        command_confirmations (confirmed_at, ip_address),
-        command_responses (success, error_message, received_at)
-      `)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    // TODO: Implementar query SQL direta
+    let query = null; // pool.query
+    //   .from('vehicle_commands')
+    //   .select(`
+    //     *,
+    //     vehicles:vehicle_id (id, name, plate),
+    //     command_confirmations (confirmed_at, ip_address),
+    //     command_responses (success, error_message, received_at)
+    //   `)
+    //   .eq('user_id', user.id)
+    //   .order('created_at', { ascending: false })
+    //   .range(offset, offset + limit - 1);
 
     if (vehicleId) {
       query = query.eq('vehicle_id', vehicleId);
@@ -183,7 +190,10 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status);
     }
 
-    const { data: commands, error } = await query;
+    // TODO: Implementar query SQL direta
+    const commands = null;
+    const error = null;
+    // const { data: commands, error } = await query;
 
     if (error) {
       console.error('Erro ao buscar comandos:', error);
@@ -229,30 +239,33 @@ async function sendCommandToDevice(command: any) {
     console.log(`Enviando comando ${command.type} para dispositivo do veículo ${command.vehicle_id}`);
     
     // Atualizar status para "sent_to_device"
-    const supabase = createClient();
-    await supabase
-      .from('vehicle_commands')
-      .update({ status: 'sent_to_device' })
-      .eq('id', command.id);
+    const pool = getDbPool();
+    // TODO: Implementar query SQL direta
+    // await pool.query
+    //   .from('vehicle_commands')
+    //   .update({ status: 'sent_to_device' })
+    //   .eq('id', command.id);
 
     // Simular resposta do dispositivo após 2 segundos
     setTimeout(async () => {
-      await supabase
-        .from('command_responses')
-        .insert({
-          command_id: command.id,
-          device_response: { status: 'ok', timestamp: new Date().toISOString() },
-          execution_time: 1500,
-          success: true
-        });
+      // TODO: Implementar query SQL direta
+      // await pool.query
+      //   .from('command_responses')
+      //   .insert({
+      //     command_id: command.id,
+      //     device_response: { status: 'ok', timestamp: new Date().toISOString() },
+      //     execution_time: 1500,
+      //     success: true
+      //   });
 
-      await supabase
-        .from('vehicle_commands')
-        .update({ 
-          status: 'executed',
-          executed_at: new Date().toISOString()
-        })
-        .eq('id', command.id);
+      // TODO: Implementar query SQL direta
+      // await pool.query
+      //   .from('vehicle_commands')
+      //   .update({ 
+      //     status: 'executed',
+      //     executed_at: new Date().toISOString()
+      //   })
+      //   .eq('id', command.id);
     }, 2000);
 
   } catch (error) {

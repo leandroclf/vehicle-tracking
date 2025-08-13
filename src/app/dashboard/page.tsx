@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Container } from '@/components/ui/container';
-import RealTimeUpdater from '@/components/dashboard/RealTimeUpdater';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import dynamic from 'next/dynamic';
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable-panels';
@@ -12,7 +11,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { Settings, Sliders, PlusCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DashboardConfigurator, WidgetConfig, UserProfile } from '@/components/dashboard/DashboardConfigurator';
-import { RealTimeUpdater } from '@/components/dashboard/realtime-updater';
+import { RealTimeUpdater } from '@/components/dashboard/RealTimeUpdater';
 import { TrackingDashboard } from '@/components/tracking/tracking-dashboard';
 import { RealtimeMap } from '@/components/tracking/realtime-map';
 

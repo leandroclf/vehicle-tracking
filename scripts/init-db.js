@@ -1,18 +1,15 @@
-const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
+const { Pool } = require('pg');
+const bcrypt = require('bcrypt');
+const { v4: uuidv4 } = require('uuid');
 
-const supabaseUrl = 'https://zktyautduranjobylpkb.supabase.co';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseServiceKey) {
-  console.error('SUPABASE_SERVICE_ROLE_KEY não está definido');
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL não está definido');
   process.exit(1);
 }
 
-const admin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
 });
 
 // Função para recriar usuários de teste
@@ -21,16 +18,10 @@ async function resetUsersPasswords() {
     console.log('Atualizando senhas de usuários...');
     
     // Verificar usuários existentes
-    const { data: users, error: usersError } = await admin.auth.admin.listUsers();
+    const usersResult = await pool.query('SELECT * FROM users WHERE email IN ($1, $2)', ['admin@yukz.com', 'teste@yukz.com']);
     
-    if (usersError) {
-      console.error('Erro ao listar usuários:', usersError);
-      return false;
-    }
-    
-    // Encontrar usuários por email
-    const adminUser = users.users.find(user => user.email === 'admin@yukz.com');
-    const testUser = users.users.find(user => user.email === 'teste@yukz.com');
+    const adminUser = usersResult.rows.find(user => user.email === 'admin@yukz.com');
+    const testUser = usersResult.rows.find(user => user.email === 'teste@yukz.com');
     
     if (!adminUser && !testUser) {
       console.log('Nenhum usuário encontrado para atualizar');
@@ -45,18 +36,16 @@ async function resetUsersPasswords() {
     if (adminUser) {
       console.log(`Atualizando usuário admin: ${adminUser.id}`);
       
-      const { error: updateAdminError } = await admin.auth.admin.updateUserById(
-        adminUser.id,
-        { 
-          password: 'admin123',
-          email_confirm: true
-        }
-      );
+      const hashedPassword = await bcrypt.hash('admin123', 10);
       
-      if (updateAdminError) {
-        console.error('Erro ao atualizar administrador:', updateAdminError);
-      } else {
+      try {
+        await pool.query(
+          'UPDATE users SET password_hash = $1, email_verified = true WHERE id = $2',
+          [hashedPassword, adminUser.id]
+        );
         console.log('Administrador atualizado com sucesso!');
+      } catch (error) {
+        console.error('Erro ao atualizar administrador:', error);
       }
     }
     
@@ -64,44 +53,40 @@ async function resetUsersPasswords() {
     if (testUser) {
       console.log(`Atualizando usuário teste: ${testUser.id}`);
       
-      const { error: updateTestError } = await admin.auth.admin.updateUserById(
-        testUser.id,
-        { 
-          password: 'teste123',
-          email_confirm: true
-        }
-      );
+      const hashedPassword = await bcrypt.hash('teste123', 10);
       
-      if (updateTestError) {
-        console.error('Erro ao atualizar usuário teste:', updateTestError);
-      } else {
+      try {
+        await pool.query(
+          'UPDATE users SET password_hash = $1, email_verified = true WHERE id = $2',
+          [hashedPassword, testUser.id]
+        );
         console.log('Usuário teste atualizado com sucesso!');
+      } catch (error) {
+        console.error('Erro ao atualizar usuário teste:', error);
       }
     }
     
     // Atualizar metadados dos usuários
     if (adminUser) {
-      await admin.auth.admin.updateUserById(
-        adminUser.id,
-        {
-          user_metadata: {
-            name: 'Administrador',
-            type: 'large_fleet'
-          }
-        }
-      );
+      try {
+        await pool.query(
+          'UPDATE users SET name = $1, role = $2 WHERE id = $3',
+          ['Administrador', 'admin', adminUser.id]
+        );
+      } catch (error) {
+        console.error('Erro ao atualizar metadados do admin:', error);
+      }
     }
     
     if (testUser) {
-      await admin.auth.admin.updateUserById(
-        testUser.id,
-        {
-          user_metadata: {
-            name: 'Usuário Teste',
-            type: 'individual'
-          }
-        }
-      );
+      try {
+        await pool.query(
+          'UPDATE users SET name = $1, role = $2 WHERE id = $3',
+          ['Usuário Teste', 'user', testUser.id]
+        );
+      } catch (error) {
+        console.error('Erro ao atualizar metadados do usuário teste:', error);
+      }
     }
     
     // Sincronizar perfis
@@ -120,39 +105,31 @@ async function resetUsersPasswords() {
 async function createUsers() {
   try {
     // 1. Criar usuário padrão
-    const { data: userPadrao, error: errorPadrao } = await admin
-      .auth.admin.createUser({
-        email: 'teste@yukz.com',
-        password: 'teste123',
-        email_confirm: true,
-        user_metadata: {
-          name: 'Usuário Teste',
-          type: 'individual'
-        }
-      });
+    const testUserId = uuidv4();
+    const testPasswordHash = await bcrypt.hash('teste123', 10);
     
-    if (errorPadrao) {
-      console.error(`Erro ao criar usuário padrão: ${errorPadrao.message}`);
-    } else {
+    try {
+      await pool.query(
+        'INSERT INTO users (id, email, password_hash, name, role, email_verified, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [testUserId, 'teste@yukz.com', testPasswordHash, 'Usuário Teste', 'user', true, new Date()]
+      );
       console.log('Usuário padrão criado com sucesso');
+    } catch (error) {
+      console.error(`Erro ao criar usuário padrão: ${error.message}`);
     }
     
     // 2. Criar usuário administrador
-    const { data: userAdmin, error: errorAdmin } = await admin
-      .auth.admin.createUser({
-        email: 'admin@yukz.com',
-        password: 'admin123',
-        email_confirm: true,
-        user_metadata: {
-          name: 'Administrador',
-          type: 'large_fleet'
-        }
-      });
+    const adminUserId = uuidv4();
+    const adminPasswordHash = await bcrypt.hash('admin123', 10);
     
-    if (errorAdmin) {
-      console.error(`Erro ao criar usuário administrador: ${errorAdmin.message}`);
-    } else {
+    try {
+      await pool.query(
+        'INSERT INTO users (id, email, password_hash, name, role, email_verified, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [adminUserId, 'admin@yukz.com', adminPasswordHash, 'Administrador', 'admin', true, new Date()]
+      );
       console.log('Usuário administrador criado com sucesso');
+    } catch (error) {
+      console.error(`Erro ao criar usuário administrador: ${error.message}`);
     }
     
     // Sincronizar perfis
@@ -171,23 +148,27 @@ async function createUsers() {
 async function syncProfiles() {
   try {
     // Verificar usuários existentes
-    const { data: users } = await admin.auth.admin.listUsers();
+    const usersResult = await pool.query('SELECT id, email, name FROM users');
     
     // Verificar perfis existentes
-    const { data: profiles } = await admin.from('profiles').select('id');
+    const profilesResult = await pool.query('SELECT user_id FROM profiles');
     
     // Conjunto de IDs de perfis existentes
-    const existingProfileIds = new Set(profiles?.map(p => p.id) || []);
+    const existingProfileIds = new Set(profilesResult.rows.map(p => p.user_id) || []);
     
     // Para cada usuário, criar perfil se não existir
-    for (const user of users.users) {
+    for (const user of usersResult.rows) {
       if (!existingProfileIds.has(user.id)) {
         console.log(`Criando perfil para usuário ${user.email}`);
         
-        await admin.from('profiles').insert({
-          id: user.id,
-          name: user.user_metadata?.name || 'Novo Usuário'
-        });
+        try {
+          await pool.query(
+            'INSERT INTO profiles (id, user_id, name, created_at) VALUES ($1, $2, $3, $4)',
+            [uuidv4(), user.id, user.name || 'Novo Usuário', new Date()]
+          );
+        } catch (error) {
+          console.error(`Erro ao criar perfil para ${user.email}:`, error);
+        }
       }
     }
     
@@ -199,5 +180,26 @@ async function syncProfiles() {
   }
 }
 
-// Executar o código
-resetUsersPasswords().catch(console.error); 
+// Executar a função principal
+if (require.main === module) {
+  resetUsersPasswords()
+    .then(success => {
+      if (success) {
+        console.log('\n✅ Inicialização concluída com sucesso!');
+        console.log('\n📋 Credenciais de acesso:');
+        console.log('👤 Admin: admin@yukz.com / admin123');
+        console.log('👤 Teste: teste@yukz.com / teste123');
+        console.log('\n🚀 Execute: npm run dev');
+      } else {
+        console.log('\n❌ Falha na inicialização');
+        process.exit(1);
+      }
+    })
+    .catch(error => {
+      console.error('Erro fatal:', error);
+      process.exit(1);
+    })
+    .finally(() => {
+      pool.end();
+    });
+}

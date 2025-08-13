@@ -3,16 +3,13 @@
 /**
  * Componente de integração Realtime para o sistema de rastreamento de veículos
  * 
- * Este componente integra as Edge Functions do Supabase e o sistema Realtime
+ * Este componente integra WebSockets e o sistema Realtime
  * na interface do usuário, permitindo atualizações em tempo real e sincronização
  * offline de dados críticos.
  */
 
-
 import React, { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
-import { RealtimeUpdater } from '@/lib/realtime-subscription';
-import { useRealtimeContext, ConnectionState } from '@/lib/providers/RealtimeProvider'; // Importar o contexto
+import { useRealtimeContext, ConnectionState } from '@/lib/providers/RealtimeProvider';
 import { useOfflineSync } from '@/lib/offline-sync';
 import { Alert } from '../ui/alert';
 import { Skeleton } from '../ui/skeleton';
@@ -91,7 +88,6 @@ export default function RealtimeIntegration({ children }: { children: React.Reac
   
   return (
     <>
-      <RealtimeUpdater supabaseClient={supabase} />
       {currentError && syncStatus !== 'online' && (
         <Alert variant={syncStatus === 'offline' || realtimeContextError || offlineSyncError ? "error" : "warning"} title="Status da Conexão" className="mb-4">
           {currentError}
@@ -116,12 +112,12 @@ export default function RealtimeIntegration({ children }: { children: React.Reac
 }
 
 /**
- * Componente para integração com Edge Functions
+ * Hook para integração com APIs de processamento
  * 
- * Este componente fornece métodos para chamar as Edge Functions do Supabase
+ * Este hook fornece métodos para chamar as APIs REST
  * para processamento de eventos complexos.
  */
-export function useEdgeFunctions() {
+export function useApiProcessing() {
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<Record<string, Error | null>>({});
   
@@ -133,11 +129,19 @@ export function useEdgeFunctions() {
     setError(prev => ({ ...prev, geofence: null }));
     
     try {
-      const { data, error } = await supabase.functions.invoke('geofence-events', {
-        body: { vehicleId, position, timestamp }
+      const response = await fetch('/api/geofences/check', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ vehicleId, position, timestamp }),
       });
       
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`Erro na API: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
       
       setLoading(prev => ({ ...prev, geofence: false }));
       return data;
@@ -157,11 +161,19 @@ export function useEdgeFunctions() {
     setError(prev => ({ ...prev, speedAlert: null }));
     
     try {
-      const { data, error } = await supabase.functions.invoke('speed-alerts', {
-        body: { vehicleId, speed, position, timestamp }
+      const response = await fetch('/api/alerts/speed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ vehicleId, speed, position, timestamp }),
       });
       
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`Erro na API: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
       
       setLoading(prev => ({ ...prev, speedAlert: false }));
       return data;

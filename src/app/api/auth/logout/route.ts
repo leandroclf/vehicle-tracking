@@ -1,25 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { requireAuth } from '@/lib/auth/auth-middleware';
 
 export async function POST(request: NextRequest) {
   try {
-    // Logout nativo Supabase
-    await supabase.auth.signOut();
+    // Verificar se o usuário está autenticado
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
 
-    // Criar resposta com cookie expirado
-    const response = NextResponse.json({ message: 'Logout successful' });
-    response.cookies.set('YUKZ_ACCESS_TOKEN', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      expires: new Date(0)
+    // Para JWT, o logout é principalmente do lado do cliente
+    // O token será removido do localStorage/sessionStorage
+    return NextResponse.json({
+      message: 'Logout realizado com sucesso',
     });
-    return response;
-  } catch (error) {
-    console.error('Error during logout:', error);
+  } catch (error: any) {
+    console.error('Erro no logout:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }
@@ -47,4 +45,4 @@ function methodNotAllowed() {
     { error: 'Method not allowed' },
     { status: 405 }
   );
-} 
+}

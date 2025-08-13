@@ -9,7 +9,7 @@ import VehicleTelemetry from '@/components/vehicle/VehicleTelemetry';
 import VehicleHistory from '@/components/vehicle/VehicleHistory';
 import VehicleCommands from '@/components/vehicle/VehicleCommands';
 import VehicleCommandHistory from '@/components/vehicle/VehicleCommandHistory';
-import { useVehicles } from '@/lib/vehicles';
+import { useVehicles } from '@/lib/vehicles-client';
 import { ArrowLeft, MapPin, Clock, Info, Terminal, History, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 

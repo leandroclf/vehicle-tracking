@@ -6,22 +6,27 @@
 import { NextRequest } from 'next/server';
 import { POST, PUT } from '../route';
 
-// Mock do Supabase
+// Mock do banco de dados PostgreSQL e sistema de autenticação
+jest.mock('@/lib/database', () => ({
+  db: {
+    select: jest.fn(),
+    insert: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn()
+  },
+  executeQuery: jest.fn()
+}));
+
 jest.mock('@/lib/supabase', () => ({
-  supabase: {
-    auth: {
-      signInWithOtp: jest.fn(),
-      verifyOtp: jest.fn()
-    },
-    from: jest.fn(() => ({
-      select: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          single: jest.fn()
-        }))
-      })),
-      insert: jest.fn()
-    }))
-  }
+  executeQuery: jest.fn(),
+  generateToken: jest.fn(),
+  verifyToken: jest.fn()
+}));
+
+// Mock do serviço de SMS
+jest.mock('@/lib/services/sms-service', () => ({
+  sendOtpCode: jest.fn(),
+  verifyOtpCode: jest.fn()
 }));
 
 describe('/api/auth/phone', () => {
@@ -31,10 +36,10 @@ describe('/api/auth/phone', () => {
 
   describe('POST - Enviar código OTP', () => {
     it('deve enviar código OTP com sucesso', async () => {
-      const mockSupabase = require('@/lib/supabase').supabase;
-      mockSupabase.auth.signInWithOtp.mockResolvedValue({
-        data: { messageId: 'msg-123' },
-        error: null
+      const mockSmsService = require('@/lib/services/sms-service');
+      mockSmsService.sendOtpCode.mockResolvedValue({
+        success: true,
+        messageId: 'msg-123'
       });
 
       const request = new NextRequest('http://localhost:3000/api/auth/phone', {
@@ -74,11 +79,11 @@ describe('/api/auth/phone', () => {
       expect(data.error).toContain('telefone');
     });
 
-    it('deve retornar erro quando Supabase falha', async () => {
-      const mockSupabase = require('@/lib/supabase').supabase;
-      mockSupabase.auth.signInWithOtp.mockResolvedValue({
-        data: null,
-        error: { message: 'Rate limit exceeded' }
+    it('deve retornar erro quando serviço SMS falha', async () => {
+      const mockSmsService = require('@/lib/services/sms-service');
+      mockSmsService.sendOtpCode.mockResolvedValue({
+        success: false,
+        error: 'Rate limit exceeded'
       });
 
       const request = new NextRequest('http://localhost:3000/api/auth/phone', {
@@ -102,26 +107,24 @@ describe('/api/auth/phone', () => {
 
   describe('PUT - Verificar código OTP', () => {
     it('deve verificar código OTP com sucesso', async () => {
-      const mockSupabase = require('@/lib/supabase').supabase;
+      const mockSmsService = require('@/lib/services/sms-service');
+      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      const mockGenerateToken = require('@/lib/supabase').generateToken;
       
       // Mock para verificação OTP
-      mockSupabase.auth.verifyOtp.mockResolvedValue({
-        data: {
-          user: {
-            id: 'user-123',
-            phone: '+5565999887766',
-            user_metadata: {}
-          },
-          session: { access_token: 'token-123' }
-        },
-        error: null
+      mockSmsService.verifyOtpCode.mockResolvedValue({
+        success: true,
+        phone: '+5565999887766'
       });
 
-      // Mock para verificar se perfil existe
-      mockSupabase.from().select().eq().single.mockResolvedValue({
-        data: { id: 'profile-123' },
-        error: null
+      // Mock para verificar se usuário existe
+      mockExecuteQuery.mockResolvedValue({
+        rows: [{ id: 'user-123', phone: '+5565999887766' }],
+        rowCount: 1
       });
+
+      // Mock para gerar token JWT
+      mockGenerateToken.mockReturnValue('jwt-token-123');
 
       const request = new NextRequest('http://localhost:3000/api/auth/phone', {
         method: 'PUT',
@@ -144,31 +147,30 @@ describe('/api/auth/phone', () => {
     });
 
     it('deve criar perfil para novo usuário', async () => {
-      const mockSupabase = require('@/lib/supabase').supabase;
+      const mockSmsService = require('@/lib/services/sms-service');
+      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      const mockGenerateToken = require('@/lib/supabase').generateToken;
       
       // Mock para verificação OTP
-      mockSupabase.auth.verifyOtp.mockResolvedValue({
-        data: {
-          user: {
-            id: 'user-123',
-            phone: '+5565999887766',
-            user_metadata: {}
-          },
-          session: { access_token: 'token-123' }
-        },
-        error: null
+      mockSmsService.verifyOtpCode.mockResolvedValue({
+        success: true,
+        phone: '+5565999887766'
       });
 
-      // Mock para verificar se perfil existe (não existe)
-      mockSupabase.from().select().eq().single.mockResolvedValue({
-        data: null,
-        error: { code: 'PGRST116' }
-      });
+      // Mock para verificar se usuário existe (não existe)
+      mockExecuteQuery
+        .mockResolvedValueOnce({
+          rows: [],
+          rowCount: 0
+        })
+        // Mock para criar usuário
+        .mockResolvedValueOnce({
+          rows: [{ id: 'user-123' }],
+          rowCount: 1
+        });
 
-      // Mock para criar perfil
-      mockSupabase.from().insert.mockResolvedValue({
-        error: null
-      });
+      // Mock para gerar token JWT
+      mockGenerateToken.mockReturnValue('jwt-token-123');
 
       const request = new NextRequest('http://localhost:3000/api/auth/phone', {
         method: 'PUT',
@@ -186,14 +188,14 @@ describe('/api/auth/phone', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(mockSupabase.from().insert).toHaveBeenCalled();
+      expect(mockExecuteQuery).toHaveBeenCalledTimes(2);
     });
 
     it('deve retornar erro para código inválido', async () => {
-      const mockSupabase = require('@/lib/supabase').supabase;
-      mockSupabase.auth.verifyOtp.mockResolvedValue({
-        data: null,
-        error: { message: 'Invalid token' }
+      const mockSmsService = require('@/lib/services/sms-service');
+      mockSmsService.verifyOtpCode.mockResolvedValue({
+        success: false,
+        error: 'Invalid token'
       });
 
       const request = new NextRequest('http://localhost:3000/api/auth/phone', {

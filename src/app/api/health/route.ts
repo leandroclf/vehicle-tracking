@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getDbPool, getRedisClient } from '@/lib/database';
 
 // Interface para resposta de health check
 interface HealthCheckResponse {
@@ -13,6 +13,7 @@ interface HealthCheckResponse {
   version: string;
   services: {
     database: 'connected' | 'disconnected' | 'error';
+    redis: 'connected' | 'disconnected' | 'error';
     api: 'operational' | 'degraded' | 'down';
   };
   uptime: number;
@@ -28,33 +29,40 @@ const startTime = Date.now();
  */
 export async function GET(request: NextRequest): Promise<NextResponse<HealthCheckResponse>> {
   try {
-    // Verificar conexão com banco de dados
+    // Verificar conexão com banco de dados PostgreSQL
     let databaseStatus: 'connected' | 'disconnected' | 'error' = 'disconnected';
     
     try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const pool = getDbPool();
       
-      if (supabaseUrl && supabaseKey) {
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        
-        // Teste simples de conectividade - apenas verificar se o cliente pode ser criado
-        // e fazer uma consulta básica ao sistema
-        const { data, error } = await supabase.auth.getSession();
-        
-        // Se não houve erro na criação da sessão, consideramos conectado
-        databaseStatus = 'connected';
-      }
+      // Teste simples de conectividade com PostgreSQL
+      const client = await pool.connect();
+      await client.query('SELECT 1');
+      client.release();
+      
+      databaseStatus = 'connected';
     } catch (error) {
-      console.error('Erro ao verificar conexão com banco:', error);
+      console.error('Erro ao verificar conexão com PostgreSQL:', error);
       databaseStatus = 'error';
+    }
+    
+    // Verificar conexão com Redis
+    let redisStatus: 'connected' | 'disconnected' | 'error' = 'disconnected';
+    
+    try {
+      const redis = getRedisClient();
+      await redis.ping();
+      redisStatus = 'connected';
+    } catch (error) {
+      console.error('Erro ao verificar conexão com Redis:', error);
+      redisStatus = 'error';
     }
 
     // Calcular uptime
     const uptime = Date.now() - startTime;
 
     // Determinar status geral
-    const isHealthy = databaseStatus === 'connected';
+    const isHealthy = databaseStatus === 'connected' && redisStatus === 'connected';
 
     const healthResponse: HealthCheckResponse = {
       status: isHealthy ? 'healthy' : 'unhealthy',
@@ -62,6 +70,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<HealthChec
       version: process.env.npm_package_version || '1.0.0',
       services: {
         database: databaseStatus,
+        redis: redisStatus,
         api: 'operational'
       },
       uptime,
@@ -86,6 +95,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<HealthChec
       version: process.env.npm_package_version || '1.0.0',
       services: {
         database: 'error',
+        redis: 'error',
         api: 'degraded'
       },
       uptime: Date.now() - startTime,

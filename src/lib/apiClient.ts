@@ -1,11 +1,4 @@
 import { useAuth } from "./auth";
-import { createClient } from '@supabase/supabase-js';
-
-// Configuração do cliente Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Tipos para respostas da API
 export interface ApiResponse<T> {
@@ -243,23 +236,21 @@ export const apiClient = {
   /**
    * Realiza uma requisição DELETE
    * @param endpoint Endpoint da API
-   * @param params Parâmetros da requisição
    * @param token Token de autenticação
    * @param invalidateCache Se deve invalidar o cache para este endpoint
    */
   async delete<T>(
     endpoint: string,
-    params: Record<string, any> = {},
     token: string | null,
     invalidateCache = true
   ): Promise<ApiResponse<T>> {
     try {
-      // Construir URL com parâmetros
-      const queryString = new URLSearchParams(params).toString();
-      const url = `${endpoint}${queryString ? `?${queryString}` : ''}`;
-      
       // Realizar requisição
-      const response = await fetchWithAuth(url, { method: 'DELETE' }, token);
+      const response = await fetchWithAuth(
+        endpoint,
+        { method: 'DELETE' },
+        token
+      );
       
       // Processar resposta
       const responseData: any = await response.json();
@@ -288,57 +279,39 @@ export const apiClient = {
   },
   
   /**
-   * Limpa o cache para um endpoint específico ou todo o cache
-   * @param endpoint Endpoint específico para limpar o cache (opcional)
+   * Limpa o cache para um endpoint específico
+   * @param endpoint Endpoint para limpar o cache
    */
-  clearCache(endpoint?: string): void {
-    if (endpoint) {
-      // Limpar cache apenas para o endpoint especificado
-      for (const key of apiCache.keys()) {
-        if (key.startsWith(endpoint)) {
-          apiCache.delete(key);
-        }
+  clearCache(endpoint: string): void {
+    const keysToDelete: string[] = [];
+    
+    for (const key of apiCache.keys()) {
+      if (key.startsWith(endpoint)) {
+        keysToDelete.push(key);
       }
-    } else {
-      // Limpar todo o cache
-      apiCache.clear();
     }
+    
+    keysToDelete.forEach(key => apiCache.delete(key));
   },
   
   /**
-   * Atualiza manualmente o cache para um endpoint
-   * @param endpoint Endpoint da API
-   * @param params Parâmetros da requisição
-   * @param data Dados a serem armazenados no cache
-   * @param expiry Tempo de expiração em ms
+   * Limpa todo o cache
    */
-  updateCache<T>(
-    endpoint: string,
-    params: Record<string, any> = {},
-    data: T,
-    expiry = DEFAULT_CACHE_EXPIRY
-  ): void {
-    const queryString = new URLSearchParams(params).toString();
-    const cacheKey = `${endpoint}?${queryString}`;
-    
-    apiCache.set(cacheKey, {
-      data,
-      timestamp: Date.now(),
-      expiry
-    });
+  clearAllCache(): void {
+    apiCache.clear();
+  },
+  
+  /**
+   * Obtém estatísticas do cache
+   */
+  getCacheStats(): { size: number; keys: string[] } {
+    return {
+      size: apiCache.size,
+      keys: Array.from(apiCache.keys())
+    };
   }
 };
 
-/**
- * Hook para usar o cliente API com tratamento de erros e estado de carregamento
- */
-export const useApi = () => {
-  const { user, token } = useAuth();
-  
-  return {
-    ...apiClient,
-    isAuthenticated: !!user,
-    token
-  };
-};
+// Exportação padrão
+export default apiClient;
 

@@ -6,32 +6,25 @@
 import { mfaService } from '../mfa-service';
 import { MfaProvider, MfaSetupRequest } from '@/types/mfa';
 
-// Mock do Supabase
+// Mock do banco de dados PostgreSQL
+jest.mock('@/lib/database', () => ({
+  db: {
+    select: jest.fn(),
+    insert: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn()
+  },
+  executeQuery: jest.fn()
+}));
+
+// Mock do sistema de cache Redis
 jest.mock('@/lib/supabase', () => ({
-  supabase: {
-    from: jest.fn(() => ({
-      select: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          single: jest.fn()
-        }))
-      })),
-      insert: jest.fn(() => ({
-        select: jest.fn(() => ({
-          single: jest.fn()
-        }))
-      })),
-      update: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          select: jest.fn(() => ({
-            single: jest.fn()
-          }))
-        }))
-      })),
-      delete: jest.fn(() => ({
-        eq: jest.fn()
-      }))
-    }))
-  }
+  executeQuery: jest.fn(),
+  getRedisClient: jest.fn(() => ({
+    get: jest.fn(),
+    set: jest.fn(),
+    del: jest.fn()
+  }))
 }));
 
 describe('MfaService', () => {
@@ -45,10 +38,10 @@ describe('MfaService', () => {
 
   describe('getMfaStatus', () => {
     it('deve retornar status correto quando MFA não está configurado', async () => {
-      const mockSupabase = require('@/lib/supabase').supabase;
-      mockSupabase.from().select().eq().single.mockResolvedValue({
-        data: null,
-        error: { code: 'PGRST116' } // Not found
+      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      mockExecuteQuery.mockResolvedValue({
+        rows: [],
+        rowCount: 0
       });
 
       const status = await mfaService.getMfaStatus(mockUserId);
@@ -58,16 +51,16 @@ describe('MfaService', () => {
     });
 
     it('deve retornar status correto quando MFA está configurado', async () => {
-      const mockSupabase = require('@/lib/supabase').supabase;
-      mockSupabase.from().select().eq().single.mockResolvedValue({
-        data: {
+      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      mockExecuteQuery.mockResolvedValue({
+        rows: [{
           sms_enabled: true,
           totp_enabled: false,
           email_enabled: true,
           phone_number: mockPhoneNumber,
           email: mockEmail
-        },
-        error: null
+        }],
+        rowCount: 1
       });
 
       const status = await mfaService.getMfaStatus(mockUserId);
@@ -86,10 +79,10 @@ describe('MfaService', () => {
         phoneNumber: mockPhoneNumber
       };
 
-      const mockSupabase = require('@/lib/supabase').supabase;
-      mockSupabase.from().insert().select().single.mockResolvedValue({
-        data: { temp_secret: 'temp-secret-123' },
-        error: null
+      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      mockExecuteQuery.mockResolvedValue({
+        rows: [{ temp_secret: 'temp-secret-123' }],
+        rowCount: 1
       });
 
       const result = await mfaService.setupMfa(mockUserId, setupRequest);
@@ -104,13 +97,13 @@ describe('MfaService', () => {
         provider: MfaProvider.TOTP
       };
 
-      const mockSupabase = require('@/lib/supabase').supabase;
-      mockSupabase.from().insert().select().single.mockResolvedValue({
-        data: { 
+      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      mockExecuteQuery.mockResolvedValue({
+        rows: [{ 
           temp_secret: 'JBSWY3DPEHPK3PXP',
           qr_code_url: 'data:image/png;base64,mock-qr-code'
-        },
-        error: null
+        }],
+        rowCount: 1
       });
 
       const result = await mfaService.setupMfa(mockUserId, setupRequest);
@@ -134,22 +127,22 @@ describe('MfaService', () => {
 
   describe('verifyMfaCode', () => {
     it('deve verificar código SMS corretamente', async () => {
-      const mockSupabase = require('@/lib/supabase').supabase;
+      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
       
       // Mock para buscar configuração temporária
-      mockSupabase.from().select().eq().single
+      mockExecuteQuery
         .mockResolvedValueOnce({
-          data: {
+          rows: [{
             provider: MfaProvider.SMS,
             temp_secret: 'temp-secret-123',
             phone_number: mockPhoneNumber
-          },
-          error: null
+          }],
+          rowCount: 1
         })
         // Mock para inserir configuração permanente
         .mockResolvedValueOnce({
-          data: { id: 'config-123' },
-          error: null
+          rows: [{ id: 'config-123' }],
+          rowCount: 1
         });
 
       const result = await mfaService.verifyMfaCode(mockUserId, '123456', 'temp-secret-123');
@@ -159,10 +152,10 @@ describe('MfaService', () => {
     });
 
     it('deve retornar erro para código inválido', async () => {
-      const mockSupabase = require('@/lib/supabase').supabase;
-      mockSupabase.from().select().eq().single.mockResolvedValue({
-        data: null,
-        error: { code: 'PGRST116' }
+      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      mockExecuteQuery.mockResolvedValue({
+        rows: [],
+        rowCount: 0
       });
 
       const result = await mfaService.verifyMfaCode(mockUserId, '000000', 'invalid-secret');
@@ -174,9 +167,10 @@ describe('MfaService', () => {
 
   describe('disableMfa', () => {
     it('deve desabilitar MFA corretamente', async () => {
-      const mockSupabase = require('@/lib/supabase').supabase;
-      mockSupabase.from().delete().eq.mockResolvedValue({
-        error: null
+      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      mockExecuteQuery.mockResolvedValue({
+        rows: [],
+        rowCount: 1
       });
 
       const result = await mfaService.disableMfa(mockUserId);

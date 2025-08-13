@@ -144,11 +144,19 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verificar se MFA é obrigatório para este usuário
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    const profileResponse = await fetch(`${process.env.API_BASE_URL}/api/profiles/${user.id}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${request.headers.get('authorization')?.replace('Bearer ', '')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!profileResponse.ok) {
+      throw new Error('Erro ao buscar perfil do usuário');
+    }
+
+    const profile = await profileResponse.json();
 
     if (profile?.role === 'admin') {
       return NextResponse.json(
@@ -158,19 +166,18 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Desabilitar MFA
-    const { error } = await supabase
-      .from('user_mfa_config')
-      .update({
-        enabled: false,
-        sms_enabled: false,
-        totp_enabled: false,
-        email_enabled: false,
-        backup_codes: null,
-        backup_codes_count: 0
-      })
-      .eq('user_id', user.id);
+    const disableResponse = await fetch(`${process.env.API_BASE_URL}/api/mfa/disable`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${request.headers.get('authorization')?.replace('Bearer ', '')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ user_id: user.id })
+    });
 
-    if (error) throw error;
+    if (!disableResponse.ok) {
+      throw new Error('Erro ao desabilitar MFA');
+    }
 
     return NextResponse.json({
       success: true,

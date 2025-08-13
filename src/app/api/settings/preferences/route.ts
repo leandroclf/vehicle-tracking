@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar dados de preferências
@@ -52,11 +52,16 @@ export async function GET(request: NextRequest) {
     const userId = authResult.user.id;
     
     // Buscar preferências do usuário
-    const { data: userSettings, error } = await supabase
-      .from('user_settings')
-      .select('preferences')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const settingsQuery = `
+      SELECT preferences
+      FROM user_settings
+      WHERE user_id = $1
+    `;
+    const settingsResult = await pool.query(settingsQuery, [userId]);
+    const userSettings = settingsResult.rows[0];
+    const error = null;
     
     if (error && error.code !== 'PGRST116') { // PGRST116 = No rows returned
       console.error('Erro ao buscar preferências:', error);
@@ -117,11 +122,16 @@ export async function PUT(request: NextRequest) {
     const preferencesData = preferencesResult.data;
     
     // Verificar se o usuário já tem configurações
-    const { data: existingSettings, error: checkError } = await supabase
-      .from('user_settings')
-      .select('id, preferences')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const checkQuery = `
+      SELECT id, preferences
+      FROM user_settings
+      WHERE user_id = $1
+    `;
+    const checkResult = await pool.query(checkQuery, [userId]);
+    const existingSettings = checkResult.rows[0];
+    const checkError = null;
     
     if (checkError) {
       console.error('Erro ao verificar configurações existentes:', checkError);
@@ -138,15 +148,20 @@ export async function PUT(request: NextRequest) {
       };
       
       // Atualizar registro existente
-      const { data, error: updateError } = await supabase
-        .from('user_settings')
-        .update({
-          preferences: updatedPreferences,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId)
-        .select('preferences')
-        .single();
+      // TODO: Implementar query SQL direta
+      const updateQuery = `
+        UPDATE user_settings
+        SET preferences = $1, updated_at = $2
+        WHERE user_id = $3
+        RETURNING preferences
+      `;
+      const updateResult = await pool.query(updateQuery, [
+        JSON.stringify(updatedPreferences),
+        new Date().toISOString(),
+        userId
+      ]);
+      const data = updateResult.rows[0];
+      const updateError = null;
       
       if (updateError) {
         console.error('Erro ao atualizar preferências:', updateError);
@@ -156,16 +171,21 @@ export async function PUT(request: NextRequest) {
       result = data;
     } else {
       // Criar novo registro
-      const { data, error: insertError } = await supabase
-        .from('user_settings')
-        .insert({
-          user_id: userId,
-          preferences: preferencesData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select('preferences')
-        .single();
+      // TODO: Implementar query SQL direta
+      const insertQuery = `
+        INSERT INTO user_settings (
+          user_id, preferences, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4)
+        RETURNING preferences
+      `;
+      const insertResult = await pool.query(insertQuery, [
+        userId,
+        JSON.stringify(preferencesData),
+        new Date().toISOString(),
+        new Date().toISOString()
+      ]);
+      const data = insertResult.rows[0];
+      const insertError = null;
       
       if (insertError) {
         console.error('Erro ao criar registro de preferências:', insertError);
@@ -184,4 +204,4 @@ export async function PUT(request: NextRequest) {
     console.error('Erro ao processar atualização de preferências:', error);
     return errorResponse('Erro interno do servidor', undefined, 500);
   }
-} 
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar dados de configurações
@@ -35,11 +35,16 @@ export async function GET(request: NextRequest) {
     const userId = authResult.user.id;
     
     // Buscar configurações do usuário
-    const { data: settings, error } = await supabase
-      .from('settings')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const settingsQuery = `
+      SELECT *
+      FROM settings
+      WHERE user_id = $1
+    `;
+    const settingsResult = await pool.query(settingsQuery, [userId]);
+    const settings = settingsResult.rows[0];
+    const error = null;
     
     if (error) {
       console.error('Erro ao buscar configurações:', error);
@@ -100,11 +105,16 @@ export async function PUT(request: NextRequest) {
     const settingsData = settingsResult.data;
     
     // Verificar se já existem configurações para o usuário
-    const { data: existingSettings, error: checkError } = await supabase
-      .from('settings')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const checkQuery = `
+      SELECT id
+      FROM settings
+      WHERE user_id = $1
+    `;
+    const checkResult = await pool.query(checkQuery, [userId]);
+    const existingSettings = checkResult.rows[0];
+    const checkError = null;
     
     if (checkError) {
       console.error('Erro ao verificar configurações existentes:', checkError);
@@ -115,12 +125,19 @@ export async function PUT(request: NextRequest) {
     
     if (existingSettings) {
       // Atualizar configurações existentes
-      const { data: updatedSettings, error: updateError } = await supabase
-        .from('settings')
-        .update(settingsData)
-        .eq('id', existingSettings.id)
-        .select()
-        .single();
+      // TODO: Implementar query SQL direta
+      const updateQuery = `
+        UPDATE settings
+        SET ${Object.keys(settingsData).map((key, index) => `${key} = $${index + 2}`).join(', ')}
+        WHERE id = $1
+        RETURNING *
+      `;
+      const updateResult = await pool.query(updateQuery, [
+        existingSettings.id,
+        ...Object.values(settingsData)
+      ]);
+      const updatedSettings = updateResult.rows[0];
+      const updateError = null;
       
       if (updateError) {
         console.error('Erro ao atualizar configurações:', updateError);
@@ -130,14 +147,16 @@ export async function PUT(request: NextRequest) {
       result = updatedSettings;
     } else {
       // Criar novas configurações
-      const { data: newSettings, error: insertError } = await supabase
-        .from('settings')
-        .insert({
-          ...settingsData,
-          user_id: userId
-        })
-        .select()
-        .single();
+      // TODO: Implementar query SQL direta
+      const insertData = { ...settingsData, user_id: userId };
+      const insertQuery = `
+        INSERT INTO settings (${Object.keys(insertData).join(', ')})
+        VALUES (${Object.keys(insertData).map((_, index) => `$${index + 1}`).join(', ')})
+        RETURNING *
+      `;
+      const insertResult = await pool.query(insertQuery, Object.values(insertData));
+      const newSettings = insertResult.rows[0];
+      const insertError = null;
       
       if (insertError) {
         console.error('Erro ao criar configurações:', insertError);

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import type { User } from '@/types/auth';
 
 /**
@@ -17,19 +17,17 @@ export async function verifyAuth(request: NextRequest): Promise<User | null> {
 
     const token = authHeader.substring(7); // Remove 'Bearer '
     
-    // Verifica o token com o Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    // TODO: Migrado do Supabase para PostgreSQL direto
+    // TODO: Implementar autenticação JWT
+    const pool = getDbPool();
     
-    if (error || !user) {
-      return null;
-    }
-
-    // Busca dados adicionais do perfil
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    // TODO: Implementar verificação de token JWT
+    // Por enquanto, retorna null até implementar JWT
+    return null;
+    
+    // TODO: Implementar query SQL direta para buscar usuário
+    // const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+    // const profileResult = await pool.query('SELECT * FROM profiles WHERE id = $1', [userId]);
 
     return {
       id: user.id,

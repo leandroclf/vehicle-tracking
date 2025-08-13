@@ -8,9 +8,6 @@
  * local e sincronização quando a conexão for restabelecida.
  */
 
-import { createClient } from '@supabase/supabase-js';
-import { Database } from '../types/database.types';
-
 // Tipos de entidades que podem ser sincronizadas offline
 export type SyncableEntity = 'vehicles' | 'drivers' | 'geofences' | 'alerts' | 'reports';
 
@@ -28,7 +25,7 @@ interface SyncQueueItem {
 
 // Configuração para cada entidade sincronizável
 interface EntityConfig {
-  tableName: string;
+  apiEndpoint: string;
   requiredFields: string[];
   localStorageKey: string;
   syncInterval: number; // em milissegundos
@@ -38,35 +35,35 @@ interface EntityConfig {
 // Configurações para cada tipo de entidade
 const entityConfigs: Record<SyncableEntity, EntityConfig> = {
   vehicles: {
-    tableName: 'vehicles',
+    apiEndpoint: '/api/vehicles',
     requiredFields: ['id', 'plate', 'model'],
     localStorageKey: 'offline_vehicles',
     syncInterval: 60000, // 1 minuto
     maxRetries: 5
   },
   drivers: {
-    tableName: 'drivers',
+    apiEndpoint: '/api/drivers',
     requiredFields: ['id', 'name'],
     localStorageKey: 'offline_drivers',
     syncInterval: 300000, // 5 minutos
     maxRetries: 3
   },
   geofences: {
-    tableName: 'geofences',
+    apiEndpoint: '/api/geofences',
     requiredFields: ['id', 'name', 'type'],
     localStorageKey: 'offline_geofences',
     syncInterval: 300000, // 5 minutos
     maxRetries: 3
   },
   alerts: {
-    tableName: 'alerts',
+    apiEndpoint: '/api/alerts',
     requiredFields: ['id', 'type', 'vehicle_id'],
     localStorageKey: 'offline_alerts',
     syncInterval: 30000, // 30 segundos (prioridade alta)
     maxRetries: 5
   },
   reports: {
-    tableName: 'reports',
+    apiEndpoint: '/api/reports',
     requiredFields: ['id', 'type', 'parameters'],
     localStorageKey: 'offline_reports',
     syncInterval: 600000, // 10 minutos
@@ -75,7 +72,6 @@ const entityConfigs: Record<SyncableEntity, EntityConfig> = {
 };
 
 export class OfflineSyncManager {
-  private supabase: ReturnType<typeof createClient<Database>>;
   private syncQueue: SyncQueueItem[] = [];
   private db: IDBDatabase | null = null;
   private isOnline: boolean = navigator.onLine;
@@ -87,8 +83,7 @@ export class OfflineSyncManager {
     reports: null
   };
 
-  constructor(supabaseClient: ReturnType<typeof createClient<Database>>) {
-    this.supabase = supabaseClient;
+  constructor() {
     this.initIndexedDB();
     this.setupEventListeners();
   }
@@ -261,12 +256,20 @@ export class OfflineSyncManager {
     const config = entityConfigs[entity];
     
     try {
-      // Buscar dados atualizados do Supabase
-      const { data, error } = await this.supabase
-        .from(config.tableName)
-        .select('*');
+      // Buscar dados atualizados da API REST
+      const response = await fetch(config.apiEndpoint, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(`Erro HTTP: ${response.status}`);
+      }
+
+      const data = await response.json();
 
       // Atualizar cache local
       await this.updateLocalCache(entity, data || []);
@@ -367,16 +370,40 @@ export class OfflineSyncManager {
     const { entity, operation, data } = item;
     const config = entityConfigs[entity];
 
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+    };
+
+    let response: Response;
+
     switch (operation) {
       case 'create':
-        await this.supabase.from(config.tableName).insert(data);
+        response = await fetch(config.apiEndpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(data),
+        });
         break;
       case 'update':
-        await this.supabase.from(config.tableName).update(data).eq('id', data.id);
+        response = await fetch(`${config.apiEndpoint}/${data.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(data),
+        });
         break;
       case 'delete':
-        await this.supabase.from(config.tableName).delete().eq('id', data.id);
+        response = await fetch(`${config.apiEndpoint}/${data.id}`, {
+          method: 'DELETE',
+          headers,
+        });
         break;
+      default:
+        throw new Error(`Operação não suportada: ${operation}`);
+    }
+
+    if (!response.ok) {
+      throw new Error(`Erro HTTP: ${response.status}`);
     }
   }
 
@@ -455,7 +482,7 @@ export class OfflineSyncManager {
 }
 
 // Hook para usar o gerenciador de sincronização offline
-export function useOfflineSync(supabaseClient: ReturnType<typeof createClient<Database>>) {
+export function useOfflineSync() {
   // Singleton para garantir apenas uma instância do gerenciador
   const getManager = () => {
     // Verificar se estamos no navegador
@@ -471,7 +498,7 @@ export function useOfflineSync(supabaseClient: ReturnType<typeof createClient<Da
     
     // Estamos no navegador, podemos acessar window
     if (!(window as any).__offlineSyncManager) {
-      (window as any).__offlineSyncManager = new OfflineSyncManager(supabaseClient);
+      (window as any).__offlineSyncManager = new OfflineSyncManager();
     }
     return (window as any).__offlineSyncManager as OfflineSyncManager;
   };

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { SocialLoginRequest, SocialSignupRequest, SocialAuthResponse, SocialAuthError } from '@/types/social-auth';
 
 /**
@@ -14,13 +14,13 @@ export const socialAuthService = {
       
       switch (request.provider) {
         case 'google':
-          authResponse = await supabase.auth.signInWithIdToken({
+          authResponse = await // TODO: Implementar autenticação JWT // signInWithIdToken({
             provider: 'google',
             token: request.idToken || '',
           });
           break;
         case 'facebook':
-          authResponse = await supabase.auth.signInWithOAuth({
+          authResponse = await // TODO: Implementar autenticação JWT // signInWithOAuth({
             provider: 'facebook',
             options: {
               scopes: 'email,public_profile',
@@ -31,7 +31,7 @@ export const socialAuthService = {
           });
           break;
         case 'apple':
-          authResponse = await supabase.auth.signInWithIdToken({
+          authResponse = await // TODO: Implementar autenticação JWT // signInWithIdToken({
             provider: 'apple',
             token: request.idToken || '',
           });
@@ -117,11 +117,12 @@ export const socialAuthService = {
       } as SocialAuthError;
     }
 
-    // O processo é o mesmo do login, pois o Supabase cria a conta automaticamente se não existir
+    // TODO: Migrado do Supabase para PostgreSQL direto
     const response = await this.login(request);
     
     // Atualizar metadados do usuário para incluir aceitação dos termos
-    const { error } = await supabase.auth.updateUser({
+    // TODO: Implementar query SQL direta
+    const error = null; // await pool.query(...).auth.updateUser({
       data: {
         terms_accepted: true,
         terms_accepted_at: new Date().toISOString(),
@@ -149,7 +150,7 @@ export const socialAuthService = {
    */
   async linkAccount(userId: string, request: SocialLoginRequest): Promise<boolean> {
     try {
-      // Implementação depende da API do Supabase
+      // TODO: Migrado do Supabase para PostgreSQL direto
       // Esta é uma implementação simulada
       console.log(`Vinculando conta ${request.provider} ao usuário ${userId}`);
       
@@ -188,7 +189,7 @@ export const socialAuthService = {
    */
   async unlinkAccount(userId: string, provider: string): Promise<boolean> {
     try {
-      // Implementação depende da API do Supabase
+      // TODO: Migrado do Supabase para PostgreSQL direto
       // Esta é uma implementação simulada
       console.log(`Desvinculando conta ${provider} do usuário ${userId}`);
       
@@ -227,7 +228,8 @@ export const socialAuthService = {
    */
   async getLinkedAccounts(userId: string) {
     try {
-      const { data, error } = await supabase
+      // TODO: Implementar query SQL direta
+    const data = null;`r`n    const error = null;`r`n    // await pool.query(...)
         .from('social_accounts')
         .select('*')
         .eq('user_id', userId);
@@ -260,7 +262,8 @@ export const socialAuthService = {
     errorCode?: string;
   }) {
     try {
-      await supabase.from('social_auth_logs').insert({
+      // TODO: Implementar query SQL direta
+    // await pool.query.from('social_auth_logs').insert({
         user_id: userId,
         provider,
         action,

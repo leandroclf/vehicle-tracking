@@ -1,223 +1,227 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { User as UserType } from '@/types/auth';
-import { supabase } from '@/lib/supabase';
-import { socialAuthService } from './social-auth-service';
-import { SocialLoginRequest, SocialSignupRequest } from '@/types/social-auth';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { AuthUser, AuthClientService } from './auth-client';
+import { toast } from 'sonner';
 
 interface AuthContextType {
-  user: UserType | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  token: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  register: (name: string, email: string, phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  socialLogin: (provider: string, accessToken: string, idToken?: string) => Promise<void>;
-  socialSignup: (data: SocialSignupRequest) => Promise<void>;
-  getLinkedAccounts: () => Promise<any[]>;
-  linkSocialAccount: (provider: string, accessToken: string, idToken?: string) => Promise<boolean>;
-  unlinkSocialAccount: (provider: string) => Promise<boolean>;
+  user: AuthUser | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signOut: () => void;
+  updateProfile: (updates: { name?: string; phone?: string }) => Promise<void>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<UserType | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+const TOKEN_KEY = 'auth_token';
 
-  // Persistência de sessão
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Verificar token ao carregar
   useEffect(() => {
-    setIsLoading(true);
-    const session = supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        setUser({
-          id: data.session.user.id,
-          email: data.session.user.email || '',
-          name: data.session.user.user_metadata?.name || '',
-          phone: data.session.user.user_metadata?.phone || '',
-          password: '',
-          role: data.session.user.user_metadata?.role || 'user',
-        });
-        setToken(data.session.access_token);
-      }
-      setIsLoading(false);
-    });
-    // Listener para mudanças de sessão
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.name || '',
-          phone: session.user.user_metadata?.phone || '',
-          password: '',
-          role: session.user.user_metadata?.role || 'user',
-        });
-        setToken(session.access_token);
-      } else {
-        setUser(null);
-        setToken(null);
-      }
-    });
-    return () => {
-      listener?.subscription.unsubscribe();
-    };
+    checkAuthState();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    setIsLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error || !data.session) {
-      setIsLoading(false);
-      throw new Error(error?.message || 'Erro ao autenticar');
+  const checkAuthState = async () => {
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      const userData = await AuthClientService.verifyToken(token);
+      setUser(userData);
+    } catch (error) {
+      console.error('Erro ao verificar autenticação:', error);
+      localStorage.removeItem(TOKEN_KEY);
+    } finally {
+      setLoading(false);
     }
-    setUser({
-      id: data.session.user.id,
-      email: data.session.user.email || '',
-      name: data.session.user.user_metadata?.name || '',
-      phone: data.session.user.user_metadata?.phone || '',
-      password: '',
-      role: data.session.user.user_metadata?.role || 'user',
-    });
-    setToken(data.session.access_token);
-    setIsLoading(false);
   };
 
-  const logout = async () => {
-    await supabase.auth.signOut();
+  const signIn = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+      const { user: userData, token } = await AuthClientService.signIn(email, password);
+      
+      localStorage.setItem(TOKEN_KEY, token);
+      setUser(userData);
+      
+      toast.success('Login realizado com sucesso!');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao fazer login');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signUp = async (email: string, password: string, name: string) => {
+    try {
+      setLoading(true);
+      const { user: userData, token } = await AuthClientService.signUp(email, password, name);
+      
+      localStorage.setItem(TOKEN_KEY, token);
+      setUser(userData);
+      
+      toast.success('Conta criada com sucesso!');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao criar conta');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signOut = () => {
+    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
-    setToken(null);
+    toast.success('Logout realizado com sucesso!');
   };
 
-  const register = async (name: string, email: string, phone: string, password: string) => {
-    setIsLoading(true);
+  const updateProfile = async (updates: { name?: string; phone?: string }) => {
+    if (!user) throw new Error('Usuário não autenticado');
+    
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { 
-            name: name || '',
-            phone: phone || ''
-          }
-        }
-      });
-      
-      setIsLoading(false);
-      
-      if (error) {
-        return { success: false, error: error.message };
-      }
-      
-      // Se o usuário foi criado com sucesso
-      if (data.user) {
-        // Criar perfil na tabela profiles
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            email: email,
-            name: name,
-            phone: phone,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-          
-        if (profileError) {
-          console.error('Erro ao criar perfil:', profileError);
-          // Não falha o registro se o perfil não for criado
-        }
-      }
-      
-      return { success: true };
-    } catch (err: any) {
-      setIsLoading(false);
-      return { success: false, error: err.message || 'Erro ao registrar usuário' };
-    }
-  };
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) throw new Error('Token não encontrado');
 
-  // Métodos de autenticação social
-  const socialLogin = async (provider: string, accessToken: string, idToken?: string) => {
-    setIsLoading(true);
-    try {
-      const response = await socialAuthService.login({
-        provider: provider as any,
-        accessToken,
-        idToken,
+      const response = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(updates),
       });
-      
-      // A sessão será atualizada automaticamente pelo listener do Supabase
-      setIsLoading(false);
-      return response;
-    } catch (error) {
-      setIsLoading(false);
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao atualizar perfil');
+      }
+
+      // Atualizar estado local
+      setUser(prev => prev ? { ...prev, ...updates } : null);
+      toast.success('Perfil atualizado com sucesso!');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao atualizar perfil');
       throw error;
     }
   };
 
-  const socialSignup = async (data: SocialSignupRequest) => {
-    setIsLoading(true);
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user) throw new Error('Usuário não autenticado');
+    
     try {
-      const response = await socialAuthService.signup(data);
-      // A sessão será atualizada automaticamente pelo listener do Supabase
-      setIsLoading(false);
-      return response;
-    } catch (error) {
-      setIsLoading(false);
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) throw new Error('Token não encontrado');
+
+      const response = await fetch('/api/auth/password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao atualizar senha');
+      }
+
+      toast.success('Senha atualizada com sucesso!');
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao atualizar senha');
       throw error;
     }
   };
 
-  const getLinkedAccounts = async () => {
-    if (!user) return [];
-    return socialAuthService.getLinkedAccounts(user.id);
+  const refreshUser = async () => {
+    if (!user) return;
+    
+    try {
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token) return;
+
+      const userData = await AuthClientService.verifyToken(token);
+      setUser(userData);
+    } catch (error) {
+      console.error('Erro ao atualizar dados do usuário:', error);
+      signOut();
+    }
   };
 
-  const linkSocialAccount = async (provider: string, accessToken: string, idToken?: string) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    return socialAuthService.linkAccount(user.id, {
-      provider: provider as any,
-      accessToken,
-      idToken,
-    });
-  };
-
-  const unlinkSocialAccount = async (provider: string) => {
-    if (!user) throw new Error('Usuário não autenticado');
-    return socialAuthService.unlinkAccount(user.id, provider);
+  const value: AuthContextType = {
+    user,
+    loading,
+    signIn,
+    signUp,
+    signOut,
+    updateProfile,
+    updatePassword,
+    refreshUser,
   };
 
   return (
-    <AuthContext.Provider 
-      value={{
-        user,
-        isAuthenticated: !!user,
-        isLoading,
-        token,
-        login,
-        logout,
-        register,
-        socialLogin,
-        socialSignup,
-        getLinkedAccounts,
-        linkSocialAccount,
-        unlinkSocialAccount
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth deve ser usado dentro de um AuthProvider');
   }
   return context;
-};
+}
 
-export { AuthContext };
+// Hook para verificar se o usuário está autenticado
+export function useRequireAuth() {
+  const { user, loading } = useAuth();
+  
+  useEffect(() => {
+    if (!loading && !user) {
+      window.location.href = '/login';
+    }
+  }, [user, loading]);
+
+  return { user, loading };
+}
+
+// Função utilitária para fazer requisições autenticadas
+export async function authenticatedFetch(url: string, options: RequestInit = {}) {
+  const token = localStorage.getItem(TOKEN_KEY);
+  
+  if (!token) {
+    throw new Error('Token de autenticação não encontrado');
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    ...options.headers,
+  };
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
+  });
+
+  if (response.status === 401) {
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.href = '/login';
+    throw new Error('Sessão expirada');
+  }
+
+  return response;
+}

@@ -2,7 +2,7 @@
  * Serviços para integração com APIs externas e internas
  */
 
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { v4 as uuidv4 } from 'uuid';
 
 // Tipos para telemetria
@@ -106,8 +106,9 @@ export const TelemetryService = {
    */
   async getTelemetryData(vehicleId?: string): Promise<TelemetryData[]> {
     try {
-      // Em produção, buscar dados do Supabase
-      let query = supabase.from('vehicle_telemetry').select('*');
+      // TODO: Migrado do Supabase para PostgreSQL direto
+      // TODO: Implementar query SQL direta
+    let query = null; // pool.query.from('vehicle_telemetry').select('*');
       
       if (vehicleId) {
         query = query.eq('vehicle_id', vehicleId);
@@ -209,7 +210,8 @@ export const TelemetryService = {
       }
       
       // Buscar dados históricos
-      const { data, error } = await supabase
+      // TODO: Implementar query SQL direta
+    const data = null;`r`n    const error = null;`r`n    // await pool.query(...)
         .from('vehicle_telemetry_history')
         .select('*')
         .eq('vehicle_id', vehicleId)
@@ -275,7 +277,8 @@ export const WeatherService = {
   async getLocations(): Promise<LocationOption[]> {
     try {
       // Em produção, buscar localizações do banco de dados
-      const { data, error } = await supabase
+      // TODO: Implementar query SQL direta
+    const data = null;`r`n    const error = null;`r`n    // await pool.query(...)
         .from('vehicle_locations')
         .select('id, name, coordinates')
         .order('name');

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta na requisição GET
@@ -62,31 +62,37 @@ export async function GET(request: NextRequest) {
     const { ids } = queryResult.data;
     
     // Construir consulta base
-    let query = supabase
-      .from('vehicle_status')
-      .select(`
-        id,
-        vehicle_id,
-        status,
-        last_update,
-        battery_level,
-        signal_strength,
-        engine_status,
-        custom_status,
-        vehicles:vehicle_id (
-          name,
-          license_plate
-        )
-      `)
-      .eq('user_id', userId);
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    let statusQuery = `
+      SELECT 
+        vs.id,
+        vs.vehicle_id,
+        vs.status,
+        vs.last_update,
+        vs.battery_level,
+        vs.signal_strength,
+        vs.engine_status,
+        vs.custom_status,
+        v.name as vehicle_name,
+        v.license_plate
+      FROM vehicle_status vs
+      JOIN vehicles v ON vs.vehicle_id = v.id
+      WHERE vs.user_id = $1
+    `;
+    
+    let queryParams = [userId];
     
     // Aplicar filtro de IDs se fornecido
     if (ids && ids.length > 0) {
-      query = query.in('vehicle_id', ids);
+      statusQuery += ` AND vs.vehicle_id = ANY($2)`;
+      queryParams.push(ids);
     }
     
     // Executar consulta
-    const { data: statusData, error } = await query;
+    const statusResult = await pool.query(statusQuery, queryParams);
+    const statusData = statusResult.rows;
+    const error = null;
     
     if (error) {
       console.error('Erro ao buscar status dos veículos:', error);
@@ -94,11 +100,11 @@ export async function GET(request: NextRequest) {
     }
     
     // Formatar resposta
-    const formattedStatus = (statusData as VehicleStatusWithVehicle[] | null)?.map(item => ({
+    const formattedStatus = statusData?.map(item => ({
       id: item.id,
       vehicle_id: item.vehicle_id,
-      vehicle_name: item.vehicles?.name || 'Veículo desconhecido',
-      license_plate: item.vehicles?.license_plate,
+      vehicle_name: item.vehicle_name || 'Veículo desconhecido',
+      license_plate: item.license_plate,
       status: item.status,
       last_update: item.last_update,
       battery_level: item.battery_level,
@@ -137,12 +143,16 @@ export async function PUT(request: NextRequest) {
     const statusData = validationResult.data;
     
     // Verificar se o veículo pertence ao usuário
-    const { data: vehicle, error: checkError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('id', statusData.vehicle_id)
-      .eq('user_id', userId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const vehicleQuery = `
+      SELECT id
+      FROM vehicles
+      WHERE id = $1 AND user_id = $2
+    `;
+    const vehicleResult = await pool.query(vehicleQuery, [statusData.vehicle_id, userId]);
+    const vehicle = vehicleResult.rows[0];
+    const checkError = null;
       
     if (checkError) {
       console.error('Erro ao verificar veículo:', checkError);
@@ -154,11 +164,15 @@ export async function PUT(request: NextRequest) {
     }
     
     // Verificar se já existe um registro de status para este veículo
-    const { data: existingStatus, error: statusCheckError } = await supabase
-      .from('vehicle_status')
-      .select('id')
-      .eq('vehicle_id', statusData.vehicle_id)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const statusCheckQuery = `
+      SELECT id
+      FROM vehicle_status
+      WHERE vehicle_id = $1
+    `;
+    const statusCheckResult = await pool.query(statusCheckQuery, [statusData.vehicle_id]);
+    const existingStatus = statusCheckResult.rows[0];
+    const statusCheckError = null;
       
     if (statusCheckError) {
       console.error('Erro ao verificar status existente:', statusCheckError);
@@ -175,23 +189,31 @@ export async function PUT(request: NextRequest) {
       }
       
       // Atualizar status existente
-      result = await supabase
-        .from('vehicle_status')
-        .update(statusData)
-        .eq('vehicle_id', statusData.vehicle_id)
-        .select()
-        .single();
+      const updateQuery = `
+        UPDATE vehicle_status
+        SET ${Object.keys(statusData).map((key, index) => `${key} = $${index + 2}`).join(', ')}
+        WHERE vehicle_id = $1
+        RETURNING *
+      `;
+      const updateResult = await pool.query(updateQuery, [
+        statusData.vehicle_id,
+        ...Object.values(statusData)
+      ]);
+      result = { data: updateResult.rows[0], error: null };
     } else {
       // Inserir novo status
-      result = await supabase
-        .from('vehicle_status')
-        .insert({
-          ...statusData,
-          user_id: userId,
-          last_update: statusData.last_update || new Date().toISOString()
-        })
-        .select()
-        .single();
+      const insertData = {
+        ...statusData,
+        user_id: userId,
+        last_update: statusData.last_update || new Date().toISOString()
+      };
+      const insertQuery = `
+        INSERT INTO vehicle_status (${Object.keys(insertData).join(', ')})
+        VALUES (${Object.keys(insertData).map((_, index) => `$${index + 1}`).join(', ')})
+        RETURNING *
+      `;
+      const insertResult = await pool.query(insertQuery, Object.values(insertData));
+      result = { data: insertResult.rows[0], error: null };
     }
     
     // Verificar erro na operação
@@ -237,11 +259,16 @@ export async function POST(request: NextRequest) {
     const vehicleIds = updates.map(update => update.vehicle_id);
     
     // Verificar se todos os veículos pertencem ao usuário
-    const { data: vehicles, error: checkError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .in('id', vehicleIds)
-      .eq('user_id', userId);
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const vehiclesQuery = `
+      SELECT id
+      FROM vehicles
+      WHERE id = ANY($1) AND user_id = $2
+    `;
+    const vehiclesResult = await pool.query(vehiclesQuery, [vehicleIds, userId]);
+    const vehicles = vehiclesResult.rows;
+    const checkError = null;
       
     if (checkError) {
       console.error('Erro ao verificar veículos:', checkError);
@@ -267,13 +294,22 @@ export async function POST(request: NextRequest) {
     }));
     
     // Realizar upsert em lote
-    const { data: results, error: upsertError } = await supabase
-      .from('vehicle_status')
-      .upsert(upsertData, {
-        onConflict: 'vehicle_id',
-        ignoreDuplicates: false
-      })
-      .select('vehicle_id, status, last_update');
+    // TODO: Implementar query SQL direta
+    const upsertPromises = upsertData.map(async (data) => {
+      const upsertQuery = `
+        INSERT INTO vehicle_status (${Object.keys(data).join(', ')})
+        VALUES (${Object.keys(data).map((_, index) => `$${index + 1}`).join(', ')})
+        ON CONFLICT (vehicle_id)
+        DO UPDATE SET
+          ${Object.keys(data).filter(key => key !== 'vehicle_id' && key !== 'user_id').map(key => `${key} = EXCLUDED.${key}`).join(', ')}
+        RETURNING vehicle_id, status, last_update
+      `;
+      return pool.query(upsertQuery, Object.values(data));
+    });
+    
+    const upsertResults = await Promise.all(upsertPromises);
+    const results = upsertResults.map(result => result.rows[0]);
+    const upsertError = null;
       
     if (upsertError) {
       console.error('Erro na atualização em lote:', upsertError);
@@ -291,4 +327,4 @@ export async function POST(request: NextRequest) {
     console.error('Erro ao processar requisição em lote:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
-} 
+}

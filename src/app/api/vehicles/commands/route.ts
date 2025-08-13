@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth/auth-middleware';
+import { db } from '@/lib/database';
+import { commands, vehicles } from '@/lib/schema';
+import { eq, and, desc } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Esquema para validação do comando
@@ -17,18 +19,14 @@ const historyQuerySchema = z.object({
 });
 
 // Função para enviar um comando
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    
     // Verificar autenticação
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Não autorizado. Faça login para continuar.' },
-        { status: 401 }
-      );
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
+    const { user } = authResult;
     
     // Obter e validar dados do corpo da requisição
     const body = await request.json();
@@ -44,14 +42,18 @@ export async function POST(request: Request) {
     const { vehicleId, type } = validationResult.data;
     
     // Verificar se o veículo pertence ao usuário
-    const { data: vehicle, error: vehicleError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('id', vehicleId)
-      .eq('user_id', session.user.id)
-      .single();
+    const vehicle = await db
+      .select({ id: vehicles.id })
+      .from(vehicles)
+      .where(
+        and(
+          eq(vehicles.id, vehicleId),
+          eq(vehicles.userId, user.id)
+        )
+      )
+      .limit(1);
       
-    if (vehicleError || !vehicle) {
+    if (vehicle.length === 0) {
       return NextResponse.json(
         { error: 'Veículo não encontrado ou sem permissão para acessá-lo' },
         { status: 404 }
@@ -59,24 +61,25 @@ export async function POST(request: Request) {
     }
     
     // Inserir o comando no banco de dados
-    const { data: command, error: insertError } = await supabase
-      .from('commands')
-      .insert({
-        vehicle_id: vehicleId,
+    const newCommand = await db
+      .insert(commands)
+      .values({
+        vehicleId,
         type,
         status: 'pending',
-        sent_at: new Date().toISOString(),
+        sentAt: new Date(),
       })
-      .select()
-      .single();
+      .returning();
       
-    if (insertError) {
-      console.error('Erro ao inserir comando:', insertError);
+    if (newCommand.length === 0) {
+      console.error('Erro ao inserir comando');
       return NextResponse.json(
         { error: 'Erro ao processar comando' },
         { status: 500 }
       );
     }
+    
+    const command = newCommand[0];
     
     // Aqui você implementaria a lógica para enviar o comando ao dispositivo
     // Por exemplo, através de uma API de terceiros, MQTT, etc.
@@ -85,16 +88,10 @@ export async function POST(request: Request) {
     // Em uma implementação real, você teria uma confirmação do dispositivo
     
     // Atualizar o status do comando para "sent"
-    const { error: updateError } = await supabase
-      .from('commands')
-      .update({
-        status: 'sent',
-      })
-      .eq('id', command.id);
-      
-    if (updateError) {
-      console.error('Erro ao atualizar status do comando:', updateError);
-    }
+    await db
+      .update(commands)
+      .set({ status: 'sent' })
+      .where(eq(commands.id, command.id));
     
     return NextResponse.json({ 
       message: 'Comando enviado com sucesso',
@@ -102,8 +99,8 @@ export async function POST(request: Request) {
         id: command.id,
         type: command.type,
         status: 'sent',
-        vehicle_id: command.vehicle_id,
-        sent_at: command.sent_at,
+        vehicleId: command.vehicleId,
+        sentAt: command.sentAt,
       }
     });
     
@@ -117,18 +114,14 @@ export async function POST(request: Request) {
 }
 
 // Função para obter histórico de comandos
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    
     // Verificar autenticação
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Não autorizado. Faça login para continuar.' },
-        { status: 401 }
-      );
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
+    const { user } = authResult;
     
     // Obter parâmetros da URL
     const { searchParams } = new URL(request.url);
@@ -153,14 +146,18 @@ export async function GET(request: Request) {
     const { vehicleId: validVehicleId, limit: validLimit, offset: validOffset } = validationResult.data;
     
     // Verificar se o veículo pertence ao usuário
-    const { data: vehicle, error: vehicleError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('id', validVehicleId)
-      .eq('user_id', session.user.id)
-      .single();
+    const vehicle = await db
+      .select({ id: vehicles.id })
+      .from(vehicles)
+      .where(
+        and(
+          eq(vehicles.id, validVehicleId),
+          eq(vehicles.userId, user.id)
+        )
+      )
+      .limit(1);
       
-    if (vehicleError || !vehicle) {
+    if (vehicle.length === 0) {
       return NextResponse.json(
         { error: 'Veículo não encontrado ou sem permissão para acessá-lo' },
         { status: 404 }
@@ -168,25 +165,24 @@ export async function GET(request: Request) {
     }
     
     // Buscar histórico de comandos do veículo
-    const { data: commands, error: commandsError, count } = await supabase
-      .from('commands')
-      .select('*', { count: 'exact' })
-      .eq('vehicle_id', validVehicleId)
-      .order('created_at', { ascending: false })
-      .range(validOffset || 0, (validOffset || 0) + (validLimit || 10) - 1);
-      
-    if (commandsError) {
-      console.error('Erro ao buscar comandos:', commandsError);
-      return NextResponse.json(
-        { error: 'Erro ao buscar histórico de comandos' },
-        { status: 500 }
-      );
-    }
+    const commandsData = await db
+      .select()
+      .from(commands)
+      .where(eq(commands.vehicleId, validVehicleId))
+      .orderBy(desc(commands.createdAt))
+      .limit(validLimit)
+      .offset(validOffset);
+    
+    // Contar total de comandos
+    const totalCommands = await db
+      .select({ count: commands.id })
+      .from(commands)
+      .where(eq(commands.vehicleId, validVehicleId));
     
     return NextResponse.json({
-      commands,
+      commands: commandsData,
       pagination: {
-        total: count,
+        total: totalCommands.length,
         limit: validLimit,
         offset: validOffset
       }
@@ -199,4 +195,4 @@ export async function GET(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

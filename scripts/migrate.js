@@ -6,21 +6,20 @@
  */
 
 require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
+const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
 // Verificar variáveis de ambiente
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  console.error('Erro: As variáveis de ambiente SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY devem estar definidas');
+if (!process.env.DATABASE_URL) {
+  console.error('Erro: A variável de ambiente DATABASE_URL deve estar definida');
   process.exit(1);
 }
 
-// Criar cliente Supabase com a chave de serviço
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Criar cliente PostgreSQL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
+});
 
 // Caminho para o arquivo de migração unificada
 const migrationFilePath = path.resolve(__dirname, '..', 'migrations', 'unified_schema.sql');
@@ -50,14 +49,8 @@ async function executeMigration() {
     const sql = sqlCommands[i] + ';'; // Adiciona o ponto e vírgula de volta
     
     try {
-      const { error } = await supabase.rpc('pg_execute', { query: sql });
-      
-      if (error) {
-        console.warn(`Aviso: Comando ${i+1} falhou: ${error.message.substring(0, 150)}...`);
-        errorCount++;
-      } else {
-        successCount++;
-      }
+      await pool.query(sql);
+      successCount++;
     } catch (error) {
       console.warn(`Aviso: Erro ao executar comando ${i+1}: ${error.message?.substring(0, 150) || error}`);
       errorCount++;
@@ -88,9 +81,12 @@ async function executeMigration() {
   console.log('Verificando tabelas obrigatórias...');
   
   for (const table of requiredTables) {
-    const { error } = await supabase.from(table).select('id').limit(1);
-    if (error && error.message.includes(`relation "${table}" does not exist`)) {
-      missingTables.push(table);
+    try {
+      await pool.query(`SELECT 1 FROM ${table} LIMIT 1`);
+    } catch (error) {
+      if (error.message.includes(`relation "${table}" does not exist`)) {
+        missingTables.push(table);
+      }
     }
   }
   
@@ -104,7 +100,11 @@ async function executeMigration() {
 
 // Executar a migração
 executeMigration()
+  .then(() => {
+    pool.end();
+  })
   .catch(error => {
     console.error('Erro fatal durante a migração:', error);
+    pool.end();
     process.exit(1);
-  }); 
+  });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Tipos para geocercas
@@ -103,40 +103,40 @@ export async function GET(request: NextRequest) {
     const { vehicleId, lat, lng, geofenceId } = queryResult.data;
     
     // Verificar se o veículo pertence ao usuário
-    const { data: vehicle, error: vehicleError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('id', vehicleId)
-      .eq('user_id', userId)
-      .maybeSingle();
-      
-    if (vehicleError) {
-      console.error('Erro ao verificar propriedade do veículo:', vehicleError);
-      return NextResponse.json({ error: 'Erro ao verificar veículo' }, { status: 500 });
-    }
+    const pool = getDbPool();
+    const vehicleQuery = `
+      SELECT id FROM vehicles 
+      WHERE id = $1 AND user_id = $2
+    `;
     
-    if (!vehicle) {
+    const vehicleResult = await pool.query(vehicleQuery, [vehicleId, userId]);
+    
+    if (!vehicleResult || vehicleResult.rows.length === 0) {
       return NextResponse.json({ error: 'Veículo não encontrado ou não pertence ao usuário' }, { status: 404 });
     }
     
-    // Construir consulta base para geocercas do usuário
-    let query = supabase
-      .from('geofences')
-      .select('*')
-      .eq('user_id', userId);
+    // Construir consulta para geocercas do usuário
+    let geofenceQuery = `
+      SELECT * FROM geofences 
+      WHERE user_id = $1
+    `;
+    let params = [userId];
     
     // Se um ID de geocerca for especificado, filtrar apenas por essa geocerca
     if (geofenceId) {
-      query = query.eq('id', geofenceId);
+      geofenceQuery += ' AND id = $2';
+      params.push(geofenceId);
     }
     
     // Executar consulta
-    const { data: geofences, error: geofenceError } = await query;
+    const geofenceResult = await pool.query(geofenceQuery, params);
     
-    if (geofenceError) {
-      console.error('Erro ao buscar geocercas:', geofenceError);
+    if (!geofenceResult) {
+      console.error('Erro ao buscar geocercas');
       return NextResponse.json({ error: 'Erro ao buscar geocercas' }, { status: 500 });
     }
+    
+    const geofences = geofenceResult.rows;
     
     if (!geofences || geofences.length === 0) {
       return NextResponse.json({ 
@@ -164,39 +164,45 @@ export async function GET(request: NextRequest) {
     
     // Registrar a posição atual com informação de geocerca
     if (insideGeofences.length > 0) {
-      await supabase
-        .from('positions')
-        .insert({
-          vehicle_id: vehicleId,
-          lat,
-          lng,
-          timestamp: new Date().toISOString(),
-          inside_geofence: true,
-          geofence_ids: insideGeofences.map(g => g.id)
-        });
+      const insertPositionQuery = `
+        INSERT INTO positions (vehicle_id, lat, lng, timestamp, inside_geofence, geofence_ids)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `;
+      
+      await pool.query(insertPositionQuery, [
+        vehicleId,
+        lat,
+        lng,
+        new Date().toISOString(),
+        true,
+        JSON.stringify(insideGeofences.map(g => g.id))
+      ]);
       
       // Verificar se é necessário disparar alertas
-      const { data: alerts, error: alertError } = await supabase
-        .from('alerts')
-        .select('*')
-        .eq('vehicle_id', vehicleId)
-        .eq('type', 'geofence_entrance')
-        .eq('status', 'active');
+      const alertQuery = `
+        SELECT * FROM alerts 
+        WHERE vehicle_id = $1 AND type = $2 AND status = $3
+      `;
       
-      if (!alertError && alerts && alerts.length > 0) {
+      const alertResult = await pool.query(alertQuery, [vehicleId, 'geofence_entrance', 'active']);
+      
+      if (alertResult && alertResult.rows.length > 0) {
         // Código para disparar notificações de alerta aqui (implementação futura)
         console.log(`Alertas disparados para veículo ${vehicleId} em geocerca`);
       }
     } else {
-      await supabase
-        .from('positions')
-        .insert({
-          vehicle_id: vehicleId,
-          lat,
-          lng,
-          timestamp: new Date().toISOString(),
-          inside_geofence: false
-        });
+      const insertPositionQuery = `
+        INSERT INTO positions (vehicle_id, lat, lng, timestamp, inside_geofence)
+        VALUES ($1, $2, $3, $4, $5)
+      `;
+      
+      await pool.query(insertPositionQuery, [
+        vehicleId,
+        lat,
+        lng,
+        new Date().toISOString(),
+        false
+      ]);
     }
     
     return NextResponse.json({ 
@@ -213,4 +219,4 @@ export async function GET(request: NextRequest) {
     console.error('Erro ao verificar geocercas:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
-} 
+}

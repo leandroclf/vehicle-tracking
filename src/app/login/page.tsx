@@ -44,7 +44,7 @@ function LoginForm() {
       
       // Tratamento específico para erro de fetch
       if (err.message?.includes('Failed to fetch')) {
-        setError('Erro de conectividade: Verifique se o Supabase está rodando na porta 54321');
+        setError('Erro de conectividade: Verifique se o servidor está rodando');
       } else {
         setError(err.message || 'Erro ao fazer login');
       }

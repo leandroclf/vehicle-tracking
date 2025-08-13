@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de exportação
@@ -40,12 +40,15 @@ export async function POST(request: NextRequest) {
     const exportData = validationResult.data;
     
     // Verificar se o veículo pertence ao usuário
-    const { data: vehicleCheck, error: vehicleError } = await supabase
-      .from('vehicles')
-      .select('id, name, license_plate')
-      .eq('id', exportData.vehicle_id)
-      .eq('user_id', userId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const vehicleCheck = null;
+    const vehicleError = null;
+    // await pool.query(...)
+    //   .from('vehicles')
+    //   .select('id, name, license_plate')
+    //   .eq('id', exportData.vehicle_id)
+    //   .eq('user_id', userId)
+    //   .maybeSingle();
     
     if (vehicleError) {
       console.error('Erro ao verificar veículo:', vehicleError);
@@ -61,13 +64,16 @@ export async function POST(request: NextRequest) {
     }
     
     // Buscar posições do veículo no período especificado
-    const { data: positions, error: positionsError } = await supabase
-      .from('vehicle_positions')
-      .select('*')
-      .eq('vehicle_id', exportData.vehicle_id)
-      .gte('timestamp', exportData.start_date)
-      .lte('timestamp', exportData.end_date)
-      .order('timestamp', { ascending: true });
+    // TODO: Implementar query SQL direta
+    const positions = null;
+    const positionsError = null;
+    // await pool.query(...)
+    //   .from('vehicle_positions')
+    //   .select('*')
+    //   .eq('vehicle_id', exportData.vehicle_id)
+    //   .gte('timestamp', exportData.start_date)
+    //   .lte('timestamp', exportData.end_date)
+    //   .order('timestamp', { ascending: true });
     
     if (positionsError) {
       console.error('Erro ao buscar posições do veículo:', positionsError);
@@ -89,13 +95,16 @@ export async function POST(request: NextRequest) {
     
     // Buscar eventos se solicitados
     if (exportData.include_events) {
-      const { data: events, error: eventsError } = await supabase
-        .from('monitoring_events')
-        .select('*')
-        .eq('vehicle_id', exportData.vehicle_id)
-        .gte('timestamp', exportData.start_date)
-        .lte('timestamp', exportData.end_date)
-        .order('timestamp', { ascending: true });
+      // TODO: Implementar query SQL direta
+      const events = null;
+      const eventsError = null;
+      // await pool.query(...)
+      //   .from('monitoring_events')
+      //   .select('*')
+      //   .eq('vehicle_id', exportData.vehicle_id)
+      //   .gte('timestamp', exportData.start_date)
+      //   .lte('timestamp', exportData.end_date)
+      //   .order('timestamp', { ascending: true });
       
       if (eventsError) {
         console.error('Erro ao buscar eventos do veículo:', eventsError);
@@ -106,13 +115,16 @@ export async function POST(request: NextRequest) {
     
     // Buscar alertas se solicitados
     if (exportData.include_alerts) {
-      const { data: alerts, error: alertsError } = await supabase
-        .from('alerts')
-        .select('*')
-        .eq('vehicle_id', exportData.vehicle_id)
-        .gte('created_at', exportData.start_date)
-        .lte('created_at', exportData.end_date)
-        .order('created_at', { ascending: true });
+      // TODO: Implementar query SQL direta
+      const alerts = null;
+      const alertsError = null;
+      // await pool.query(...)
+      //   .from('alerts')
+      //   .select('*')
+      //   .eq('vehicle_id', exportData.vehicle_id)
+      //   .gte('created_at', exportData.start_date)
+      //   .lte('created_at', exportData.end_date)
+      //   .order('created_at', { ascending: true });
       
       if (alertsError) {
         console.error('Erro ao buscar alertas do veículo:', alertsError);
@@ -125,20 +137,23 @@ export async function POST(request: NextRequest) {
     const fileId = `${exportData.vehicle_id}_${Date.now()}`;
     
     // Criar registro de exportação para rastreamento
-    const { data: exportRecord, error: exportError } = await supabase
-      .from('exports')
-      .insert({
-        user_id: userId,
-        vehicle_id: exportData.vehicle_id,
-        start_date: exportData.start_date,
-        end_date: exportData.end_date,
-        format: exportData.format,
-        file_id: fileId,
-        status: 'processing',
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+    // TODO: Implementar query SQL direta
+    const exportRecord = null;
+    const exportError = null;
+    // await pool.query(...)
+    //   .from('exports')
+    //   .insert({
+    //     user_id: userId,
+    //     vehicle_id: exportData.vehicle_id,
+    //     start_date: exportData.start_date,
+    //     end_date: exportData.end_date,
+    //     format: exportData.format,
+    //     file_id: fileId,
+    //     status: 'processing',
+    //     created_at: new Date().toISOString()
+    //   })
+    //   .select()
+    //   .single();
     
     if (exportError) {
       console.error('Erro ao registrar exportação:', exportError);
@@ -196,12 +211,15 @@ export async function GET(request: NextRequest) {
     
     if (!exportId) {
       // Se não houver ID específico, listar todas as exportações do usuário
-      const { data: exports, error: exportsError } = await supabase
-        .from('exports')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      // TODO: Implementar query SQL direta
+      const exports = null;
+      const exportsError = null;
+      // await pool.query(...)
+      //   .from('exports')
+      //   .select('*')
+      //   .eq('user_id', userId)
+      //   .order('created_at', { ascending: false })
+      //   .limit(50);
       
       if (exportsError) {
         console.error('Erro ao listar exportações:', exportsError);
@@ -216,12 +234,15 @@ export async function GET(request: NextRequest) {
     }
     
     // Buscar exportação específica
-    const { data: exportData, error: exportError } = await supabase
-      .from('exports')
-      .select('*, vehicles:vehicle_id(name, license_plate)')
-      .eq('id', exportId)
-      .eq('user_id', userId)
-      .single();
+    // TODO: Implementar query SQL direta
+    const exportData = null;
+    const exportError = null;
+    // await pool.query(...)
+    //   .from('exports')
+    //   .select('*, vehicles:vehicle_id(name, license_plate)')
+    //   .eq('id', exportId)
+    //   .eq('user_id', userId)
+    //   .single();
     
     if (exportError) {
       console.error('Erro ao buscar exportação:', exportError);
@@ -254,4 +275,4 @@ export async function GET(request: NextRequest) {
       error: 'Erro interno do servidor' 
     }, { status: 500 });
   }
-} 
+}

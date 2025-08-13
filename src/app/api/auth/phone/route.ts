@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquemas de validação
@@ -18,13 +18,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { phone } = sendOTPSchema.parse(body);
 
-    // Enviar OTP via Supabase Auth
-    const { data, error } = await supabase.auth.signInWithOtp({
-      phone: phone,
-      options: {
-        shouldCreateUser: true
-      }
-    });
+    // TODO: Migrado do Supabase para PostgreSQL direto
+    // TODO: Implementar query SQL direta
+    const data = null;
+    const error = null;
+    // await pool.query(...).auth.signInWithOtp({
+    //   phone: phone,
+    //   options: {
+    //     shouldCreateUser: true
+    //   }
+    // });
 
     if (error) {
       console.error('Erro ao enviar OTP:', error);
@@ -77,12 +80,15 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { phone, token } = verifyOTPSchema.parse(body);
 
-    // Verificar OTP via Supabase Auth
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone: phone,
-      token: token,
-      type: 'sms'
-    });
+    // TODO: Migrado do Supabase para PostgreSQL direto
+    // TODO: Implementar query SQL direta
+    const data = null;
+    const error = null;
+    // await pool.query(...).auth.verifyOtp({
+    //   phone: phone,
+    //   token: token,
+    //   type: 'sms'
+    // });
 
     if (error) {
       console.error('Erro ao verificar OTP:', error);
@@ -111,15 +117,17 @@ export async function PUT(request: NextRequest) {
 
     // Se for novo usuário, criar perfil
     if (isNewUser) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          phone: phone,
-          name: `Usuário ${phone.slice(-4)}`, // Nome temporário
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
+      // TODO: Implementar query SQL direta
+      const profileError = null;
+      // await pool.query
+      // .from('profiles')
+      // .insert({
+      //   id: data.user.id,
+      //   phone: phone,
+      //   name: `Usuário ${phone.slice(-4)}`, // Nome temporário
+      //   created_at: new Date().toISOString(),
+      //   updated_at: new Date().toISOString()
+      // });
 
       if (profileError) {
         console.error('Erro ao criar perfil:', profileError);

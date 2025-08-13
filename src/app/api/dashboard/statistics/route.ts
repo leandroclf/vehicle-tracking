@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
@@ -41,10 +41,14 @@ export async function GET(request: NextRequest) {
     const startDateISO = startDate.toISOString();
     
     // Consultar contagem total de veículos
-    const { data: vehicles, error: vehiclesError, count: vehicleCount } = await supabase
-      .from('vehicles')
-      .select('*', { count: 'exact' })
-      .eq('user_id', userId);
+    // TODO: Implementar query SQL direta
+    const vehicles = null;
+    const vehiclesError = null;
+    const vehicleCount = 0;
+    // const { data: vehicles, error: vehiclesError, count: vehicleCount } = await pool.query
+    //   .from('vehicles')
+    //   .select('*', { count: 'exact' })
+    //   .eq('user_id', userId);
       
     if (vehiclesError) {
       console.error('Erro ao buscar veículos:', vehiclesError);
@@ -52,12 +56,16 @@ export async function GET(request: NextRequest) {
     }
     
     // Consultar veículos ativos (com posição atualizada recentemente)
-    const { data: activeVehicles, error: activeError, count: activeCount } = await supabase
-      .from('vehicles')
-      .select('*', { count: 'exact' })
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .gt('updated_at', startDateISO);
+    // TODO: Implementar query SQL direta
+    const activeVehicles = null;
+    const activeError = null;
+    const activeCount = 0;
+    // const { data: activeVehicles, error: activeError, count: activeCount } = await pool.query
+    //   .from('vehicles')
+    //   .select('*', { count: 'exact' })
+    //   .eq('user_id', userId)
+    //   .eq('status', 'active')
+    //   .gt('updated_at', startDateISO);
       
     if (activeError) {
       console.error('Erro ao buscar veículos ativos:', activeError);
@@ -65,11 +73,15 @@ export async function GET(request: NextRequest) {
     }
     
     // Consultar alertas no período
-    const { data: alerts, error: alertsError, count: alertsCount } = await supabase
-      .from('alerts')
-      .select('*', { count: 'exact' })
-      .eq('user_id', userId)
-      .gt('created_at', startDateISO);
+    // TODO: Implementar query SQL direta
+    const alerts = null;
+    const alertsError = null;
+    const alertsCount = 0;
+    // const { data: alerts, error: alertsError, count: alertsCount } = await pool.query
+    //   .from('alerts')
+    //   .select('*', { count: 'exact' })
+    //   .eq('user_id', userId)
+    //   .gt('created_at', startDateISO);
       
     if (alertsError) {
       console.error('Erro ao buscar alertas:', alertsError);
@@ -86,11 +98,14 @@ export async function GET(request: NextRequest) {
     
     // Se houver veículos, buscar estatísticas de viagens
     if (vehicleIds.length > 0) {
-      const { data: trips, error: tripsError } = await supabase
-        .from('trips')
-        .select('distance, fuel_used')
-        .in('vehicle_id', vehicleIds)
-        .gt('end_time', startDateISO);
+      // TODO: Implementar query SQL direta
+      const trips = null;
+      const tripsError = null;
+      // await pool.query(...)
+      //   .from('trips')
+      //   .select('distance, fuel_used')
+      //   .in('vehicle_id', vehicleIds)
+      //   .gt('end_time', startDateISO);
         
       if (tripsError) {
         console.error('Erro ao buscar viagens:', tripsError);
@@ -115,4 +130,4 @@ export async function GET(request: NextRequest) {
     console.error('Erro ao buscar estatísticas do dashboard:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
-} 
+}

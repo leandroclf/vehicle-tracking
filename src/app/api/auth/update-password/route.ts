@@ -1,74 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandler } from '@/lib/api/route-handler';
-import { verifyAuth } from '@/lib/auth/verify-auth';
-import { supabase } from '@/lib/supabase';
+import { requireAuth } from '@/lib/auth/auth-middleware';
+import { AuthService } from '@/lib/auth/auth-service';
 
-interface UpdatePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
-}
-
-class ValidationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'ValidationError';
-  }
-}
-
-async function updatePasswordHandler(req: NextRequest): Promise<NextResponse> {
+export async function POST(request: NextRequest) {
   try {
-    // Verifica autenticação
-    const authResult = await verifyAuth(req);
-    if (!authResult.authenticated) {
+    // Verificar autenticação
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
+    const { user } = authResult;
+    const { currentPassword, newPassword } = await request.json();
+
+    if (!currentPassword || !newPassword) {
       return NextResponse.json(
-        { error: authResult.error || 'Não autorizado' },
-        { status: 401 }
-      );
-    }
-
-    // Valida o corpo da requisição
-    const body = await req.json() as UpdatePasswordRequest;
-
-    if (!body.currentPassword || !body.newPassword) {
-      throw new ValidationError('Senha atual e nova senha são obrigatórias');
-    }
-
-    if (body.currentPassword.length < 8 || body.newPassword.length < 8) {
-      throw new ValidationError('As senhas devem ter no mínimo 8 caracteres');
-    }
-
-    // Atualiza a senha no Supabase
-    const { error } = await supabase.auth.updateUser({
-      password: body.newPassword
-    });
-
-    if (error) {
-      console.error('Erro ao atualizar senha:', error);
-      return NextResponse.json(
-        { error: 'Erro ao atualizar senha' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json(
-      { message: 'Senha atualizada com sucesso' },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error('Erro no handler de atualização de senha:', error);
-
-    if (error instanceof ValidationError) {
-      return NextResponse.json(
-        { error: error.message },
+        { error: 'Senha atual e nova senha são obrigatórias' },
         { status: 400 }
       );
     }
 
+    // Verificar senha atual
+    try {
+      await AuthService.signIn(user.email, currentPassword);
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Senha atual incorreta' },
+        { status: 401 }
+      );
+    }
+
+    // Atualizar senha
+    await AuthService.updatePassword(user.email, newPassword);
+
+    return NextResponse.json({
+      message: 'Senha atualizada com sucesso',
+    });
+  } catch (error: any) {
+    console.error('Erro ao atualizar senha:', error);
     return NextResponse.json(
-      { error: 'Erro ao processar requisição' },
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     );
   }
 }
-
-export const POST = createRouteHandler(['POST'], updatePasswordHandler); 

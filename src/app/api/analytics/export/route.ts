@@ -4,7 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { requireAuth } from '@/lib/auth/auth-middleware';
+import { db } from '@/lib/database';
+import { vehicles, gpsPositions, alerts } from '@/lib/schema';
+import { eq, and, gte, lte } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { analyticsService } from '@/lib/analytics/analytics-service';
 import { z } from 'zod';
@@ -31,8 +34,9 @@ const exportSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // TODO: Implementar autenticação JWT
+    const user = null;
+    const authError = null;
 
     if (authError || !user) {
       return NextResponse.json(
@@ -90,8 +94,9 @@ export async function GET(
   { params }: { params: { exportId: string } }
 ) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // TODO: Implementar autenticação JWT
+    const user = null;
+    const authError = null;
 
     if (authError || !user) {
       return NextResponse.json(
@@ -103,12 +108,15 @@ export async function GET(
     const { exportId } = params;
 
     // Verificar se o export existe e pertence ao usuário
-    const { data: exportRecord, error } = await supabase
-      .from('data_exports')
-      .select('*')
-      .eq('id', exportId)
-      .eq('user_id', user.id)
-      .single();
+    // TODO: Implementar query SQL direta
+    const exportRecord = null;
+    const error = null;
+    // await pool.query(...)
+    // .from('data_exports')
+    // .select('*')
+    // .eq('id', exportId)
+    // .eq('user_id', user.id)
+    // .single();
 
     if (error || !exportRecord) {
       return NextResponse.json(

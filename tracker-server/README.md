@@ -1,27 +1,26 @@
 # Servidor de Rastreamento Yukz
 
-Este servidor é responsável pela comunicação com dispositivos de rastreamento GPS e armazenamento dos dados no Supabase.
+Este servidor é responsável pela comunicação com dispositivos de rastreamento GPS e armazenamento dos dados no PostgreSQL.
 
 ## Recursos
 
 - Suporte a conexões TCP e UDP
 - Compatível com o protocolo Teltonika Codec8/Codec8 Extended
 - Processamento de alertas de velocidade, geocercas e parada
-- Reconexão automática ao Supabase em caso de falhas
+- Reconexão automática ao banco de dados em caso de falhas
 - Logging avançado com Winston
 
 ## Requisitos
 
 - Node.js v14+
-- Conta Supabase configurada
+- Banco de dados PostgreSQL configurado
 
 ## Variáveis de Ambiente
 
 Configure as seguintes variáveis no arquivo `.env` na raiz do projeto:
 
 ```
-SUPABASE_URL=sua-url-do-supabase
-SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
+DATABASE_URL=postgresql://usuario:senha@localhost:5432/vehicle_tracking
 TRACKER_TCP_PORT=5027
 TRACKER_UDP_PORT=5028
 LOG_LEVEL=info
@@ -69,4 +68,4 @@ Os logs são armazenados em:
 - Console (para desenvolvimento)
 - Arquivo `tracker-server.log` (para produção)
 
-Você pode ajustar o nível de log usando a variável de ambiente `LOG_LEVEL` (valores: error, warn, info, debug). 
+Você pode ajustar o nível de log usando a variável de ambiente `LOG_LEVEL` (valores: error, warn, info, debug).

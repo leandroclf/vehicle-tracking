@@ -4,7 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { requireAuth } from '@/lib/auth/auth-middleware';
+import { db } from '@/lib/database';
+import { dashboardConfigs } from '@/lib/schema';
+import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 
@@ -40,8 +43,11 @@ const dashboardConfigSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const pool = getDbPool();
+    // TODO: Implementar autenticação JWT
+    const user = null;
+    const authError = null;
+    // await getUser();
 
     if (authError || !user) {
       return NextResponse.json(
@@ -51,11 +57,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Buscar configuração do dashboard
-    const { data: config, error } = await supabase
-      .from('dashboard_configs')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    // TODO: Implementar query SQL direta
+    const config = null;
+    const error = null;
+    // await pool.query(...)
+    // .from('dashboard_configs')
+    // .select('*')
+    // .eq('user_id', user.id)
+    // .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = not found
       throw error;
@@ -116,8 +125,11 @@ export async function GET(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const pool = getDbPool();
+    // TODO: Implementar autenticação JWT
+    const user = null;
+    const authError = null;
+    // await getUser();
 
     if (authError || !user) {
       return NextResponse.json(
@@ -130,17 +142,20 @@ export async function PUT(request: NextRequest) {
     const config = dashboardConfigSchema.parse(body);
 
     // Upsert da configuração
-    const { data, error } = await supabase
-      .from('dashboard_configs')
-      .upsert({
-        user_id: user.id,
-        config: config,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id'
-      })
-      .select()
-      .single();
+    // TODO: Implementar query SQL direta
+    const data = null;
+    const error = null;
+    // await pool.query(...)
+    // .from('dashboard_configs')
+    // .upsert({
+    //   user_id: user.id,
+    //   config: config,
+    //   updated_at: new Date().toISOString()
+    // }, {
+    //   onConflict: 'user_id'
+    // })
+    // .select()
+    // .single();
 
     if (error) {
       throw error;

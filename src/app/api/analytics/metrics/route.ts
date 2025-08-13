@@ -4,7 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { requireAuth } from '@/lib/auth/auth-middleware';
+import { db } from '@/lib/database';
+import { vehicles, gpsPositions, alerts } from '@/lib/schema';
+import { eq, and, gte, lte, count } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { analyticsService } from '@/lib/analytics/analytics-service';
 import { z } from 'zod';
@@ -44,8 +47,9 @@ const dashboardConfigSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // TODO: Implementar autenticação JWT
+    const user = null;
+    const authError = null;
 
     if (authError || !user) {
       return NextResponse.json(
@@ -112,8 +116,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // TODO: Implementar autenticação JWT
+    const user = null;
+    const authError = null;
 
     if (authError || !user) {
       return NextResponse.json(

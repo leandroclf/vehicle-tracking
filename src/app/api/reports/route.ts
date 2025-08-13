@@ -1,5 +1,5 @@
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getConnection } from '@/lib/database';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Definir interface de tipos para a requisição
@@ -34,19 +34,27 @@ export async function POST(request: NextRequest) {
     }
     
     // Criar o registro do relatório
-    const { data: report, error: reportError } = await supabase
-      .from('reports')
-      .insert({
-        user_id: authResult.user.id,
-        report_type: reportType,
-        start_date: startDate,
-        end_date: endDate,
-        vehicle_ids: vehicleIds,
-        format: format,
-        status: 'processing'
-      })
-      .select()
-      .single();
+    // TODO: Implementar query SQL direta
+    const client = await getConnection();
+    const reportQuery = `
+      INSERT INTO reports (
+        user_id, report_type, start_date, end_date, vehicle_ids, format, status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `;
+    const reportResult = await client.query(reportQuery, [
+      authResult.user.id,
+      reportType,
+      startDate,
+      endDate,
+      JSON.stringify(vehicleIds),
+      format,
+      'processing',
+      new Date()
+    ]);
+    client.release();
+    const report = reportResult.rows[0];
+    const reportError = null;
       
     if (reportError) {
       console.error('Erro ao criar relatório:', reportError);
@@ -61,13 +69,18 @@ export async function POST(request: NextRequest) {
     
     // Simular processamento (em produção, isso seria feito em background)
     setTimeout(async () => {
-      await supabase
-        .from('reports')
-        .update({ 
-          status: 'completed',
-          file_url: `/reports/${reportType}_${report.id}.pdf` // URL fictícia
-        })
-        .eq('id', report.id);
+      // TODO: Implementar query SQL direta
+      const updateQuery = `
+        UPDATE reports
+        SET status = 'completed', file_url = $1
+        WHERE id = $2
+      `;
+      const updateClient = await getConnection();
+      await updateClient.query(updateQuery, [
+        `/reports/${reportType}_${report.id}.pdf`,
+        report.id
+      ]);
+      updateClient.release();
     }, 2000);
     
     return NextResponse.json({
@@ -96,12 +109,18 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
     
     // Buscar relatórios do usuário
-    const { data: reports, error: reportsError } = await supabase
-      .from('reports')
-      .select('*')
-      .eq('user_id', authResult.user.id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    // TODO: Implementar query SQL direta
+    const client = await getConnection();
+    const reportsQuery = `
+      SELECT *
+      FROM reports
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    const reportsResult = await client.query(reportsQuery, [authResult.user.id, limit, offset]);
+    const reports = reportsResult.rows;
+    const reportsError = null;
       
     if (reportsError) {
       console.error('Erro ao buscar relatórios:', reportsError);
@@ -112,10 +131,15 @@ export async function GET(request: NextRequest) {
     }
     
     // Contar total para paginação
-    const { count, error: countError } = await supabase
-      .from('reports')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', authResult.user.id);
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM reports
+      WHERE user_id = $1
+    `;
+    const countResult = await client.query(countQuery, [authResult.user.id]);
+    client.release();
+    const count = parseInt(countResult.rows[0]?.total || '0');
+    const countError = null;
       
     if (countError) {
       console.error('Erro ao contar relatórios:', countError);
@@ -137,4 +161,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

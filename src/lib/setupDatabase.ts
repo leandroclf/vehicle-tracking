@@ -13,8 +13,8 @@ export async function setupDatabase() {
     }
     
     // Verifica se o ambiente está configurado corretamente
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-      console.error('Variáveis de ambiente do Supabase não configuradas');
+    if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
+      console.error('Variáveis de ambiente do banco de dados não configuradas');
       return;
     }
     
@@ -25,4 +25,4 @@ export async function setupDatabase() {
   } catch (error) {
     console.error('Erro ao configurar banco de dados:', error);
   }
-} 
+}

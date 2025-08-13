@@ -2,8 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
-import { useAlertsSubscription, useVehiclesSubscription, useGeofencesSubscription } from '@/lib/hooks/useRealtimeSubscription';
 import RealtimeNotifications from './RealtimeNotifications';
 
 // Tipos para as notificações
@@ -115,10 +113,53 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     setNotifications(prev => [notification, ...prev]);
   }, []);
 
-  // Usar os hooks de subscription com callbacks estáveis
-  useAlertsSubscription(handleNewAlert, 'INSERT', !!user);
-  useVehiclesSubscription(handleVehicleUpdate, 'UPDATE', !!user);
-  useGeofencesSubscription(handleGeofenceUpdate, '*', !!user);
+  // Configurar WebSocket para receber atualizações em tempo real
+  useEffect(() => {
+    if (!user) return;
+
+    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001'}/updates?userId=${user.id}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      console.log('WebSocket conectado para atualizações');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        switch (data.type) {
+          case 'alert':
+            if (data.event === 'INSERT') {
+              handleNewAlert(data.payload);
+            }
+            break;
+          case 'vehicle':
+            if (data.event === 'UPDATE') {
+              handleVehicleUpdate(data.payload);
+            }
+            break;
+          case 'geofence':
+            handleGeofenceUpdate(data.payload);
+            break;
+        }
+      } catch (error) {
+        console.error('Erro ao processar mensagem WebSocket:', error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('Erro no WebSocket:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket desconectado');
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [user, handleNewAlert, handleVehicleUpdate, handleGeofenceUpdate]);
 
   // Carregar notificações existentes
   useEffect(() => {
@@ -126,27 +167,16 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
 
     const fetchNotifications = async () => {
       try {
-        // Buscar notificações da tabela notifications
-        const { data: notificationsData, error: notificationsError } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('timestamp', { ascending: false });
+        // Buscar notificações da API
+        const notificationsResponse = await fetch(`/api/notifications?userId=${user.id}`);
+        const notificationsData = notificationsResponse.ok ? await notificationsResponse.json() : [];
 
-        if (notificationsError) throw notificationsError;
-
-        // Buscar alertas não lidos
-        const { data: alertsData, error: alertsError } = await supabase
-          .from('alerts')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('read', false)
-          .order('timestamp', { ascending: false });
-
-        if (alertsError) throw alertsError;
+        // Buscar alertas não lidos da API
+        const alertsResponse = await fetch(`/api/alerts?userId=${user.id}&read=false`);
+        const alertsData = alertsResponse.ok ? await alertsResponse.json() : [];
 
         // Converter alertas para o formato de notificação
-        const alertNotifications = alertsData?.map(alert => ({
+        const alertNotifications = alertsData?.map((alert: any) => ({
           id: alert.id,
           type: 'alert' as NotificationType,
           title: 'Alerta',
@@ -176,20 +206,22 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     try {
       if (!userIdRef.current) return;
       
-      // Verificar se é uma notificação do tipo alerta (que está na tabela alerts)
+      // Verificar se é uma notificação do tipo alerta
       const notification = notifications.find(n => n.id === id);
       if (!notification) return;
 
-      if (notification.type === 'alert') {
-        await supabase
-          .from('alerts')
-          .update({ read: true })
-          .eq('id', id);
-      } else {
-        await supabase
-          .from('notifications')
-          .update({ read: true })
-          .eq('id', id);
+      const endpoint = notification.type === 'alert' ? '/api/alerts' : '/api/notifications';
+      
+      const response = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, read: true }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ao marcar como lida: ${response.statusText}`);
       }
 
       // Atualizar estado local
@@ -207,18 +239,26 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
       if (!userIdRef.current) return;
 
       // Marcar todos os alertas como lidos
-      await supabase
-        .from('alerts')
-        .update({ read: true })
-        .eq('user_id', userIdRef.current)
-        .eq('read', false);
+      const alertsResponse = await fetch('/api/alerts/read-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: userIdRef.current }),
+      });
 
       // Marcar todas as notificações como lidas
-      await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', userIdRef.current)
-        .eq('read', false);
+      const notificationsResponse = await fetch('/api/notifications/read-all', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: userIdRef.current }),
+      });
+
+      if (!alertsResponse.ok || !notificationsResponse.ok) {
+        throw new Error('Erro ao marcar todas como lidas');
+      }
 
       // Atualizar estado local
       setNotifications(prev => 

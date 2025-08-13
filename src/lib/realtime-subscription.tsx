@@ -9,8 +9,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { createClient, RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { Database } from '../types/database.types';
+import { WebSocketManager } from './realtime/websocket-client';
+import { RealtimeEvent as WSRealtimeEvent } from './realtime/websocket-client';
 
 // Tipos de entidades que podem ser monitoradas em tempo real
 export type RealtimeEntity = 'vehicles' | 'drivers' | 'geofences' | 'alerts' | 'reports' | 'notifications';
@@ -31,13 +31,12 @@ export interface RealtimeSubscriptionResult<T> {
   data: T[];
   loading: boolean;
   error: Error | null;
-  lastEvent: RealtimePostgresChangesPayload<T> | null;
+  lastEvent: WSRealtimeEvent<T> | null;
 }
 
 /**
  * Hook para assinar atualizações em tempo real de uma entidade
  * 
- * @param supabaseClient Cliente Supabase inicializado
  * @param config Configuração da assinatura
  * @param initialData Dados iniciais (opcional)
  * @returns Objeto com dados atualizados e estado da assinatura
@@ -46,7 +45,7 @@ export interface RealtimeSubscriptionResult<T> {
 // Esta versão antiga foi removida para evitar conflitos e uso incorreto.
 
 // O componente RealtimeSubscriptionManager foi removido.
-// A lógica de subscrição agora deve ser gerenciada pelo hook useSupabaseRealtime
+// A lógica de subscrição agora deve ser gerenciada pelo hook useWebSocketRealtime
 // diretamente nos componentes que necessitam de dados em tempo real ou através de um provedor de contexto customizado.
 
 /**
@@ -57,7 +56,7 @@ export interface RealtimeSubscriptionResult<T> {
  */
 export function useRealtimeGlobalEvent<T>(
   eventType: 'realtime-notification' | 'realtime-vehicle' | 'realtime-alert',
-  callback: (payload: RealtimePostgresChangesPayload<T>) => void
+  callback: (payload: WSRealtimeEvent<T>) => void
 ) {
   useEffect(() => {
     const handleEvent = (event: Event) => {
@@ -79,11 +78,7 @@ export function useRealtimeGlobalEvent<T>(
  * Este componente pode ser usado em qualquer página que precise de
  * atualizações em tempo real, como o dashboard, mapa, etc.
  */
-export function RealtimeUpdater({
-  supabaseClient
-}: {
-  supabaseClient: ReturnType<typeof createClient<Database>>;
-}) {
+export function RealtimeUpdater() {
   // Escutar eventos globais de notificações
   useRealtimeGlobalEvent('realtime-notification', (payload) => {
     // Atualizar contador de notificações ou exibir toast

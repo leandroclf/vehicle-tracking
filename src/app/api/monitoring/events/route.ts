@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
@@ -61,15 +61,17 @@ export async function GET(request: NextRequest) {
     const { vehicle_id, type, from, to, limit, offset, sort } = queryResult.data;
     
     // Construir consulta base
-    let query = supabase
-      .from('monitoring_events')
-      .select(`
-        *,
-        vehicles:vehicle_id (name, license_plate)
-      `)
-      .eq('user_id', userId)
-      .order('timestamp', { ascending: sort === 'asc' })
-      .range(offset, offset + limit - 1);
+    // TODO: Implementar query SQL direta
+    let query = null;
+    // pool.query
+    // .from('monitoring_events')
+    // .select(`
+    //   *,
+    //   vehicles:vehicle_id (name, license_plate)
+    // `)
+    // .eq('user_id', userId)
+    // .order('timestamp', { ascending: sort === 'asc' })
+    // .range(offset, offset + limit - 1);
     
     // Aplicar filtros adicionais se fornecidos
     if (vehicle_id) {
@@ -128,4 +130,4 @@ export async function GET(request: NextRequest) {
       error: 'Erro interno do servidor' 
     }, { status: 500 });
   }
-} 
+}

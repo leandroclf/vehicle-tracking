@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para atribuição múltipla de veículos a um motorista
@@ -67,7 +67,7 @@ interface Assignment {
   vehicles?: Vehicle;
 }
 
-// Type para resposta do Supabase para usar em type cast
+// TODO: Migrado do Supabase para PostgreSQL direto
 type SupabaseAssignment = {
   id: string;
   driver_id: string;
@@ -144,19 +144,20 @@ export async function GET(request: NextRequest) {
     }
     
     // Construir consulta base
-    let query = supabase
-      .from('driver_vehicle_assignments')
-      .select(`
-        id,
-        driver_id,
-        vehicle_id,
-        start_date,
-        end_date,
-        is_primary,
-        created_at,
-        drivers:driver_id (id, name, license_number),
-        vehicles:vehicle_id (id, name, license_plate)
-      `);
+    // TODO: Implementar query SQL direta
+    let query = null; // pool.query
+    //   .from('driver_vehicle_assignments')
+    //   .select(`
+    //     id,
+    //     driver_id,
+    //     vehicle_id,
+    //     start_date,
+    //     end_date,
+    //     is_primary,
+    //     created_at,
+    //     drivers:driver_id (id, name, license_number),
+    //     vehicles:vehicle_id (id, name, license_plate)
+    //   `);
     
     // Aplicar filtros
     if (driverId) {
@@ -169,12 +170,15 @@ export async function GET(request: NextRequest) {
     
     // Verificar se os veículos e motoristas pertencem ao usuário
     if (driverId) {
-      const { data: driverCheck, error: driverError } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('id', driverId)
-        .eq('user_id', userId)
-        .maybeSingle();
+      // TODO: Implementar query SQL direta
+      const driverCheck = null;
+      const driverError = null;
+      // await pool.query(...)
+      //   .from('drivers')
+      //   .select('id')
+      //   .eq('id', driverId)
+      //   .eq('user_id', userId)
+      //   .maybeSingle();
         
       if (driverError || !driverCheck) {
         return errorResponse('Motorista não encontrado ou não pertence ao usuário', undefined, 404);
@@ -182,12 +186,15 @@ export async function GET(request: NextRequest) {
     }
     
     if (vehicleId) {
-      const { data: vehicleCheck, error: vehicleError } = await supabase
-        .from('vehicles')
-        .select('id')
-        .eq('id', vehicleId)
-        .eq('user_id', userId)
-        .maybeSingle();
+      // TODO: Implementar query SQL direta
+      const vehicleCheck = null;
+      const vehicleError = null;
+      // await pool.query(...)
+      //   .from('vehicles')
+      //   .select('id')
+      //   .eq('id', vehicleId)
+      //   .eq('user_id', userId)
+      //   .maybeSingle();
         
       if (vehicleError || !vehicleCheck) {
         return errorResponse('Veículo não encontrado ou não pertence ao usuário', undefined, 404);
@@ -271,23 +278,29 @@ export async function POST(request: NextRequest) {
       const { driver_id, vehicle_ids } = bulkResult.data;
       
       // Verificar se o motorista pertence ao usuário
-      const { data: driverCheck, error: driverError } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('id', driver_id)
-        .eq('user_id', userId)
-        .maybeSingle();
+      // TODO: Implementar query SQL direta
+      const driverCheck = null;
+      const driverError = null;
+      // await pool.query(...)
+      //   .from('drivers')
+      //   .select('id')
+      //   .eq('id', driver_id)
+      //   .eq('user_id', userId)
+      //   .maybeSingle();
       
       if (driverError || !driverCheck) {
         return errorResponse('Motorista não encontrado ou não pertence ao usuário', undefined, 404);
       }
       
       // Verificar se todos os veículos pertencem ao usuário
-      const { data: vehiclesCheck, error: vehiclesError } = await supabase
-        .from('vehicles')
-        .select('id')
-        .in('id', vehicle_ids)
-        .eq('user_id', userId);
+      // TODO: Implementar query SQL direta
+      const vehiclesCheck = null;
+      const vehiclesError = null;
+      // await pool.query(...)
+      //   .from('vehicles')
+      //   .select('id')
+      //   .in('id', vehicle_ids)
+      //   .eq('user_id', userId);
       
       if (vehiclesError) {
         console.error('Erro ao verificar veículos:', vehiclesError);
@@ -307,10 +320,12 @@ export async function POST(request: NextRequest) {
       }
       
       // Primeiro, remover todas as atribuições existentes deste motorista
-      const { error: deleteError } = await supabase
-        .from('driver_vehicle_assignments')
-        .delete()
-        .eq('driver_id', driver_id);
+      // TODO: Implementar query SQL direta
+      const deleteError = null;
+      // const { error: deleteError } = await pool.query
+      //   .from('driver_vehicle_assignments')
+      //   .delete()
+      //   .eq('driver_id', driver_id);
       
       if (deleteError) {
         console.error('Erro ao remover atribuições existentes:', deleteError);
@@ -325,10 +340,13 @@ export async function POST(request: NextRequest) {
         is_primary: false // Por padrão, nenhum é primário
       }));
       
-      const { data: newAssignments, error: insertError } = await supabase
-        .from('driver_vehicle_assignments')
-        .insert(assignmentsToInsert)
-        .select();
+      // TODO: Implementar query SQL direta
+      const newAssignments = null;
+      const insertError = null;
+      // await pool.query(...)
+      //   .from('driver_vehicle_assignments')
+      //   .insert(assignmentsToInsert)
+      //   .select();
       
       if (insertError) {
         console.error('Erro ao criar atribuições em massa:', insertError);
@@ -355,36 +373,45 @@ export async function POST(request: NextRequest) {
       const assignmentData = assignmentResult.data;
       
       // Verificar se o motorista pertence ao usuário
-      const { data: driverCheck, error: driverError } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('id', assignmentData.driver_id)
-        .eq('user_id', userId)
-        .maybeSingle();
+      // TODO: Implementar query SQL direta
+      const driverCheck = null;
+      const driverError = null;
+      // await pool.query(...)
+      //   .from('drivers')
+      //   .select('id')
+      //   .eq('id', assignmentData.driver_id)
+      //   .eq('user_id', userId)
+      //   .maybeSingle();
       
       if (driverError || !driverCheck) {
         return errorResponse('Motorista não encontrado ou não pertence ao usuário', undefined, 404);
       }
       
       // Verificar se o veículo pertence ao usuário
-      const { data: vehicleCheck, error: vehicleError } = await supabase
-        .from('vehicles')
-        .select('id')
-        .eq('id', assignmentData.vehicle_id)
-        .eq('user_id', userId)
-        .maybeSingle();
+      // TODO: Implementar query SQL direta
+      const vehicleCheck = null;
+      const vehicleError = null;
+      // await pool.query(...)
+      //   .from('vehicles')
+      //   .select('id')
+      //   .eq('id', assignmentData.vehicle_id)
+      //   .eq('user_id', userId)
+      //   .maybeSingle();
       
       if (vehicleError || !vehicleCheck) {
         return errorResponse('Veículo não encontrado ou não pertence ao usuário', undefined, 404);
       }
       
       // Verificar se já existe uma atribuição para este motorista e veículo
-      const { data: existingAssignment, error: checkError } = await supabase
-        .from('driver_vehicle_assignments')
-        .select('id')
-        .eq('driver_id', assignmentData.driver_id)
-        .eq('vehicle_id', assignmentData.vehicle_id)
-        .maybeSingle();
+      // TODO: Implementar query SQL direta
+      const existingAssignment = null;
+      const checkError = null;
+      // await pool.query(...)
+      //   .from('driver_vehicle_assignments')
+      //   .select('id')
+      //   .eq('driver_id', assignmentData.driver_id)
+      //   .eq('vehicle_id', assignmentData.vehicle_id)
+      //   .maybeSingle();
       
       if (checkError) {
         console.error('Erro ao verificar atribuição existente:', checkError);
@@ -401,10 +428,12 @@ export async function POST(request: NextRequest) {
       
       // Se for definido como primário, atualizar outras atribuições para não serem primárias
       if (assignmentData.is_primary) {
-        const { error: updateError } = await supabase
-          .from('driver_vehicle_assignments')
-          .update({ is_primary: false })
-          .eq('driver_id', assignmentData.driver_id);
+        // TODO: Implementar query SQL direta
+        const updateError = null;
+        // const { error: updateError } = await pool.query
+        //   .from('driver_vehicle_assignments')
+        //   .update({ is_primary: false })
+        //   .eq('driver_id', assignmentData.driver_id);
         
         if (updateError) {
           console.error('Erro ao atualizar atribuições existentes:', updateError);
@@ -413,14 +442,17 @@ export async function POST(request: NextRequest) {
       }
       
       // Criar nova atribuição
-      const { data: newAssignment, error: insertError } = await supabase
-        .from('driver_vehicle_assignments')
-        .insert({
-          ...assignmentData,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+      // TODO: Implementar query SQL direta
+      const newAssignment = null;
+      const insertError = null;
+      // await pool.query(...)
+      //   .from('driver_vehicle_assignments')
+      //   .insert({
+      //     ...assignmentData,
+      //     created_at: new Date().toISOString()
+      //   })
+      //   .select()
+      //   .single();
       
       if (insertError) {
         console.error('Erro ao criar atribuição:', insertError);
@@ -464,21 +496,24 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Verificar se a atribuição existe e pertence ao usuário
-    const { data: assignment, error: checkError } = await supabase
-      .from('driver_vehicle_assignments')
-      .select(`
-        id,
-        driver_id,
-        vehicle_id,
-        drivers:driver_id (
-          user_id
-        ),
-        vehicles:vehicle_id (
-          user_id
-        )
-      `)
-      .eq('id', assignmentId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const assignment = null;
+    const checkError = null;
+    // await pool.query(...)
+    //   .from('driver_vehicle_assignments')
+    //   .select(`
+    //     id,
+    //     driver_id,
+    //     vehicle_id,
+    //     drivers:driver_id (
+    //       user_id
+    //     ),
+    //     vehicles:vehicle_id (
+    //       user_id
+    //     )
+    //   `)
+    //   .eq('id', assignmentId)
+    //   .maybeSingle();
     
     if (checkError) {
       console.error('Erro ao verificar atribuição:', checkError);
@@ -500,10 +535,12 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Excluir atribuição
-    const { error: deleteError } = await supabase
-      .from('driver_vehicle_assignments')
-      .delete()
-      .eq('id', assignmentId);
+    // TODO: Implementar query SQL direta
+    const deleteError = null;
+    // const { error: deleteError } = await pool.query
+    //   .from('driver_vehicle_assignments')
+    //   .delete()
+    //   .eq('id', assignmentId);
     
     if (deleteError) {
       console.error('Erro ao excluir atribuição:', deleteError);
@@ -519,4 +556,4 @@ export async function DELETE(request: NextRequest) {
     console.error('Erro ao processar exclusão de atribuição:', error);
     return errorResponse('Erro interno do servidor', undefined, 500);
   }
-} 
+}

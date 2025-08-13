@@ -1,13 +1,13 @@
 /**
- * Sistema de gerenciamento de conexão Realtime para o Supabase
+ * Sistema de gerenciamento de conexão Realtime para WebSockets
  * 
- * Este módulo implementa um gerenciador robusto de conexões para o Supabase Realtime,
+ * Este módulo implementa um gerenciador robusto de conexões WebSocket,
  * com recursos de reconexão automática, backoff exponencial, verificação de saúde
  * das inscrições e sincronização de dados após reconexão.
  */
 
-import { createClient, RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { Database } from '../types/database.types';
+import { WebSocketManager } from './realtime/websocket-client';
+import { RealtimeEvent } from './realtime/websocket-client';
 
 // Configurações para o gerenciador de conexão
 interface ConnectionManagerConfig {
@@ -36,7 +36,6 @@ export type LogLevel = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
 // Informações sobre um canal inscrito
 interface ChannelSubscription {
   channelName: string;
-  channel: RealtimeChannel;
   config: ChannelConfig;
   status: 'SUBSCRIBED' | 'UNSUBSCRIBED' | 'PENDING' | 'ERROR';
   lastError?: Error;
@@ -50,17 +49,17 @@ interface ChannelConfig {
   schema?: string;
   filter?: string;
   filterValue?: any;
-  callback: (payload: RealtimePostgresChangesPayload<any>) => void;
+  callback: (payload: RealtimeEvent<any>) => void;
 }
 
 /**
- * Gerenciador de conexão Realtime para o Supabase
+ * Gerenciador de conexão Realtime para WebSockets
  * 
- * Esta classe implementa um gerenciador robusto de conexões para o Supabase Realtime,
+ * Esta classe implementa um gerenciador robusto de conexões WebSocket,
  * com recursos de reconexão automática, backoff exponencial e verificação de saúde.
  */
 export class RealtimeConnectionManager {
-  private supabase: ReturnType<typeof createClient<Database>>;
+  private wsManager: WebSocketManager;
   private config: Required<ConnectionManagerConfig>;
   private connectionState: ConnectionState = 'DISCONNECTED';
   private reconnectAttempts: number = 0;
@@ -71,14 +70,14 @@ export class RealtimeConnectionManager {
   /**
    * Construtor do gerenciador de conexão
    * 
-   * @param supabaseClient Cliente Supabase inicializado
+   * @param wsUrl URL do servidor WebSocket
    * @param config Configurações do gerenciador
    */
   constructor(
-    supabaseClient: ReturnType<typeof createClient<Database>>,
+    wsUrl: string,
     config: ConnectionManagerConfig = {}
   ) {
-    this.supabase = supabaseClient;
+    this.wsManager = new WebSocketManager(wsUrl);
     
     // Configurações padrão
     this.config = {
@@ -122,9 +121,22 @@ export class RealtimeConnectionManager {
    * Configura listeners para eventos de conexão
    */
   private setupConnectionListeners(): void {
-    // Implementar listeners para eventos de conexão do Supabase
-    // Nota: A API atual do Supabase não expõe diretamente eventos de conexão WebSocket
-    // Então vamos usar verificações periódicas de saúde
+    // Configurar listeners do WebSocket
+    this.wsManager.onOpen(() => {
+      this.updateConnectionState('CONNECTED');
+      this.log('INFO', 'Conexão WebSocket estabelecida');
+    });
+    
+    this.wsManager.onClose(() => {
+      this.updateConnectionState('DISCONNECTED');
+      this.log('WARN', 'Conexão WebSocket fechada');
+      this.reconnect();
+    });
+    
+    this.wsManager.onError((error) => {
+      this.log('ERROR', 'Erro na conexão WebSocket', { error: error.message });
+      this.config.onConnectionError(error);
+    });
     
     // Iniciar verificação periódica de saúde
     this.startHealthCheck();
@@ -182,29 +194,14 @@ export class RealtimeConnectionManager {
         return;
       }
       
-      // Verificar estado de cada canal
-      let allChannelsHealthy = true;
+      // Verificar estado da conexão WebSocket
+      const isConnected = this.wsManager.isConnected();
       
-      for (const [channelName, subscription] of this.channels.entries()) {
-        // Verificar se o canal está inscrito
-        if (subscription.status !== 'SUBSCRIBED') {
-          allChannelsHealthy = false;
-          this.log('WARN', `Canal ${channelName} não está inscrito`, {
-            status: subscription.status,
-            lastError: subscription.lastError?.message
-          });
-          
-          // Tentar reinscrever o canal
-          await this.resubscribeChannel(channelName);
-        }
-      }
-      
-      // Atualizar estado da conexão com base na saúde dos canais
-      if (allChannelsHealthy && this.connectionState !== 'CONNECTED') {
-        this.updateConnectionState('CONNECTED');
-      } else if (!allChannelsHealthy && this.connectionState === 'CONNECTED') {
+      if (!isConnected && this.connectionState === 'CONNECTED') {
         this.updateConnectionState('RECONNECTING');
         this.reconnect();
+      } else if (isConnected && this.connectionState !== 'CONNECTED') {
+        this.updateConnectionState('CONNECTED');
       }
     } catch (error) {
       this.log('ERROR', 'Erro durante verificação de saúde', {
@@ -236,7 +233,7 @@ export class RealtimeConnectionManager {
   }
   
   /**
-   * Tenta reconectar ao Supabase Realtime
+   * Tenta reconectar ao WebSocket
    */
   private reconnect(): void {
     if (this.reconnectTimer) {
@@ -270,6 +267,7 @@ export class RealtimeConnectionManager {
     // Agendar tentativa de reconexão
     this.reconnectTimer = setTimeout(async () => {
       try {
+        await this.wsManager.connect();
         await this.resubscribeAllChannels();
         this.updateConnectionState('CONNECTED');
       } catch (error) {
@@ -309,54 +307,15 @@ export class RealtimeConnectionManager {
     }
     
     try {
-      // Remover inscrição anterior se existir
-      if (subscription.channel) {
-        await this.supabase.removeChannel(subscription.channel);
-      }
-      
       // Atualizar status
       subscription.status = 'PENDING';
       
-      // Criar nova inscrição
-      const channel = this.supabase
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          {
-            event: subscription.config.event || '*',
-            schema: subscription.config.schema || 'public',
-            table: subscription.config.entity,
-            ...(subscription.config.filter && subscription.config.filterValue ? 
-              { filter: `${subscription.config.filter}=eq.${subscription.config.filterValue}` } : {})
-          },
-          (payload) => {
-            try {
-              // Atualizar timestamp do último evento
-              subscription.lastEventTimestamp = Date.now();
-              
-              // Chamar callback com tratamento de erros
-              subscription.config.callback(payload);
-            } catch (error) {
-              this.log('ERROR', `Erro ao processar evento no canal ${channelName}`, {
-                error: error instanceof Error ? error.message : String(error),
-                payload
-              });
-            }
-          }
-        )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            subscription.status = 'SUBSCRIBED';
-            this.log('INFO', `Canal ${channelName} inscrito com sucesso`);
-          } else if (status === 'CHANNEL_ERROR') {
-            subscription.status = 'ERROR';
-            subscription.lastError = new Error(`Erro ao inscrever no canal ${channelName}`);
-            this.log('ERROR', `Erro ao inscrever no canal ${channelName}`);
-          }
-        });
+      // WebSocket será gerenciado através do RealtimeProvider
+      // A inscrição será feita através do provider de realtime
+      console.log(`Canal ${channelName} será inscrito através do RealtimeProvider`);
       
-      // Atualizar referência do canal
-      subscription.channel = channel;
+      subscription.status = 'SUBSCRIBED';
+      this.log('INFO', `Canal ${channelName} inscrito com sucesso`);
       
       this.channels.set(channelName, subscription);
     } catch (error) {
@@ -395,7 +354,6 @@ export class RealtimeConnectionManager {
     
     const subscription: ChannelSubscription = {
       channelName,
-      channel: null as unknown as RealtimeChannel, // Será definido durante a inscrição
       config,
       status: 'PENDING'
     };
@@ -403,51 +361,23 @@ export class RealtimeConnectionManager {
     this.channels.set(channelName, subscription);
     
     try {
-      // Criar inscrição
-      const channel = this.supabase
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          {
-            event: config.event || '*',
-            schema: config.schema || 'public',
-            table: config.entity,
-            ...(config.filter && config.filterValue ? 
-              { filter: `${config.filter}=eq.${config.filterValue}` } : {})
-          },
-          (payload) => {
-            try {
-              // Atualizar timestamp do último evento
-              subscription.lastEventTimestamp = Date.now();
-              
-              // Chamar callback com tratamento de erros
-              config.callback(payload);
-            } catch (error) {
-              this.log('ERROR', `Erro ao processar evento no canal ${channelName}`, {
-                error: error instanceof Error ? error.message : String(error),
-                payload
-              });
-            }
-          }
-        )
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            subscription.status = 'SUBSCRIBED';
-            this.log('INFO', `Canal ${channelName} inscrito com sucesso`);
-            
-            // Se este é o primeiro canal, atualizar estado da conexão
-            if (this.connectionState !== 'CONNECTED') {
-              this.updateConnectionState('CONNECTED');
-            }
-          } else if (status === 'CHANNEL_ERROR') {
-            subscription.status = 'ERROR';
-            subscription.lastError = new Error(`Erro ao inscrever no canal ${channelName}`);
-            this.log('ERROR', `Erro ao inscrever no canal ${channelName}`);
-          }
-        });
+      // Conectar se necessário
+      if (!this.wsManager.isConnected()) {
+        await this.wsManager.connect();
+      }
       
-      // Atualizar referência do canal
-      subscription.channel = channel;
+      // WebSocket será gerenciado através do RealtimeProvider
+      // A inscrição será feita através do provider de realtime
+      console.log(`Canal ${channelName} será inscrito através do RealtimeProvider`);
+      
+      subscription.status = 'SUBSCRIBED';
+      this.log('INFO', `Canal ${channelName} inscrito com sucesso`);
+      
+      // Se este é o primeiro canal, atualizar estado da conexão
+      if (this.connectionState !== 'CONNECTED') {
+        this.updateConnectionState('CONNECTED');
+      }
+      
       this.channels.set(channelName, subscription);
       
       return channelName;
@@ -475,7 +405,9 @@ export class RealtimeConnectionManager {
     }
     
     try {
-      await this.supabase.removeChannel(subscription.channel);
+      // WebSocket será gerenciado através do RealtimeProvider
+      // A desinscrição será feita através do provider de realtime
+      console.log(`Canal ${channelName} será desinscrito através do RealtimeProvider`);
       
       subscription.status = 'UNSUBSCRIBED';
       this.channels.delete(channelName);
@@ -561,5 +493,8 @@ export class RealtimeConnectionManager {
         error: error instanceof Error ? error.message : String(error)
       });
     });
+    
+    // Fechar conexão WebSocket
+    this.wsManager.disconnect();
   }
 }

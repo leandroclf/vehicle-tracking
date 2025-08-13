@@ -58,7 +58,7 @@ export default function RootLayout({
                         <NotificationProvider>
                           <KeyboardNavigationProvider>
                             <SidebarProvider>
-                              <RealtimeProvider>
+                              <RealtimeProvider wsUrl={process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"}>
                                 <RealtimeIntegration>
                                   {children}
                                 </RealtimeIntegration>

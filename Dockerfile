@@ -15,37 +15,39 @@ RUN npm config set cache /tmp/.npm --global
 FROM base AS deps
 
 # Copiar apenas arquivos de dependências para cache otimizado
-COPY package.json package-lock.json ./
+COPY package.json ./
 
 # Instalar dependências com cache mount
 RUN --mount=type=cache,target=/tmp/.npm \
-    npm ci --only=production --ignore-scripts && \
+    npm install --only=production --ignore-scripts && \
     npm cache clean --force
 
 # Instalar dependências de desenvolvimento em layer separada
 FROM base AS deps-dev
 
-COPY package.json package-lock.json ./
+COPY package.json ./
 
 RUN --mount=type=cache,target=/tmp/.npm \
-    npm ci --ignore-scripts && \
+    npm install --ignore-scripts && \
     npm cache clean --force
 
 # Estágio de build
 FROM deps-dev AS builder
 
 # Definir variáveis de ambiente para build
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+ARG NEXT_PUBLIC_WS_URL
+ARG NEXT_PUBLIC_APP_URL
 ARG JWT_SECRET
+ARG DATABASE_URL
+ARG REDIS_URL
 
-ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 ENV JWT_SECRET=${JWT_SECRET}
-ENV SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-ENV SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+ENV DATABASE_URL=${DATABASE_URL}
+ENV REDIS_URL=${REDIS_URL}
 
 # Copiar código-fonte
 COPY . .
@@ -91,9 +93,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
 # Copiar build do Next.js
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
-
-# Configurar permissões
-RUN chown -R nextjs:nodejs /app
 
 # Mudar para usuário não-root
 USER nextjs
