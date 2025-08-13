@@ -14,27 +14,79 @@ export const socialAuthService = {
       
       switch (request.provider) {
         case 'google':
-          authResponse = await // TODO: Implementar autenticação JWT // signInWithIdToken({
-            provider: 'google',
-            token: request.idToken || '',
-          });
+          // TODO: Implementar autenticação JWT
+          authResponse = {
+            data: {
+              user: {
+                id: 'mock-user-id',
+                email: 'user@example.com',
+                user_metadata: {
+                  name: 'Mock User',
+                  avatar_url: 'https://via.placeholder.com/150'
+                },
+                identities: [{
+                  identity_data: {
+                    sub: 'google-provider-id'
+                  }
+                }]
+              },
+              session: {
+                access_token: 'mock-access-token',
+                refresh_token: 'mock-refresh-token'
+              }
+            },
+            error: null
+          };
           break;
         case 'facebook':
-          authResponse = await // TODO: Implementar autenticação JWT // signInWithOAuth({
-            provider: 'facebook',
-            options: {
-              scopes: 'email,public_profile',
-              queryParams: {
-                access_token: request.accessToken,
+          // TODO: Implementar autenticação JWT
+          authResponse = {
+            data: {
+              user: {
+                id: 'mock-user-id',
+                email: 'user@example.com',
+                user_metadata: {
+                  name: 'Mock User',
+                  avatar_url: 'https://via.placeholder.com/150'
+                },
+                identities: [{
+                  identity_data: {
+                    sub: 'facebook-provider-id'
+                  }
+                }]
               },
+              session: {
+                access_token: 'mock-access-token',
+                refresh_token: 'mock-refresh-token'
+              }
             },
-          });
+            error: null
+          };
           break;
         case 'apple':
-          authResponse = await // TODO: Implementar autenticação JWT // signInWithIdToken({
-            provider: 'apple',
-            token: request.idToken || '',
-          });
+          // TODO: Implementar autenticação JWT
+          authResponse = {
+            data: {
+              user: {
+                id: 'mock-user-id',
+                email: 'user@example.com',
+                user_metadata: {
+                  name: 'Mock User',
+                  avatar_url: 'https://via.placeholder.com/150'
+                },
+                identities: [{
+                  identity_data: {
+                    sub: 'apple-provider-id'
+                  }
+                }]
+              },
+              session: {
+                access_token: 'mock-access-token',
+                refresh_token: 'mock-refresh-token'
+              }
+            },
+            error: null
+          };
           break;
         default:
           throw {
@@ -122,13 +174,14 @@ export const socialAuthService = {
     
     // Atualizar metadados do usuário para incluir aceitação dos termos
     // TODO: Implementar query SQL direta
-    const error = null; // await pool.query(...).auth.updateUser({
-      data: {
-        terms_accepted: true,
-        terms_accepted_at: new Date().toISOString(),
-        marketing_consent: request.marketingConsent || false,
-      },
-    });
+    const error = null;
+    // await pool.query(...).auth.updateUser({
+    //   data: {
+    //     terms_accepted: true,
+    //     terms_accepted_at: new Date().toISOString(),
+    //     marketing_consent: request.marketingConsent || false,
+    //   },
+    // });
 
     if (error) {
       console.error('Erro ao atualizar metadados do usuário:', error);
@@ -229,10 +282,12 @@ export const socialAuthService = {
   async getLinkedAccounts(userId: string) {
     try {
       // TODO: Implementar query SQL direta
-    const data = null;`r`n    const error = null;`r`n    // await pool.query(...)
-        .from('social_accounts')
-        .select('*')
-        .eq('user_id', userId);
+      const data = null;
+      const error = null;
+      // await pool.query(...)
+      //   .from('social_accounts')
+      //   .select('*')
+      //   .eq('user_id', userId);
 
       if (error) throw error;
 
@@ -263,14 +318,14 @@ export const socialAuthService = {
   }) {
     try {
       // TODO: Implementar query SQL direta
-    // await pool.query.from('social_auth_logs').insert({
-        user_id: userId,
-        provider,
-        action,
-        success,
-        error_message: errorMessage,
-        error_code: errorCode,
-      });
+      // await pool.query.from('social_auth_logs').insert({
+      //   user_id: userId,
+      //   provider,
+      //   action,
+      //   success,
+      //   error_message: errorMessage,
+      //   error_code: errorCode,
+      // });
     } catch (error) {
       console.error('Erro ao registrar log de autenticação:', error);
     }

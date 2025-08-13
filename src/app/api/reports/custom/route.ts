@@ -71,9 +71,7 @@ export async function POST(request: NextRequest) {
     const validatedData = validationResult.data;
     
     // Verificar autenticação
-    // TODO: Implementar autenticação JWT
-    const user = null;
-    const authError = null;
+    const { data: { user }, error: authError } = await // TODO: Implementar autenticação JWT // getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
@@ -83,10 +81,10 @@ export async function POST(request: NextRequest) {
     const vehicles = null;
     const vehiclesError = null;
     // await pool.query(...)
-    // .from('vehicles')
-    // .select('id')
-    // .in('id', validatedData.vehicleIds)
-    // .eq('user_id', user.id);
+      .from('vehicles')
+      .select('id')
+      .in('id', validatedData.vehicleIds)
+      .eq('user_id', user.id);
       
     if (vehiclesError) {
       console.error('Erro ao verificar veículos:', vehiclesError);
@@ -109,25 +107,25 @@ export async function POST(request: NextRequest) {
     
     // Criar o registro do relatório
     // TODO: Implementar query SQL direta
-    const report = { id: 'temp-id' };
+    const report = null;
     const reportError = null;
     // await pool.query(...)
-    // .from('reports')
-    // .insert({
-    //   user_id: user.id,
-    //   title: validatedData.title,
-    //   report_type: validatedData.reportType,
-    //   start_date: validatedData.startDate,
-    //   end_date: validatedData.endDate,
-    //   vehicle_ids: validatedData.vehicleIds,
-    //   format: validatedData.format,
-    //   status: 'processing',
-    //   custom_fields: validatedData.customFields,
-    //   custom_filters: validatedData.customFilters,
-    //   created_at: new Date().toISOString()
-    // })
-    // .select()
-    // .single();
+      .from('reports')
+      .insert({
+        user_id: user.id,
+        title: validatedData.title,
+        report_type: validatedData.reportType,
+        start_date: validatedData.startDate,
+        end_date: validatedData.endDate,
+        vehicle_ids: validatedData.vehicleIds,
+        format: validatedData.format,
+        status: 'processing',
+        custom_fields: validatedData.customFields,
+        custom_filters: validatedData.customFilters,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
       
     if (reportError) {
       console.error('Erro ao criar relatório customizado:', reportError);
@@ -144,14 +142,14 @@ export async function POST(request: NextRequest) {
     setTimeout(async () => {
       try {
         // TODO: Implementar query SQL direta
-        // await pool.query
-        // .from('reports')
-        // .update({ 
-        //   status: 'completed',
-        //   file_url: `/api/reports/${report.id}/download?format=${validatedData.format}`,
-        //   completed_at: new Date().toISOString()
-        // })
-        // .eq('id', report.id);
+    // await pool.query
+          .from('reports')
+          .update({ 
+            status: 'completed',
+            file_url: `/api/reports/${report.id}/download?format=${validatedData.format}`,
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', report.id);
           
         console.log(`Relatório ${report.id} processado com sucesso`);
       } catch (error) {
@@ -159,13 +157,13 @@ export async function POST(request: NextRequest) {
         
         // Marcar como falha em caso de erro
         // TODO: Implementar query SQL direta
-        // await pool.query
-        // .from('reports')
-        // .update({ 
-        //   status: 'failed',
-        //   error_message: 'Falha ao processar relatório'
-        // })
-        // .eq('id', report.id);
+    // await pool.query
+          .from('reports')
+          .update({ 
+            status: 'failed',
+            error_message: 'Falha ao processar relatório'
+          })
+          .eq('id', report.id);
       }
     }, 3000);
     

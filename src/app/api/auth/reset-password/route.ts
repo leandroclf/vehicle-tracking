@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthService } from '@/lib/auth/auth-service';
+// Usando auth-service mock temporariamente até resolver problema do PostgreSQL
+import { AuthService } from '@/lib/auth/auth-service-mock';
 
 export async function POST(request: NextRequest) {
   try {

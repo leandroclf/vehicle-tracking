@@ -15,7 +15,7 @@ import { SocialAuthError } from '@/types/social-auth';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, socialLogin } = useAuth();
+  const { signIn, socialLogin } = useAuth();
   const [email, setEmail] = useState('admin@yukz.com');
   const [password, setPassword] = useState('123456');
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await signIn(email, password);
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Erro no login:', err);

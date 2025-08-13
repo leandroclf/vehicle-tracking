@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthService, AuthUser } from './auth-service';
+// Usando auth-service mock temporariamente até resolver problema do PostgreSQL
+import { AuthService, AuthUser } from './auth-service-mock';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: AuthUser;

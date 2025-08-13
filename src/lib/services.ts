@@ -211,17 +211,19 @@ export const TelemetryService = {
       
       // Buscar dados históricos
       // TODO: Implementar query SQL direta
-    const data = null;`r`n    const error = null;`r`n    // await pool.query(...)
-        .from('vehicle_telemetry_history')
-        .select('*')
-        .eq('vehicle_id', vehicleId)
-        .gte('timestamp', startDate.toISOString())
-        .lte('timestamp', now.toISOString())
-        .order('timestamp', { ascending: true });
+      // const { data, error } = await pool.query(...)
+      //   .from('vehicle_telemetry_history')
+      //   .select('*')
+      //   .eq('vehicle_id', vehicleId)
+      //   .gte('timestamp', startDate.toISOString())
+      //   .lte('timestamp', now.toISOString())
+      //   .order('timestamp', { ascending: true });
       
-      if (error) throw error;
-      
-      return data;
+      // if (error) throw error;
+       // return data;
+       
+       // Por enquanto, gerar dados simulados
+       throw new Error('Implementação pendente');
     } catch (error) {
       console.error('Erro ao buscar histórico de telemetria:', error);
       
@@ -278,18 +280,16 @@ export const WeatherService = {
     try {
       // Em produção, buscar localizações do banco de dados
       // TODO: Implementar query SQL direta
-    const data = null;`r`n    const error = null;`r`n    // await pool.query(...)
-        .from('vehicle_locations')
-        .select('id, name, coordinates')
-        .order('name');
+      // const { data, error } = await pool.query(...)
+      //   .from('vehicle_locations')
+      //   .select('id, name, coordinates')
+      //   .order('name');
       
-      if (error) throw error;
+      // if (error) throw error;
+      // return data.map(item => ({ id: item.id, name: item.name, coordinates: item.coordinates }));
       
-      return data.map(item => ({
-        id: item.id,
-        name: item.name,
-        coordinates: item.coordinates
-      }));
+      // Por enquanto, gerar dados simulados
+       throw new Error('Implementação pendente');
     } catch (error) {
       console.error('Erro ao buscar localizações:', error);
       

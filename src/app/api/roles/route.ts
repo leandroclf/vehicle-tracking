@@ -9,9 +9,7 @@ export async function GET(request: NextRequest) {
 
   // Checagem de permissão: apenas administradores
   // TODO: Implementar query SQL direta
-  const profile = null;
-  const profileError = null;
-  // await pool.query(...)
+  const profile = null;`r`n    const profileError = null;`r`n    // await pool.query(...)
   // .from('profiles')
   // .select('role_id, roles(name)')
   // .eq('id', auth.user.id)
@@ -23,9 +21,7 @@ export async function GET(request: NextRequest) {
   }
 
   // TODO: Implementar query SQL direta
-  const data = null;
-  const error = null;
-  // await pool.query(...).from('roles').select('id, name').order('name');
+  const data = null;`r`n    const error = null;`r`n    // await pool.query(...).from('roles').select('id, name').order('name');
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json(data);
