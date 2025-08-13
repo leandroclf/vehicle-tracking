@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 
 // Interface para parâmetros de rota
 interface Params {
@@ -58,12 +58,18 @@ export async function GET(
     }
     
     // Buscar relatório do banco de dados
-    const { data: report, error: reportError } = await supabase
-      .from('reports')
-      .select('*, vehicles:vehicle_id(name, license_plate)')
-      .eq('id', reportId)
-      .eq('user_id', userId)
-      .single();
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const reportQuery = `
+      SELECT r.*, v.name as vehicle_name, v.license_plate
+      FROM reports r
+      LEFT JOIN vehicles v ON r.vehicle_id = v.id
+      WHERE r.id = $1 AND r.user_id = $2
+      LIMIT 1
+    `;
+    const reportResult = await pool.query(reportQuery, [reportId, userId]);
+    const report = reportResult.rows[0] || null;
+    const reportError = reportResult.rows.length === 0 ? 'Not found' : null;
       
     if (reportError) {
       console.error('Erro ao buscar relatório:', reportError);
@@ -87,13 +93,16 @@ export async function GET(
     // ou de um serviço de geração de relatórios
     
     // Buscar posições para o relatório
-    const { data: positions, error: positionsError } = await supabase
-      .from('positions')
-      .select('*')
-      .eq('vehicle_id', report.vehicle_id)
-      .gte('timestamp', report.start_date)
-      .lte('timestamp', report.end_date)
-      .order('timestamp', { ascending: true });
+    // TODO: Implementar query SQL direta
+    const positionsQuery = `
+      SELECT *
+      FROM positions
+      WHERE vehicle_id = $1 AND timestamp >= $2 AND timestamp <= $3
+      ORDER BY timestamp ASC
+    `;
+    const positionsResult = await pool.query(positionsQuery, [report.vehicle_id, report.start_date, report.end_date]);
+    const positions = positionsResult.rows;
+    const positionsError = null;
       
     if (positionsError) {
       console.error('Erro ao buscar posições para download:', positionsError);
@@ -127,7 +136,7 @@ export async function GET(
       // Placeholder para formato Excel
       // Em uma implementação real, usar biblioteca como ExcelJS
       return new NextResponse(
-        `Relatório Excel para veículo ${report.vehicles?.name || 'Desconhecido'} (${report.vehicles?.license_plate || '-'})`, 
+        `Relatório Excel para veículo ${report.vehicle_name || 'Desconhecido'} (${report.license_plate || '-'})`, 
         {
           headers: {
             'Content-Type': 'text/plain',
@@ -139,7 +148,7 @@ export async function GET(
       // Placeholder para formato PDF
       // Em uma implementação real, usar biblioteca como PDFKit
       return new NextResponse(
-        `Relatório PDF para veículo ${report.vehicles?.name || 'Desconhecido'} (${report.vehicles?.license_plate || '-'})`, 
+        `Relatório PDF para veículo ${report.vehicle_name || 'Desconhecido'} (${report.license_plate || '-'})`, 
         {
           headers: {
             'Content-Type': 'text/plain',
@@ -153,4 +162,4 @@ export async function GET(
     console.error('Erro ao processar download de relatório:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
-} 
+}

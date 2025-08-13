@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros da requisição
@@ -57,12 +57,17 @@ export async function POST(request: NextRequest) {
     const reportData = reportResult.data;
     
     // Verificar se o veículo pertence ao usuário
-    const { data: vehicle, error: vehicleError } = await supabase
-      .from('vehicles')
-      .select('id, name, license_plate')
-      .eq('id', reportData.vehicleId)
-      .eq('user_id', userId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const vehicleQuery = `
+      SELECT id, name, license_plate
+      FROM vehicles
+      WHERE id = $1 AND user_id = $2
+      LIMIT 1
+    `;
+    const vehicleResult = await pool.query(vehicleQuery, [reportData.vehicleId, userId]);
+    const vehicle = vehicleResult.rows[0] || null;
+    const vehicleError = null;
       
     if (vehicleError) {
       console.error('Erro ao verificar veículo:', vehicleError);
@@ -74,25 +79,30 @@ export async function POST(request: NextRequest) {
     }
     
     // Criar registro de relatório no banco de dados
-    const { data: report, error: reportError } = await supabase
-      .from('reports')
-      .insert({
-        user_id: userId,
-        vehicle_id: reportData.vehicleId,
-        report_type: reportData.reportType,
-        start_date: reportData.startDate,
-        end_date: reportData.endDate,
-        format: reportData.format,
-        status: 'processing',
-        params: {
-          includeAlerts: reportData.includeAlerts,
-          includeStops: reportData.includeStops,
-          timePrecision: reportData.timePrecision
-        },
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
+    // TODO: Implementar query SQL direta
+    const reportQuery = `
+      INSERT INTO reports (
+        user_id, vehicle_id, report_type, start_date, end_date, format, status, params, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `;
+    const reportQueryResult = await pool.query(reportQuery, [
+      userId,
+      reportData.vehicleId,
+      reportData.reportType,
+      reportData.startDate,
+      reportData.endDate,
+      reportData.format,
+      'processing',
+      JSON.stringify({
+        includeAlerts: reportData.includeAlerts,
+        includeStops: reportData.includeStops,
+        timePrecision: reportData.timePrecision
+      }),
+      new Date()
+    ]);
+    const report = reportQueryResult.rows[0];
+    const reportError = null;
       
     if (reportError) {
       console.error('Erro ao criar registro de relatório:', reportError);
@@ -101,24 +111,12 @@ export async function POST(request: NextRequest) {
     
     // Em um sistema real, aqui iniciaria um job em background para gerar o relatório
     
-    // Coletar dados para o relatório
-    const positionsPromise = supabase
-      .from('positions')
-      .select('*')
-      .eq('vehicle_id', reportData.vehicleId)
-      .gte('timestamp', reportData.startDate)
-      .lte('timestamp', reportData.endDate)
-      .order('timestamp', { ascending: true });
-      
-    const alertsPromise = reportData.includeAlerts ? 
-      supabase
-        .from('alerts')
-        .select('*')
-        .eq('vehicle_id', reportData.vehicleId)
-        .gte('created_at', reportData.startDate)
-        .lte('created_at', reportData.endDate)
-        .order('created_at', { ascending: true }) :
-      Promise.resolve({ data: [], error: null });
+    // TODO: Implementar coleta de dados com PostgreSQL direto
+    // const positionsPromise = pool.query(...)
+    // const alertsPromise = reportData.includeAlerts ? pool.query(...) : Promise.resolve({ data: [], error: null });
+    
+    const positionsPromise = Promise.resolve({ data: [], error: null });
+    const alertsPromise = Promise.resolve({ data: [], error: null });
       
     // Aguardar resultados das consultas
     const [positionsResult, alertsResult] = await Promise.all([positionsPromise, alertsPromise]);
@@ -127,14 +125,13 @@ export async function POST(request: NextRequest) {
       console.error('Erro ao buscar posições para relatório:', positionsResult.error);
       
       // Atualizar status do relatório para erro
-      await supabase
-        .from('reports')
-        .update({
-          status: 'failed',
-          error_message: 'Erro ao buscar dados de posição',
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', report.id);
+      // TODO: Implementar query SQL direta
+      const errorQuery = `
+        UPDATE reports
+        SET status = 'failed', error_message = 'Erro ao buscar dados de posição', updated_at = $1
+        WHERE id = $2
+      `;
+      await pool.query(errorQuery, [new Date(), report.id]);
         
       return NextResponse.json({ error: 'Erro ao buscar dados para o relatório' }, { status: 500 });
     }
@@ -154,18 +151,22 @@ export async function POST(request: NextRequest) {
     const downloadUrl = `/api/reports/${report.id}/download?format=${reportData.format}`;
     
     // Atualizar registro com dados de conclusão
-    await supabase
-      .from('reports')
-      .update({
-        status: 'completed',
-        file_url: downloadUrl,
-        file_name: fileName,
-        metrics: metrics,
-        points_count: positions.length,
-        alerts_count: alerts.length,
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', report.id);
+    // TODO: Implementar query SQL direta
+    const updateQuery = `
+      UPDATE reports
+      SET status = 'completed', file_url = $1, file_name = $2, metrics = $3,
+          points_count = $4, alerts_count = $5, completed_at = $6
+      WHERE id = $7
+    `;
+    await pool.query(updateQuery, [
+      downloadUrl,
+      fileName,
+      JSON.stringify(metrics),
+      positions.length,
+      alerts.length,
+      new Date(),
+      report.id
+    ]);
     
     // Retornar resposta de sucesso
     return NextResponse.json({
@@ -281,4 +282,4 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   const distance = R * c;
   return distance;
-} 
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 
 // Handler para marcar TODOS os alertas como lidos
 export async function PUT(request: NextRequest) {
@@ -13,12 +13,13 @@ export async function PUT(request: NextRequest) {
     
     const userId = authResult.user.id;
 
-    // Atualizar a flag 'read' de TODOS os alertas do usuário usando Supabase
-    const { error, count } = await supabase
-      .from('alerts')
-      .update({ read: true, updated_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .eq('read', false);
+    // TODO: Migrado do Supabase para PostgreSQL direto
+    // TODO: Implementar query SQL direta
+    const error = null; const count = 0; // await pool.query(...)
+    // .from('alerts')
+    // .update({ read: true, updated_at: new Date().toISOString() })
+    // .eq('user_id', userId)
+    // .eq('read', false);
 
     if (error) {
       console.error('Erro ao marcar todos os alertas como lidos:', error);
@@ -34,4 +35,4 @@ export async function PUT(request: NextRequest) {
     console.error('Erro ao marcar todos os alertas como lidos:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
-} 
+}

@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/card';
 import VehicleTelemetry from '@/components/vehicle/VehicleTelemetry';
 import VehicleHistory from '@/components/vehicle/VehicleHistory';
 import VehicleStatusFilters from '@/components/ui/vehicle-status-filters';
-import { useVehicles } from '@/lib/vehicles';
+import { useVehicles } from '@/lib/vehicles-client';
 
 // Tipo para os dados de veículos
 interface Vehicle {

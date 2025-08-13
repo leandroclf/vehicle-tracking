@@ -1,6 +1,6 @@
 'use client';
 
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 
 // Função para verificar se a tabela existe
 export async function checkTableExists(tableName: string): Promise<boolean> {
@@ -17,7 +17,8 @@ export async function checkTableExists(tableName: string): Promise<boolean> {
 async function checkTableExistsAlternative(tableName: string): Promise<boolean> {
   try {
     // Tentar uma consulta simples com count para verificar se a tabela existe
-    const { count, error } = await supabase
+    // TODO: Implementar query SQL direta
+    const count = null;`r`n    const error = null;`r`n    // await pool.query(...)
       .from(tableName)
       .select('*', { count: 'exact', head: true });
       

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { getConnection } from '@/lib/database';
 import { MFASetupRequest, MFASetupResponse, MFAVerifyRequest, MFAVerifyResponse, MFAStatus } from '@/types/mfa';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
@@ -37,17 +37,20 @@ export const mfaService = {
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       
       // Salvar configuração temporária
-      const { error: insertError } = await supabase
-        .from('mfa_setup_temp')
-        .insert({
-          user_id: userId,
-          provider: 'sms',
-          phone,
-          verification_code: verificationCode,
-          expires_at: new Date(Date.now() + 10 * 60 * 1000) // 10 minutos
-        });
-
-      if (insertError) throw insertError;
+      const client = await getConnection();
+      const insertQuery = `
+        INSERT INTO mfa_setup_temp (user_id, provider, phone, verification_code, expires_at)
+        VALUES ($1, $2, $3, $4, $5)
+      `;
+      
+      await client.query(insertQuery, [
+        userId,
+        'sms',
+        phone,
+        verificationCode,
+        new Date(Date.now() + 10 * 60 * 1000) // 10 minutos
+      ]);
+      client.release();
 
       // Enviar SMS (integração com provedor SMS)
       await this.sendSMS(phone, `Seu código de verificação Yukz: ${verificationCode}`);
@@ -72,13 +75,18 @@ export const mfaService = {
       const serviceName = 'Yukz';
       
       // Buscar dados do usuário
-      const { data: user, error: userError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', userId)
-        .single();
-
-      if (userError || !user) throw new Error('Usuário não encontrado');
+      const client = await getConnection();
+      const userQuery = `
+        SELECT email FROM users WHERE id = $1
+      `;
+      
+      const userResult = await client.query(userQuery, [userId]);
+      
+      if (!userResult || userResult.rows.length === 0) {
+        throw new Error('Usuário não encontrado');
+      }
+      
+      const user = userResult.rows[0];
 
       // Gerar URL para QR Code
       const otpauth = authenticator.keyuri(user.email, serviceName, secret);
@@ -88,17 +96,19 @@ export const mfaService = {
       const backupCodes = this.generateBackupCodes();
 
       // Salvar configuração temporária
-      const { error: insertError } = await supabase
-        .from('mfa_setup_temp')
-        .insert({
-          user_id: userId,
-          provider: 'totp',
-          secret,
-          backup_codes: backupCodes,
-          expires_at: new Date(Date.now() + 30 * 60 * 1000) // 30 minutos
-        });
-
-      if (insertError) throw insertError;
+      const insertQuery = `
+        INSERT INTO mfa_setup_temp (user_id, provider, secret, backup_codes, expires_at)
+        VALUES ($1, $2, $3, $4, $5)
+      `;
+      
+      await client.query(insertQuery, [
+        userId,
+        'totp',
+        secret,
+        JSON.stringify(backupCodes),
+        new Date(Date.now() + 30 * 60 * 1000) // 30 minutos
+      ]);
+      client.release();
 
       return {
         success: true,
@@ -121,17 +131,20 @@ export const mfaService = {
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
       
       // Salvar configuração temporária
-      const { error: insertError } = await supabase
-        .from('mfa_setup_temp')
-        .insert({
-          user_id: userId,
-          provider: 'email',
-          email,
-          verification_code: verificationCode,
-          expires_at: new Date(Date.now() + 15 * 60 * 1000) // 15 minutos
-        });
-
-      if (insertError) throw insertError;
+      const client = await getConnection();
+      const insertQuery = `
+        INSERT INTO mfa_setup_temp (user_id, provider, email, verification_code, expires_at)
+        VALUES ($1, $2, $3, $4, $5)
+      `;
+      
+      await client.query(insertQuery, [
+        userId,
+        'email',
+        email,
+        verificationCode,
+        new Date(Date.now() + 15 * 60 * 1000) // 15 minutos
+      ]);
+      client.release();
 
       // Enviar email de verificação
       await this.sendEmail(email, 'Código de Verificação Yukz', `Seu código: ${verificationCode}`);
@@ -152,17 +165,22 @@ export const mfaService = {
   async verifyMFA(request: MFAVerifyRequest): Promise<MFAVerifyResponse> {
     try {
       // Buscar sessão MFA
-      const { data: session, error: sessionError } = await supabase
-        .from('mfa_sessions')
-        .select('*')
-        .eq('id', request.sessionToken)
-        .eq('verified', false)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+      const client = await getConnection();
+      const sessionQuery = `
+        SELECT * FROM mfa_sessions 
+        WHERE id = $1 AND verified = false AND expires_at > $2
+      `;
+      
+      const sessionResult = await client.query(sessionQuery, [
+        request.sessionToken,
+        new Date().toISOString()
+      ]);
 
-      if (sessionError || !session) {
+      if (!sessionResult || sessionResult.rows.length === 0) {
         throw new Error('Sessão MFA inválida ou expirada');
       }
+      
+      const session = sessionResult.rows[0];
 
       let isValid = false;
 
@@ -184,20 +202,26 @@ export const mfaService = {
       }
 
       // Marcar sessão como verificada
-      const { error: updateError } = await supabase
-        .from('mfa_sessions')
-        .update({ verified: true, verified_at: new Date() })
-        .eq('id', request.sessionToken);
+      const updateQuery = `
+        UPDATE mfa_sessions 
+        SET verified = true, verified_at = $1 
+        WHERE id = $2
+      `;
+      
+      await client.query(updateQuery, [new Date(), request.sessionToken]);
+      client.release();
 
-      if (updateError) throw updateError;
-
-      // Gerar token de acesso
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError) throw authError;
+      // Gerar token de acesso JWT
+      const jwt = require('jsonwebtoken');
+      const accessToken = jwt.sign(
+        { userId: session.user_id },
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
 
       return {
         success: true,
-        accessToken: authData.user?.access_token,
+        accessToken,
         message: 'Autenticação multifatorial concluída com sucesso'
       };
     } catch (error) {
@@ -211,13 +235,14 @@ export const mfaService = {
    */
   async getMFAStatus(userId: string): Promise<MFAStatus> {
     try {
-      const { data: mfaConfig, error } = await supabase
-        .from('user_mfa_config')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
+      const client = await getConnection();
+      const configQuery = `
+        SELECT * FROM user_mfa_config WHERE user_id = $1
+      `;
+      
+      const configResult = await client.query(configQuery, [userId]);
+      client.release();
+      const mfaConfig = configResult.rows[0];
 
       if (!mfaConfig) {
         return {
@@ -259,59 +284,68 @@ export const mfaService = {
    * Verifica código SMS/Email
    */
   async verifyCode(userId: string, provider: 'sms' | 'email', code: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('mfa_setup_temp')
-      .select('verification_code')
-      .eq('user_id', userId)
-      .eq('provider', provider)
-      .gt('expires_at', new Date().toISOString())
-      .single();
-
-    if (error || !data) return false;
-    return data.verification_code === code;
+    const client = await getConnection();
+    const query = `
+      SELECT verification_code FROM mfa_setup_temp 
+      WHERE user_id = $1 AND provider = $2 AND expires_at > $3
+    `;
+    
+    const result = await client.query(query, [userId, provider, new Date().toISOString()]);
+    client.release();
+    
+    if (!result || result.rows.length === 0) return false;
+    return result.rows[0].verification_code === code;
   },
 
   /**
    * Verifica código TOTP
    */
   async verifyTOTP(userId: string, code: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('user_mfa_config')
-      .select('totp_secret')
-      .eq('user_id', userId)
-      .eq('totp_enabled', true)
-      .single();
-
-    if (error || !data) return false;
-    return authenticator.verify({ token: code, secret: data.totp_secret });
+    const client = await getConnection();
+    const query = `
+      SELECT totp_secret FROM user_mfa_config 
+      WHERE user_id = $1 AND totp_enabled = true
+    `;
+    
+    const result = await client.query(query, [userId]);
+    client.release();
+    
+    if (!result || result.rows.length === 0) return false;
+    return authenticator.verify({ token: code, secret: result.rows[0].totp_secret });
   },
 
   /**
    * Verifica código de backup
    */
   async verifyBackupCode(userId: string, code: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('user_mfa_config')
-      .select('backup_codes')
-      .eq('user_id', userId)
-      .single();
+    const client = await getConnection();
+    const query = `
+      SELECT backup_codes FROM user_mfa_config WHERE user_id = $1
+    `;
+    
+    const result = await client.query(query, [userId]);
+    
+    if (!result || result.rows.length === 0 || !result.rows[0].backup_codes) return false;
 
-    if (error || !data || !data.backup_codes) return false;
-
-    const codes = data.backup_codes as string[];
+    const codes = JSON.parse(result.rows[0].backup_codes) as string[];
     const isValid = codes.includes(code);
 
     if (isValid) {
       // Remover código usado
       const updatedCodes = codes.filter(c => c !== code);
-      await supabase
-        .from('user_mfa_config')
-        .update({ 
-          backup_codes: updatedCodes,
-          backup_codes_count: updatedCodes.length,
-          backup_codes_last_used: new Date()
-        })
-        .eq('user_id', userId);
+      const updateQuery = `
+        UPDATE user_mfa_config 
+        SET backup_codes = $1, backup_codes_count = $2, backup_codes_last_used = $3
+        WHERE user_id = $4
+      `;
+      
+      await client.query(updateQuery, [
+        JSON.stringify(updatedCodes),
+        updatedCodes.length,
+        new Date(),
+        userId
+      ]);
+      client.release();
     }
 
     return isValid;
@@ -341,14 +375,8 @@ export const mfaService = {
    * Envia email
    */
   async sendEmail(email: string, subject: string, message: string): Promise<void> {
-    // Usar Supabase Auth para envio de email
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        data: { verification_code: message }
-      }
-    });
-    
-    if (error) throw error;
+    // Implementar envio de email (integração com provedor SMTP)
+    console.log(`Email para ${email}: ${subject} - ${message}`);
+    // TODO: Implementar envio real com provedor SMTP (SendGrid, AWS SES, etc.)
   }
 };

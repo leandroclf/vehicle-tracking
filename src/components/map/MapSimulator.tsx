@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useVehicles } from '@/lib/vehicles';
+import { useVehicles } from '@/lib/vehicles-client';
 
 // Componente para simular um mapa com localização de veículos
 export default function MapSimulator({ vehicleId }: { vehicleId?: number }) {

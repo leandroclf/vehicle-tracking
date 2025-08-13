@@ -35,7 +35,7 @@ const markReadSchema = z.object({
 });
 
 // Handler para obter alertas (GET)
-export const GET = withApiAuth(async (req, { user, supabase }) => {
+export const GET = withApiAuth(async (req, { user }) => {
   // Validar parâmetros de consulta
   const queryResult = validateQuery(req, querySchema);
   if (queryResult.error) {
@@ -49,26 +49,14 @@ export const GET = withApiAuth(async (req, { user, supabase }) => {
   if (read !== undefined) filter.read = read;
   if (vehicle_id) filter.vehicle_id = vehicle_id;
 
-  // Construir consulta paginada
-  const query = buildPaginatedQuery(
-    supabase,
-    'alerts',
-    user.id,
-    {
-      limit,
-      offset,
-      orderBy: 'timestamp',
-      ascending: sort === 'asc',
-      filter,
-      select: `
-        *,
-        vehicles (name)
-      `
-    }
-  );
+  // TODO: Implementar consulta paginada com PostgreSQL direto
+  // const query = buildPaginatedQuery(...)
+  const alertsData: Alert[] = [];
+  const count = 0;
+  const error = null;
 
   // Executar consulta
-  const { data: alerts, error, count } = await query;
+  // const { data: alertsData, error, count } = await query;
 
   if (error) {
     console.error('Erro ao buscar alertas:', error);
@@ -76,7 +64,7 @@ export const GET = withApiAuth(async (req, { user, supabase }) => {
   }
 
   // Formatar os dados para manter compatibilidade
-  const formattedAlerts = (alerts as Alert[] || []).map(alert => ({
+  const formattedAlerts = (alertsData as Alert[] || []).map(alert => ({
     ...alert,
     vehicleName: alert.vehicles?.name || 'Desconhecido',
     read: Boolean(alert.read)
@@ -93,7 +81,7 @@ export const GET = withApiAuth(async (req, { user, supabase }) => {
 });
 
 // Handler para marcar alertas como lidos (PATCH)
-export const PATCH = withApiAuth(async (req, { user, supabase }) => {
+export const PATCH = withApiAuth(async (req, { user }) => {
   // Validar corpo da requisição
   const bodyResult = await validateBody(req, markReadSchema);
   if (bodyResult.error) {
@@ -103,11 +91,12 @@ export const PATCH = withApiAuth(async (req, { user, supabase }) => {
   const { alertIds } = bodyResult.data!;
 
   // Atualizar o status 'read' dos alertas especificados
-  const { error } = await supabase
-    .from('alerts')
-    .update({ read: true })
-    .in('id', alertIds)
-    .eq('user_id', user.id);
+  // TODO: Implementar query SQL direta
+  const error = null; // await pool.query(...)
+  // .from('alerts')
+  // .update({ read: true })
+  // .in('id', alertIds)
+  // .eq('user_id', user.id);
 
   if (error) {
     console.error('Erro ao marcar alertas como lidos:', error);
@@ -121,13 +110,14 @@ export const PATCH = withApiAuth(async (req, { user, supabase }) => {
 });
 
 // Handler para marcar todos os alertas como lidos (PUT)
-export const PUT = withApiAuth(async (req, { user, supabase }) => {
+export const PUT = withApiAuth(async (req, { user }) => {
   // Atualizar todos os alertas não lidos do usuário
-  const { error } = await supabase
-    .from('alerts')
-    .update({ read: true })
-    .eq('user_id', user.id)
-    .eq('read', false);
+  // TODO: Implementar query SQL direta
+  const error = null; // await pool.query(...)
+  // .from('alerts')
+  // .update({ read: true })
+  // .eq('user_id', user.id)
+  // .eq('read', false);
 
   if (error) {
     console.error('Erro ao marcar todos os alertas como lidos:', error);
@@ -138,4 +128,4 @@ export const PUT = withApiAuth(async (req, { user, supabase }) => {
     success: true,
     message: 'Todos os alertas foram marcados como lidos' 
   });
-}); 
+});

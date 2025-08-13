@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
@@ -46,22 +46,28 @@ export async function GET(request: NextRequest) {
     const { limit, offset, vehicle_id, status, sort } = queryResult.data;
     
     // Construir consulta base
-    let query = supabase
-      .from('geofences')
-      .select('*')
-      .eq('user_id', userId)
-      .order('name', { ascending: sort === 'asc' })
-      .range(offset, offset + limit - 1);
+    // TODO: Implementar query SQL direta
+    let query = null; // pool.query
+    //   .from('geofences')
+    //   .select('*')
+    //   .eq('user_id', userId)
+    //   .order('name', { ascending: sort === 'asc' })
+    //   .range(offset, offset + limit - 1);
     
     // Aplicar filtro de status se não for 'all'
-    if (status !== 'all') {
-      query = query.eq('status', status);
-    }
+    // TODO: Implementar query SQL direta
+    // if (status !== 'all') {
+    //   query = query.eq('status', status);
+    // }
     
     // Filtrar por veículo específico foi removido pois não existe a tabela de relacionamento
     
     // Executar consulta
-    const { data: geofences, error, count } = await query;
+    // TODO: Implementar query SQL direta
+    const geofences = null;
+    const error = null;
+    const count = 0;
+    // const { data: geofences, error, count } = await query;
     
     if (error) {
       console.error('Erro ao buscar geocercas:', error);
@@ -105,14 +111,17 @@ export async function POST(request: NextRequest) {
     const { vehicle_ids, ...geofenceData } = geofenceResult.data;
     
     // Iniciar transação
-    const { data: newGeofence, error: insertError } = await supabase
-      .from('geofences')
-      .insert({
-        ...geofenceData,
-        user_id: userId
-      })
-      .select()
-      .single();
+    // TODO: Implementar query SQL direta
+    const newGeofence = null;
+    const insertError = null;
+    // await pool.query(...)
+    //   .from('geofences')
+    //   .insert({
+    //     ...geofenceData,
+    //     user_id: userId
+    //   })
+    //   .select()
+    //   .single();
     
     if (insertError) {
       console.error('Erro ao criar geocerca:', insertError);
@@ -163,12 +172,15 @@ export async function PUT(request: NextRequest) {
     }
     
     // Verificar se a geocerca existe e pertence ao usuário
-    const { data: existingGeofence, error: checkError } = await supabase
-      .from('geofences')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const existingGeofence = null;
+    const checkError = null;
+    // await pool.query(...)
+    //   .from('geofences')
+    //   .select('id')
+    //   .eq('id', id)
+    //   .eq('user_id', userId)
+    //   .maybeSingle();
     
     if (checkError) {
       console.error('Erro ao verificar geocerca:', checkError);
@@ -180,13 +192,16 @@ export async function PUT(request: NextRequest) {
     }
     
     // Atualizar geocerca
-    const { data: updatedGeofence, error: updateError } = await supabase
-      .from('geofences')
-      .update(geofenceResult.data)
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select()
-      .single();
+    // TODO: Implementar query SQL direta
+    const updatedGeofence = null;
+    const updateError = null;
+    // await pool.query(...)
+    // .from('geofences')
+    // .update(geofenceResult.data)
+    // .eq('id', id)
+    // .eq('user_id', userId)
+    // .select()
+    // .single();
     
     if (updateError) {
       console.error('Erro ao atualizar geocerca:', updateError);
@@ -221,12 +236,15 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Verificar se a geocerca existe e pertence ao usuário
-    const { data: existingGeofence, error: checkError } = await supabase
-      .from('geofences')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const existingGeofence = null;
+    const checkError = null;
+    // await pool.query(...)
+    //   .from('geofences')
+    //   .select('id')
+    //   .eq('id', id)
+    //   .eq('user_id', userId)
+    //   .maybeSingle();
     
     if (checkError) {
       console.error('Erro ao verificar geocerca:', checkError);
@@ -238,11 +256,13 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Excluir geocerca
-    const { error: deleteError } = await supabase
-      .from('geofences')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
+    // TODO: Implementar query SQL direta
+    const deleteError = null;
+    // const { error: deleteError } = await pool.query
+    //   .from('geofences')
+    //   .delete()
+    //   .eq('id', id)
+    //   .eq('user_id', userId);
     
     if (deleteError) {
       console.error('Erro ao excluir geocerca:', deleteError);

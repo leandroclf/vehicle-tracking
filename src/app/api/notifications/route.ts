@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
@@ -55,24 +55,44 @@ export async function GET(request: NextRequest) {
     
     const { limit, offset, read, sort } = queryResult.data;
     
-    // Construir consulta base
-    let query = supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: sort === 'asc' })
-      .range(offset, offset + limit - 1);
+    // Construir consulta SQL
+    const pool = getDbPool();
+    let whereClause = 'WHERE user_id = $1';
+    let params = [userId];
     
     // Aplicar filtro de status de leitura se não for 'all'
     if (read !== 'all') {
-      query = query.eq('read', read === 'read');
+      whereClause += ' AND read = $2';
+      params.push(read === 'read');
     }
     
-    // Executar consulta
-    const { data: notifications, error, count } = await query;
+    const orderClause = `ORDER BY created_at ${sort === 'asc' ? 'ASC' : 'DESC'}`;
+    const limitClause = `LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
     
-    if (error) {
-      console.error('Erro ao buscar notificações:', error);
+    const query = `
+      SELECT * FROM notifications 
+      ${whereClause} 
+      ${orderClause} 
+      ${limitClause}
+    `;
+    
+    const countQuery = `
+      SELECT COUNT(*) as total FROM notifications 
+      ${whereClause}
+    `;
+    
+    // Executar consultas
+    const [notificationsResult, countResult] = await Promise.all([
+      pool.query(query, params),
+      pool.query(countQuery, params.slice(0, -2)) // Remove limit e offset para count
+    ]);
+    
+    const notifications = notificationsResult.rows;
+    const count = parseInt(countResult.rows[0]?.total || '0');
+    
+    if (!notifications) {
+      console.error('Erro ao buscar notificações');
       return NextResponse.json({ 
         error: 'Erro ao buscar notificações' 
       }, { status: 500 });
@@ -138,20 +158,22 @@ export async function PATCH(request: NextRequest) {
     const { ids } = result.data;
     
     // Verificar se as notificações pertencem ao usuário
-    const { data: userNotifications, error: checkError } = await supabase
-      .from('notifications')
-      .select('id')
-      .eq('user_id', userId)
-      .in('id', ids);
+    const pool = getDbPool();
+    const checkQuery = `
+      SELECT id FROM notifications 
+      WHERE user_id = $1 AND id = ANY($2)
+    `;
     
-    if (checkError) {
-      console.error('Erro ao verificar notificações:', checkError);
+    const checkResult = await pool.query(checkQuery, [userId, ids]);
+    
+    if (!checkResult) {
+      console.error('Erro ao verificar notificações');
       return NextResponse.json({ 
         error: 'Erro ao verificar notificações' 
       }, { status: 500 });
     }
     
-    const validIds = userNotifications?.map(notification => notification.id) || [];
+    const validIds = checkResult.rows.map(row => row.id);
     
     if (validIds.length === 0) {
       return NextResponse.json({ 
@@ -162,20 +184,22 @@ export async function PATCH(request: NextRequest) {
     }
     
     // Atualizar o status das notificações para 'lidas'
-    const { error, count } = await supabase
-      .from('notifications')
-      .update({ 
-        read: true 
-      })
-      .eq('user_id', userId)
-      .in('id', validIds);
+    const updateQuery = `
+      UPDATE notifications 
+      SET read = true 
+      WHERE user_id = $1 AND id = ANY($2)
+    `;
     
-    if (error) {
-      console.error('Erro ao marcar notificações como lidas:', error);
+    const updateResult = await pool.query(updateQuery, [userId, validIds]);
+    
+    if (!updateResult) {
+      console.error('Erro ao marcar notificações como lidas');
       return NextResponse.json({ 
         error: 'Erro ao marcar notificações como lidas' 
       }, { status: 500 });
     }
+    
+    const count = updateResult.rowCount || 0;
     
     return NextResponse.json({ 
       success: true,
@@ -189,4 +213,4 @@ export async function PATCH(request: NextRequest) {
       error: 'Erro interno do servidor' 
     }, { status: 500 });
   }
-} 
+}

@@ -6,8 +6,7 @@
  * detecção de eventos e alertas.
  */
 
-import { supabase } from '@/lib/supabase';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { WebSocketManager, RealtimeEvent } from '../realtime/websocket-client';
 
 // Tipos para o sistema de rastreamento
 export interface Position {
@@ -86,40 +85,55 @@ export interface TrackingEvent {
  * Classe principal do serviço de rastreamento
  */
 export class TrackingService {
-  private realtimeChannel: RealtimeChannel | null = null;
+  private wsManager: WebSocketManager | null = null;
   private isListening = false;
   private eventCallbacks: Map<string, Function[]> = new Map();
+  private apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
   constructor() {
-    this.initializeRealtimeSubscription();
+    // Só inicializar WebSocket no cliente
+    if (typeof window !== 'undefined') {
+      this.initializeWebSocketConnection();
+    }
   }
 
   /**
-   * Inicializa a subscrição em tempo real
+   * Inicializa a conexão WebSocket
    */
-  private initializeRealtimeSubscription() {
-    this.realtimeChannel = supabase
-      .channel('vehicle-tracking')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'positions' },
-        (payload) => this.handlePositionUpdate(payload.new as Position)
-      )
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'vehicle_status' },
-        (payload) => this.handleStatusUpdate(payload.new as VehicleStatus)
-      )
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'events' },
-        (payload) => this.handleEventUpdate(payload.new as TrackingEvent)
-      );
+  private initializeWebSocketConnection() {
+    // Verificar se estamos no cliente
+    if (typeof window === 'undefined') {
+      console.warn('WebSocket não pode ser inicializado no servidor');
+      return;
+    }
+    
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
+    this.wsManager = new WebSocketManager(wsUrl);
+    
+    // Configurar handlers para eventos WebSocket
+    this.wsManager.onOpen(() => {
+      console.log('WebSocket conectado para tracking service');
+    });
+    
+    this.wsManager.onClose(() => {
+      console.log('WebSocket desconectado para tracking service');
+    });
+    
+    this.wsManager.onError((error: Error) => {
+      console.error('Erro no WebSocket do tracking service:', error);
+    });
   }
 
   /**
    * Inicia o monitoramento em tempo real
    */
   async startTracking(): Promise<void> {
-    if (!this.isListening && this.realtimeChannel) {
-      await this.realtimeChannel.subscribe();
+    if (!this.isListening && this.wsManager) {
+      this.wsManager.connect();
+      
+      // WebSocket será conectado através do RealtimeProvider
+      // Os canais de rastreamento serão gerenciados pelo provider
+      
       this.isListening = true;
       console.log('Rastreamento em tempo real iniciado');
     }
@@ -129,8 +143,11 @@ export class TrackingService {
    * Para o monitoramento em tempo real
    */
   async stopTracking(): Promise<void> {
-    if (this.isListening && this.realtimeChannel) {
-      await this.realtimeChannel.unsubscribe();
+    if (this.isListening && this.wsManager) {
+      // WebSocket será desconectado através do RealtimeProvider
+      // Os canais de rastreamento serão gerenciados pelo provider
+      
+      this.wsManager.disconnect();
       this.isListening = false;
       console.log('Rastreamento em tempo real parado');
     }
@@ -216,34 +233,44 @@ export class TrackingService {
    * Verifica alertas de velocidade
    */
   private async checkSpeedAlerts(position: Position): Promise<void> {
-    // Buscar configurações de alerta de velocidade do usuário
-    const { data: vehicle } = await supabase
-      .from('vehicles')
-      .select('user_id')
-      .eq('id', position.vehicle_id)
-      .single();
-
-    if (!vehicle) return;
-
-    const { data: settings } = await supabase
-      .from('settings')
-      .select('speed_alert_enabled, speed_alert_value')
-      .eq('user_id', vehicle.user_id)
-      .single();
-
-    if (settings?.speed_alert_enabled && position.speed > (settings.speed_alert_value || 120)) {
-      await this.createEvent({
-        vehicle_id: position.vehicle_id,
-        type: 'speed_alert',
-        timestamp: position.timestamp,
-        lat: position.latitude,
-        lng: position.longitude,
-        speed: position.speed,
-        details: {
-          speed_limit: settings.speed_alert_value,
-          exceeded_by: position.speed - settings.speed_alert_value
-        }
+    try {
+      // Buscar configurações de alerta de velocidade do usuário
+      const vehicleResponse = await fetch(`${this.apiBaseUrl}/vehicles/${position.vehicle_id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
       });
+      
+      if (!vehicleResponse.ok) return;
+      
+      const vehicle = await vehicleResponse.json();
+      
+      const settingsResponse = await fetch(`${this.apiBaseUrl}/users/${vehicle.user_id}/settings`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      });
+      
+      if (!settingsResponse.ok) return;
+      
+      const settings = await settingsResponse.json();
+
+      if (settings?.speed_alert_enabled && position.speed > (settings.speed_alert_value || 120)) {
+        await this.createEvent({
+          vehicle_id: position.vehicle_id,
+          type: 'speed_alert',
+          timestamp: position.timestamp,
+          lat: position.latitude,
+          lng: position.longitude,
+          speed: position.speed,
+          details: {
+            speed_limit: settings.speed_alert_value,
+            exceeded_by: position.speed - settings.speed_alert_value
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao verificar alertas de velocidade:', error);
     }
   }
 
@@ -251,32 +278,41 @@ export class TrackingService {
    * Verifica geocercas
    */
   private async checkGeofences(position: Position): Promise<void> {
-    // Buscar geocercas do usuário
-    const { data: vehicle } = await supabase
-      .from('vehicles')
-      .select('user_id')
-      .eq('id', position.vehicle_id)
-      .single();
+    try {
+      // Buscar geocercas do usuário
+      const vehicleResponse = await fetch(`${this.apiBaseUrl}/vehicles/${position.vehicle_id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      });
+      
+      if (!vehicleResponse.ok) return;
+      
+      const vehicle = await vehicleResponse.json();
+      
+      const geofencesResponse = await fetch(`${this.apiBaseUrl}/users/${vehicle.user_id}/geofences`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      });
+      
+      if (!geofencesResponse.ok) return;
+      
+      const geofences = await geofencesResponse.json();
 
-    if (!vehicle) return;
+      for (const geofence of geofences) {
+        const isInside = this.isPointInGeofence(
+          position.latitude,
+          position.longitude,
+          geofence
+        );
 
-    const { data: geofences } = await supabase
-      .from('geofences')
-      .select('*')
-      .eq('user_id', vehicle.user_id);
-
-    if (!geofences) return;
-
-    for (const geofence of geofences) {
-      const isInside = this.isPointInGeofence(
-        position.latitude,
-        position.longitude,
-        geofence
-      );
-
-      // Verificar se houve mudança de estado (entrada/saída)
-      // Isso requereria armazenar o estado anterior, que pode ser implementado
-      // usando uma cache ou consultando a última posição
+        // Verificar se houve mudança de estado (entrada/saída)
+        // Isso requereria armazenar o estado anterior, que pode ser implementado
+        // usando uma cache ou consultando a última posição
+      }
+    } catch (error) {
+      console.error('Erro ao verificar geocercas:', error);
     }
   }
 
@@ -320,27 +356,30 @@ export class TrackingService {
    * Atualiza a viagem atual do veículo
    */
   private async updateCurrentTrip(position: Position): Promise<void> {
-    // Buscar viagem ativa (sem end_time)
-    const { data: activeTrip } = await supabase
-      .from('trips')
-      .select('*')
-      .eq('vehicle_id', position.vehicle_id)
-      .is('end_time', null)
-      .order('start_time', { ascending: false })
-      .limit(1)
-      .single();
+    try {
+      // Buscar viagem ativa (sem end_time)
+      const response = await fetch(`${this.apiBaseUrl}/vehicles/${position.vehicle_id}/trips/active`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      });
+      
+      const activeTrip = response.ok ? await response.json() : null;
 
-    if (position.ignition) {
-      if (!activeTrip) {
-        // Iniciar nova viagem
-        await this.startTrip(position);
-      } else {
-        // Atualizar viagem existente
-        await this.updateTrip(activeTrip, position);
+      if (position.ignition) {
+        if (!activeTrip) {
+          // Iniciar nova viagem
+          await this.startTrip(position);
+        } else {
+          // Atualizar viagem existente
+          await this.updateTrip(activeTrip, position);
+        }
+      } else if (activeTrip) {
+        // Finalizar viagem
+        await this.endTrip(activeTrip, position);
       }
-    } else if (activeTrip) {
-      // Finalizar viagem
-      await this.endTrip(activeTrip, position);
+    } catch (error) {
+      console.error('Erro ao atualizar viagem atual:', error);
     }
   }
 
@@ -356,20 +395,29 @@ export class TrackingService {
       start_address: position.address
     };
 
-    const { error } = await supabase
-      .from('trips')
-      .insert(trip);
-
-    if (error) {
-      console.error('Erro ao iniciar viagem:', error);
-    } else {
-      await this.createEvent({
-        vehicle_id: position.vehicle_id,
-        type: 'movement_start',
-        timestamp: position.timestamp,
-        lat: position.latitude,
-        lng: position.longitude
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/trips`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+        body: JSON.stringify(trip),
       });
+
+      if (response.ok) {
+        await this.createEvent({
+          vehicle_id: position.vehicle_id,
+          type: 'movement_start',
+          timestamp: position.timestamp,
+          lat: position.latitude,
+          lng: position.longitude
+        });
+      } else {
+        console.error('Erro ao iniciar viagem:', await response.text());
+      }
+    } catch (error) {
+      console.error('Erro ao iniciar viagem:', error);
     }
   }
 
@@ -389,10 +437,18 @@ export class TrackingService {
       max_speed: Math.max(trip.max_speed || 0, position.speed)
     };
 
-    await supabase
-      .from('trips')
-      .update(updates)
-      .eq('id', trip.id);
+    try {
+      await fetch(`${this.apiBaseUrl}/trips/${trip.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+        body: JSON.stringify(updates),
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar viagem:', error);
+    }
   }
 
   /**
@@ -415,21 +471,29 @@ export class TrackingService {
       avg_speed: duration > 0 ? (distance / (duration / 1000)) * 3.6 : 0 // km/h
     };
 
-    const { error } = await supabase
-      .from('trips')
-      .update(updates)
-      .eq('id', trip.id);
-
-    if (error) {
-      console.error('Erro ao finalizar viagem:', error);
-    } else {
-      await this.createEvent({
-        vehicle_id: position.vehicle_id,
-        type: 'movement_stop',
-        timestamp: position.timestamp,
-        lat: position.latitude,
-        lng: position.longitude
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/trips/${trip.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+        body: JSON.stringify(updates),
       });
+
+      if (response.ok) {
+        await this.createEvent({
+          vehicle_id: position.vehicle_id,
+          type: 'movement_stop',
+          timestamp: position.timestamp,
+          lat: position.latitude,
+          lng: position.longitude
+        });
+      } else {
+        console.error('Erro ao finalizar viagem:', await response.text());
+      }
+    } catch (error) {
+      console.error('Erro ao finalizar viagem:', error);
     }
   }
 
@@ -437,11 +501,20 @@ export class TrackingService {
    * Cria um evento de rastreamento
    */
   private async createEvent(event: Partial<TrackingEvent>): Promise<void> {
-    const { error } = await supabase
-      .from('events')
-      .insert(event);
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/events`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+        body: JSON.stringify(event),
+      });
 
-    if (error) {
+      if (!response.ok) {
+        console.error('Erro ao criar evento:', await response.text());
+      }
+    } catch (error) {
       console.error('Erro ao criar evento:', error);
     }
   }
@@ -450,38 +523,49 @@ export class TrackingService {
    * API pública para inserir uma nova posição
    */
   async insertPosition(position: Omit<Position, 'id'>): Promise<Position | null> {
-    const { data, error } = await supabase
-      .from('positions')
-      .insert(position)
-      .select()
-      .single();
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/positions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+        body: JSON.stringify(position),
+      });
 
-    if (error) {
+      if (response.ok) {
+        return await response.json();
+      } else {
+        console.error('Erro ao inserir posição:', await response.text());
+        return null;
+      }
+    } catch (error) {
       console.error('Erro ao inserir posição:', error);
       return null;
     }
-
-    return data;
   }
 
   /**
    * Obtém a última posição de um veículo
    */
   async getLatestPosition(vehicleId: number): Promise<Position | null> {
-    const { data, error } = await supabase
-      .from('positions')
-      .select('*')
-      .eq('vehicle_id', vehicleId)
-      .order('timestamp', { ascending: false })
-      .limit(1)
-      .single();
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/vehicles/${vehicleId}/positions/latest`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      });
 
-    if (error) {
+      if (response.ok) {
+        return await response.json();
+      } else {
+        console.error('Erro ao buscar última posição:', await response.text());
+        return null;
+      }
+    } catch (error) {
       console.error('Erro ao buscar última posição:', error);
       return null;
     }
-
-    return data;
   }
 
   /**
@@ -493,39 +577,52 @@ export class TrackingService {
     endTime: string,
     limit: number = 1000
   ): Promise<Position[]> {
-    const { data, error } = await supabase
-      .from('positions')
-      .select('*')
-      .eq('vehicle_id', vehicleId)
-      .gte('timestamp', startTime)
-      .lte('timestamp', endTime)
-      .order('timestamp', { ascending: true })
-      .limit(limit);
+    try {
+      const params = new URLSearchParams({
+        start_time: startTime,
+        end_time: endTime,
+        limit: limit.toString()
+      });
 
-    if (error) {
+      const response = await fetch(`${this.apiBaseUrl}/vehicles/${vehicleId}/positions?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      });
+
+      if (response.ok) {
+        return await response.json();
+      } else {
+        console.error('Erro ao buscar histórico de posições:', await response.text());
+        return [];
+      }
+    } catch (error) {
       console.error('Erro ao buscar histórico de posições:', error);
       return [];
     }
-
-    return data || [];
   }
 
   /**
    * Obtém status atual de um veículo
    */
   async getVehicleStatus(vehicleId: number): Promise<VehicleStatus | null> {
-    const { data, error } = await supabase
-      .from('vehicle_status')
-      .select('*')
-      .eq('vehicle_id', vehicleId)
-      .single();
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/vehicles/${vehicleId}/status`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      });
 
-    if (error) {
+      if (response.ok) {
+        return await response.json();
+      } else {
+        console.error('Erro ao buscar status do veículo:', await response.text());
+        return null;
+      }
+    } catch (error) {
       console.error('Erro ao buscar status do veículo:', error);
       return null;
     }
-
-    return data;
   }
 
   /**
@@ -536,27 +633,27 @@ export class TrackingService {
     startDate?: string,
     endDate?: string
   ): Promise<Trip[]> {
-    let query = supabase
-      .from('trips')
-      .select('*')
-      .eq('vehicle_id', vehicleId);
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
 
-    if (startDate) {
-      query = query.gte('start_time', startDate);
-    }
+      const response = await fetch(`${this.apiBaseUrl}/vehicles/${vehicleId}/trips?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      });
 
-    if (endDate) {
-      query = query.lte('start_time', endDate);
-    }
-
-    const { data, error } = await query.order('start_time', { ascending: false });
-
-    if (error) {
+      if (response.ok) {
+        return await response.json();
+      } else {
+        console.error('Erro ao buscar viagens:', await response.text());
+        return [];
+      }
+    } catch (error) {
       console.error('Erro ao buscar viagens:', error);
       return [];
     }
-
-    return data || [];
   }
 
   /**
@@ -568,33 +665,51 @@ export class TrackingService {
     startDate?: string,
     endDate?: string
   ): Promise<TrackingEvent[]> {
-    let query = supabase
-      .from('events')
-      .select('*')
-      .eq('vehicle_id', vehicleId);
+    try {
+      const params = new URLSearchParams();
+      if (eventType) params.append('event_type', eventType);
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
 
-    if (eventType) {
-      query = query.eq('type', eventType);
-    }
+      const response = await fetch(`${this.apiBaseUrl}/vehicles/${vehicleId}/events?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+        },
+      });
 
-    if (startDate) {
-      query = query.gte('timestamp', startDate);
-    }
-
-    if (endDate) {
-      query = query.lte('timestamp', endDate);
-    }
-
-    const { data, error } = await query.order('timestamp', { ascending: false });
-
-    if (error) {
+      if (response.ok) {
+        return await response.json();
+      } else {
+        console.error('Erro ao buscar eventos:', await response.text());
+        return [];
+      }
+    } catch (error) {
       console.error('Erro ao buscar eventos:', error);
       return [];
     }
-
-    return data || [];
   }
 }
 
 // Instância singleton do serviço de rastreamento
-export const trackingService = new TrackingService();
+// Lazy initialization para evitar problemas de SSR
+let trackingServiceInstance: TrackingService | null = null;
+
+export function getTrackingService(): TrackingService {
+  if (typeof window === 'undefined') {
+    // No servidor, retornar um mock ou null
+    throw new Error('TrackingService só pode ser usado no cliente');
+  }
+  
+  if (!trackingServiceInstance) {
+    trackingServiceInstance = new TrackingService();
+  }
+  
+  return trackingServiceInstance;
+}
+
+// Manter compatibilidade com código existente
+export const trackingService = {
+  get instance() {
+    return getTrackingService();
+  }
+};

@@ -1,20 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { createClient, RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { useAuth } from '@/lib/auth';
-
-// Configuração do cliente Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
-  }
-});
 
 type SubscriptionEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
@@ -29,30 +16,27 @@ interface UseRealtimeSubscriptionProps {
   channelName: string;
   config: SubscriptionConfig;
   callback: (payload: any) => void;
-  client?: SupabaseClient;
   enabled?: boolean;
 }
 
 /**
- * Hook personalizado para gerenciar inscrições do Supabase Realtime
+ * Hook personalizado para gerenciar inscrições WebSocket Realtime
  * 
  * @param channelName Nome único para o canal
  * @param config Configuração da inscrição (tabela, evento, filtro)
  * @param callback Função a ser chamada quando ocorrer um evento
- * @param client Cliente Supabase opcional (usa o padrão se não fornecido)
  * @param enabled Controla se a inscrição está ativa
  */
 export const useRealtimeSubscription = ({
   channelName,
   config,
   callback,
-  client = supabase,
   enabled = true
 }: UseRealtimeSubscriptionProps) => {
-  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
-  const [status, setStatus] = useState<'SUBSCRIBED' | 'UNSUBSCRIBED' | 'ERROR'>('UNSUBSCRIBED');
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [status, setStatus] = useState<'CONNECTED' | 'DISCONNECTED' | 'ERROR'>('DISCONNECTED');
   const [error, setError] = useState<Error | null>(null);
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   
   // Armazenar userId em uma ref para evitar re-renderizações desnecessárias
   const userIdRef = useRef<string | null>(null);
@@ -75,70 +59,88 @@ export const useRealtimeSubscription = ({
     callbackRef.current(payload);
   }, []);
 
-  // Usar uma ref para o estado do canal para evitar dependências cíclicas
-  const channelRef = useRef<RealtimeChannel | null>(null);
+  // Usar uma ref para o estado do socket para evitar dependências cíclicas
+  const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    if (!enabled || !userIdRef.current) return;
+    if (!enabled || !userIdRef.current || !token) return;
 
     try {
-      // Limpar canal anterior se existir
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
+      // Limpar socket anterior se existir
+      if (socketRef.current) {
+        socketRef.current.close();
       }
       
-      // Criar um canal com o nome fornecido
-      const realtimeChannel = client
-        .channel(channelName)
-        .on(
-          'postgres_changes' as any,
-          {
-            event: config.event,
-            schema: config.schema || 'public',
+      // Criar conexão WebSocket
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
+      const ws = new WebSocket(`${wsUrl}?token=${token}`);
+      
+      ws.onopen = () => {
+        setStatus('CONNECTED');
+        setError(null);
+        
+        // Enviar configuração de inscrição
+        ws.send(JSON.stringify({
+          type: 'subscribe',
+          channel: channelName,
+          config: {
             table: config.table,
+            event: config.event,
             filter: config.filter,
-          }, 
-          stableCallback
-        )
-        .subscribe((newStatus) => {
-          if (newStatus === 'SUBSCRIBED') {
-            setStatus('SUBSCRIBED');
-          } else if (newStatus === 'CHANNEL_ERROR') {
-            setStatus('ERROR');
-            setError(new Error('Erro ao se inscrever no canal'));
+            schema: config.schema || 'public'
           }
-        });
+        }));
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.channel === channelName) {
+            stableCallback(data.payload);
+          }
+        } catch (err) {
+          console.error('Erro ao processar mensagem WebSocket:', err);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        setStatus('ERROR');
+        setError(new Error('Erro na conexão WebSocket'));
+      };
+      
+      ws.onclose = () => {
+        setStatus('DISCONNECTED');
+      };
 
-      // Armazenar canal na ref e no estado
-      channelRef.current = realtimeChannel;
-      setChannel(realtimeChannel);
+      // Armazenar socket na ref e no estado
+      socketRef.current = ws;
+      setSocket(ws);
 
-      // Limpar inscrição ao desmontar
+      // Limpar conexão ao desmontar
       return () => {
-        if (channelRef.current) {
-          channelRef.current.unsubscribe();
-          channelRef.current = null;
-          setStatus('UNSUBSCRIBED');
+        if (socketRef.current) {
+          socketRef.current.close();
+          socketRef.current = null;
+          setStatus('DISCONNECTED');
         }
       };
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Erro desconhecido na inscrição'));
+      setError(err instanceof Error ? err : new Error('Erro desconhecido na conexão'));
       setStatus('ERROR');
     }
-  // Remover 'user' da matriz de dependências para evitar loops
-  }, [channelName, enabled, client, stableCallback, config.event, config.schema, config.table, config.filter]);
+  }, [channelName, enabled, token, stableCallback, config.event, config.schema, config.table, config.filter]);
 
-  // Função para cancelar a inscrição manualmente
-  const unsubscribe = useCallback(() => {
-    if (channelRef.current) {
-      channelRef.current.unsubscribe();
-      channelRef.current = null;
-      setChannel(null);
-      setStatus('UNSUBSCRIBED');
+  // Função para desconectar manualmente
+  const disconnect = useCallback(() => {
+    if (socketRef.current) {
+      socketRef.current.close();
+      socketRef.current = null;
+      setSocket(null);
+      setStatus('DISCONNECTED');
     }
   }, []);
 
-  return { status, error, unsubscribe };
+  return { status, error, disconnect };
 };
 
 /**
@@ -155,7 +157,6 @@ export const useTableSubscription = <T extends Record<string, any>>(
   const userId = user?.id;
   
   // Usar uma string estável como nome do canal, usando userId como parte do nome
-  // Adicionar timestamp para evitar colisões em múltiplas renderizações
   const channelNameRef = useRef(`${table}-${userId || 'anonymous'}-${event}-${Date.now()}`);
   
   // Estabilizar o callback usando useCallback e useRef
@@ -199,89 +200,87 @@ export const useVehiclesSubscription = (
     callbackRef.current = callback;
   }, [callback]);
   
-  const stableCallback = useCallback((vehicle: any) => {
+  const stableCallback = useCallback((payload: any) => {
     if (callbackRef.current) {
-      callbackRef.current(vehicle);
+      callbackRef.current(payload.new);
     }
   }, []);
   
-  const filter = userId ? `user_id=eq.${userId}` : undefined;
-  
-  return useTableSubscription(
-    'vehicles',
-    event,
-    stableCallback,
-    filter,
-    enabled && !!userId
-  );
+  return useRealtimeSubscription({
+    channelName: `vehicles-${userId}-${event}`,
+    config: {
+      table: 'vehicles',
+      event,
+      filter: userId ? `user_id=eq.${userId}` : undefined
+    },
+    callback: stableCallback,
+    enabled: enabled && !!userId
+  });
 };
 
 /**
- * Hook para se inscrever em novos alertas
+ * Hook para se inscrever em atualizações de posições GPS
+ */
+export const useGpsPositionsSubscription = (
+  vehicleId: string,
+  callback: (position: any) => void,
+  enabled = true
+) => {
+  const { user } = useAuth();
+  const userId = user?.id;
+  
+  const callbackRef = useRef(callback);
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+  
+  const stableCallback = useCallback((payload: any) => {
+    if (callbackRef.current) {
+      callbackRef.current(payload.new);
+    }
+  }, []);
+  
+  return useRealtimeSubscription({
+    channelName: `gps-positions-${vehicleId}-${userId}`,
+    config: {
+      table: 'gps_positions',
+      event: 'INSERT',
+      filter: `vehicle_id=eq.${vehicleId}`
+    },
+    callback: stableCallback,
+    enabled: enabled && !!userId && !!vehicleId
+  });
+};
+
+/**
+ * Hook para se inscrever em alertas
  */
 export const useAlertsSubscription = (
   callback: (alert: any) => void,
-  event: SubscriptionEvent = 'INSERT',
   enabled = true
 ) => {
   const { user } = useAuth();
   const userId = user?.id;
   
-  // Estabilizar o callback usando useRef
   const callbackRef = useRef(callback);
   useEffect(() => {
     callbackRef.current = callback;
   }, [callback]);
   
-  const stableCallback = useCallback((alert: any) => {
+  const stableCallback = useCallback((payload: any) => {
     if (callbackRef.current) {
-      callbackRef.current(alert);
+      callbackRef.current(payload.new);
     }
   }, []);
   
-  const filter = userId ? `user_id=eq.${userId}` : undefined;
-  
-  return useTableSubscription(
-    'alerts',
-    event,
-    stableCallback,
-    filter,
-    enabled && !!userId
-  );
+  return useRealtimeSubscription({
+    channelName: `alerts-${userId}`,
+    config: {
+      table: 'alerts',
+      event: 'INSERT',
+      filter: userId ? `user_id=eq.${userId}` : undefined
+    },
+    callback: stableCallback,
+    enabled: enabled && !!userId
+  });
 };
-
-/**
- * Hook para se inscrever em atualizações de geocercas
- */
-export const useGeofencesSubscription = (
-  callback: (geofence: any) => void,
-  event: SubscriptionEvent = '*',
-  enabled = true
-) => {
-  const { user } = useAuth();
-  const userId = user?.id;
-  
-  // Estabilizar o callback usando useRef
-  const callbackRef = useRef(callback);
-  useEffect(() => {
-    callbackRef.current = callback;
-  }, [callback]);
-  
-  const stableCallback = useCallback((geofence: any) => {
-    if (callbackRef.current) {
-      callbackRef.current(geofence);
-    }
-  }, []);
-  
-  const filter = userId ? `user_id=eq.${userId}` : undefined;
-  
-  return useTableSubscription(
-    'geofences',
-    event,
-    stableCallback,
-    filter,
-    enabled && !!userId
-  );
-};
-
-export default useRealtimeSubscription;

@@ -1,21 +1,19 @@
-import { supabase, supabaseAdmin } from '@/lib/supabase';
-
-// Reexportando o cliente supabase tipado
-export { supabase };
+import { getDbPool } from '@/lib/database';
 
 // Helper para operações privilegiadas (usadas em rotas de API no backend)
 export const getAdminClient = () => {
-  if (!supabaseAdmin) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY não está definida nas variáveis de ambiente');
+  const pool = getDbPool();
+  if (!pool) {
+    throw new Error('DATABASE_URL não está definida nas variáveis de ambiente');
   }
   
-  return supabaseAdmin;
+  return pool;
 };
 
 // Função auxiliar para verificar e atualizar a estrutura do banco de dados
 export const ensureDatabaseStructure = async () => {
   try {
-    const admin = getAdminClient();
+    const pool = getAdminClient();
     
     // Verificar se as tabelas principais existem consultando cada uma delas
     const requiredTables = [
@@ -33,9 +31,12 @@ export const ensureDatabaseStructure = async () => {
     
     // Tentamos consultar cada tabela para verificar se existe
     for (const table of requiredTables) {
-      const { error } = await admin.from(table).select('id').limit(1);
-      if (error && error.message.includes(`relation "${table}" does not exist`)) {
-        missingTables.push(table);
+      try {
+        await pool.query(`SELECT 1 FROM ${table} LIMIT 1`);
+      } catch (error: any) {
+        if (error.message.includes(`relation "${table}" does not exist`)) {
+          missingTables.push(table);
+        }
       }
     }
     

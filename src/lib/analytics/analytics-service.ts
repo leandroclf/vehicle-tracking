@@ -3,7 +3,7 @@
  * @description Serviço responsável por calcular métricas, gerar insights e fornecer dados para o dashboard
  */
 
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import {
   FleetMetrics,
   UsageMetrics,
@@ -26,18 +26,16 @@ export class AnalyticsService {
    */
   async getFleetMetrics(userId: string, filters?: DashboardConfig['filters']): Promise<FleetMetrics> {
     try {
-      const { data: vehicles, error } = await supabase
-        .from('vehicles')
-        .select(`
-          id,
-          name,
-          status,
-          last_location,
-          last_update,
-          odometer,
-          fuel_level
-        `)
-        .eq('user_id', userId);
+      // TODO: Implementar query SQL direta
+      const pool = getDbPool();
+      const vehiclesQuery = `
+        SELECT id, name, status, last_location, last_update, odometer, fuel_level
+        FROM vehicles
+        WHERE user_id = $1
+      `;
+      const vehiclesResult = await pool.query(vehiclesQuery, [userId]);
+      const vehicles = vehiclesResult.rows;
+      const error = null;
 
       if (error) throw error;
 
@@ -52,23 +50,34 @@ export class AnalyticsService {
       const offlineVehicles = totalVehicles - onlineVehicles;
 
       // Calcular métricas de velocidade e distância
-      const { data: recentPositions } = await supabase
-        .from('vehicle_positions')
-        .select('speed, created_at')
-        .eq('user_id', userId)
-        .gte('created_at', new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: false });
+      const recentPositionsQuery = `
+        SELECT speed, created_at
+        FROM vehicle_positions
+        WHERE user_id = $1 AND created_at >= $2
+        ORDER BY created_at DESC
+      `;
+      const recentPositionsResult = await pool.query(recentPositionsQuery, [
+        userId,
+        new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+      ]);
+      const recentPositions = recentPositionsResult.rows;
 
       const averageSpeed = recentPositions?.length 
         ? recentPositions.reduce((sum, pos) => sum + (pos.speed || 0), 0) / recentPositions.length
         : 0;
 
       // Calcular distância total do dia
-      const { data: dailyDistance } = await supabase
-        .rpc('calculate_daily_distance', {
-          p_user_id: userId,
-          p_date: now.toISOString().split('T')[0]
-        });
+      // TODO: Implementar função calculate_daily_distance no PostgreSQL
+      const dailyDistanceQuery = `
+        SELECT COALESCE(SUM(distance), 0) as total_distance
+        FROM vehicle_positions
+        WHERE user_id = $1 AND DATE(created_at) = $2
+      `;
+      const dailyDistanceResult = await pool.query(dailyDistanceQuery, [
+        userId,
+        now.toISOString().split('T')[0]
+      ]);
+      const dailyDistance = dailyDistanceResult.rows[0]?.total_distance || 0;
 
       const totalDistance = dailyDistance || 0;
 
@@ -76,12 +85,16 @@ export class AnalyticsService {
       const fuelConsumption = totalDistance * 0.08; // 8L/100km estimado
 
       // Contar alertas de manutenção
-      const { data: maintenanceAlerts } = await supabase
-        .from('maintenance_schedules')
-        .select('id')
-        .eq('user_id', userId)
-        .lte('next_maintenance', now.toISOString())
-        .eq('status', 'pending');
+      const maintenanceAlertsQuery = `
+        SELECT id
+        FROM maintenance_schedules
+        WHERE user_id = $1 AND next_maintenance <= $2 AND status = 'pending'
+      `;
+      const maintenanceAlertsResult = await pool.query(maintenanceAlertsQuery, [
+        userId,
+        now.toISOString()
+      ]);
+      const maintenanceAlerts = maintenanceAlertsResult.rows;
 
       return {
         totalVehicles: { value: totalVehicles, unit: 'veículos' },
@@ -109,12 +122,17 @@ export class AnalyticsService {
         new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
       // Veículos ativos diários
-      const { data: dailyActive } = await supabase
-        .rpc('get_daily_active_vehicles', {
-          p_user_id: userId,
-          p_start_date: startDate,
-          p_end_date: endDate
-        });
+      const pool = getDbPool();
+      // TODO: Implementar função get_daily_active_vehicles no PostgreSQL
+      const dailyActiveQuery = `
+        SELECT DATE(created_at) as date, COUNT(DISTINCT vehicle_id) as active_count
+        FROM vehicle_positions
+        WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+        GROUP BY DATE(created_at)
+        ORDER BY date
+      `;
+      const dailyActiveResult = await pool.query(dailyActiveQuery, [userId, startDate, endDate]);
+      const dailyActive = dailyActiveResult.rows;
 
       const dailyActiveVehicles: TimeSeries = {
         name: 'Veículos Ativos Diários',
@@ -125,12 +143,16 @@ export class AnalyticsService {
       };
 
       // Distância semanal
-      const { data: weeklyDist } = await supabase
-        .rpc('get_weekly_distance', {
-          p_user_id: userId,
-          p_start_date: startDate,
-          p_end_date: endDate
-        });
+      // TODO: Implementar função get_weekly_distance no PostgreSQL
+      const weeklyDistQuery = `
+        SELECT DATE_TRUNC('week', created_at) as week, COALESCE(SUM(distance), 0) as total_distance
+        FROM vehicle_positions
+        WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+        GROUP BY DATE_TRUNC('week', created_at)
+        ORDER BY week
+      `;
+      const weeklyDistResult = await pool.query(weeklyDistQuery, [userId, startDate, endDate]);
+      const weeklyDist = weeklyDistResult.rows;
 
       const weeklyDistance: TimeSeries = {
         name: 'Distância Semanal',
@@ -142,12 +164,16 @@ export class AnalyticsService {
       };
 
       // Consumo mensal de combustível
-      const { data: monthlyFuel } = await supabase
-        .rpc('get_monthly_fuel_consumption', {
-          p_user_id: userId,
-          p_start_date: startDate,
-          p_end_date: endDate
-        });
+      // TODO: Implementar função get_monthly_fuel_consumption no PostgreSQL
+      const monthlyFuelQuery = `
+        SELECT DATE_TRUNC('month', created_at) as month, COALESCE(SUM(distance * 0.08), 0) as fuel_consumption
+        FROM vehicle_positions
+        WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+        GROUP BY DATE_TRUNC('month', created_at)
+        ORDER BY month
+      `;
+      const monthlyFuelResult = await pool.query(monthlyFuelQuery, [userId, startDate, endDate]);
+      const monthlyFuel = monthlyFuelResult.rows;
 
       const monthlyFuelConsumption: TimeSeries = {
         name: 'Consumo Mensal de Combustível',
@@ -159,12 +185,20 @@ export class AnalyticsService {
       };
 
       // Distribuição de velocidade
-      const { data: speedDist } = await supabase
-        .rpc('get_speed_distribution', {
-          p_user_id: userId,
-          p_start_date: startDate,
-          p_end_date: endDate
-        });
+      // TODO: Implementar função get_speed_distribution no PostgreSQL
+      const speedDistQuery = `
+        SELECT 
+          COUNT(CASE WHEN speed BETWEEN 0 AND 30 THEN 1 END) as range_0_30,
+          COUNT(CASE WHEN speed BETWEEN 31 AND 60 THEN 1 END) as range_31_60,
+          COUNT(CASE WHEN speed BETWEEN 61 AND 90 THEN 1 END) as range_61_90,
+          COUNT(CASE WHEN speed BETWEEN 91 AND 120 THEN 1 END) as range_91_120,
+          COUNT(CASE WHEN speed > 120 THEN 1 END) as range_120_plus
+        FROM vehicle_positions
+        WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3 AND speed IS NOT NULL
+      `;
+      const speedDistResult = await pool.query(speedDistQuery, [userId, startDate, endDate]);
+      const speedDistRow = speedDistResult.rows[0] || {};
+      const speedDist = [speedDistRow.range_0_30 || 0, speedDistRow.range_31_60 || 0, speedDistRow.range_61_90 || 0, speedDistRow.range_91_120 || 0, speedDistRow.range_120_plus || 0];
 
       const speedDistribution = {
         ranges: ['0-30', '31-60', '61-90', '91-120', '120+'],
@@ -172,12 +206,14 @@ export class AnalyticsService {
       };
 
       // Eficiência de rotas
-      const { data: routeEff } = await supabase
-        .rpc('calculate_route_efficiency', {
-          p_user_id: userId,
-          p_start_date: startDate,
-          p_end_date: endDate
-        });
+      // TODO: Implementar função calculate_route_efficiency no PostgreSQL
+      const routeEffQuery = `
+        SELECT AVG(CASE WHEN distance > 0 THEN 0.85 ELSE 0 END) as efficiency
+        FROM vehicle_positions
+        WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+      `;
+      const routeEffResult = await pool.query(routeEffQuery, [userId, startDate, endDate]);
+      const routeEff = routeEffResult.rows[0]?.efficiency || 0;
 
       const routeEfficiency: MetricValue = {
         value: Math.round((routeEff || 0) * 100),
@@ -185,12 +221,14 @@ export class AnalyticsService {
       };
 
       // Tempo ocioso
-      const { data: idleData } = await supabase
-        .rpc('calculate_idle_time', {
-          p_user_id: userId,
-          p_start_date: startDate,
-          p_end_date: endDate
-        });
+      // TODO: Implementar função calculate_idle_time no PostgreSQL
+      const idleDataQuery = `
+        SELECT COALESCE(SUM(CASE WHEN speed = 0 THEN 1 ELSE 0 END) / 60.0, 0) as idle_hours
+        FROM vehicle_positions
+        WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+      `;
+      const idleDataResult = await pool.query(idleDataQuery, [userId, startDate, endDate]);
+      const idleData = idleDataResult.rows[0]?.idle_hours || 0;
 
       const idleTime: MetricValue = {
         value: Math.round(idleData || 0),
@@ -221,45 +259,50 @@ export class AnalyticsService {
         new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
       // Violações de velocidade
-      const { data: speedingViolations } = await supabase
-        .from('speed_violations')
-        .select('id')
-        .eq('user_id', userId)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
+      const pool = getDbPool();
+      const speedingViolationsQuery = `
+        SELECT id
+        FROM speed_violations
+        WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+      `;
+      const speedingViolationsResult = await pool.query(speedingViolationsQuery, [userId, startDate, endDate]);
+      const speedingViolations = speedingViolationsResult.rows;
 
       // Violações de geocerca
-      const { data: geofenceViolations } = await supabase
-        .from('geofence_violations')
-        .select('id')
-        .eq('user_id', userId)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
+      const geofenceViolationsQuery = `
+        SELECT id
+        FROM geofence_violations
+        WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+      `;
+      const geofenceViolationsResult = await pool.query(geofenceViolationsQuery, [userId, startDate, endDate]);
+      const geofenceViolations = geofenceViolationsResult.rows;
 
       // Acessos não autorizados
-      const { data: unauthorizedAccess } = await supabase
-        .from('security_events')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('event_type', 'unauthorized_access')
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
+      const unauthorizedAccessQuery = `
+        SELECT id
+        FROM security_events
+        WHERE user_id = $1 AND event_type = 'unauthorized_access' AND created_at >= $2 AND created_at <= $3
+      `;
+      const unauthorizedAccessResult = await pool.query(unauthorizedAccessQuery, [userId, startDate, endDate]);
+      const unauthorizedAccess = unauthorizedAccessResult.rows;
 
       // Alertas de emergência
-      const { data: emergencyAlerts } = await supabase
-        .from('emergency_alerts')
-        .select('id')
-        .eq('user_id', userId)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
+      const emergencyAlertsQuery = `
+        SELECT id
+        FROM emergency_alerts
+        WHERE user_id = $1 AND created_at >= $2 AND created_at <= $3
+      `;
+      const emergencyAlertsResult = await pool.query(emergencyAlertsQuery, [userId, startDate, endDate]);
+      const emergencyAlerts = emergencyAlertsResult.rows;
 
       // Manutenções em atraso
-      const { data: maintenanceOverdue } = await supabase
-        .from('maintenance_schedules')
-        .select('id')
-        .eq('user_id', userId)
-        .lt('next_maintenance', new Date().toISOString())
-        .eq('status', 'pending');
+      const maintenanceOverdueQuery = `
+        SELECT id
+        FROM maintenance_schedules
+        WHERE user_id = $1 AND next_maintenance < $2 AND status = 'pending'
+      `;
+      const maintenanceOverdueResult = await pool.query(maintenanceOverdueQuery, [userId, new Date().toISOString()]);
+      const maintenanceOverdue = maintenanceOverdueResult.rows;
 
       // Calcular score de risco
       const totalViolations = (speedingViolations?.length || 0) + 
@@ -290,8 +333,16 @@ export class AnalyticsService {
       const now = new Date();
 
       // Insight sobre eficiência de combustível
-      const { data: fuelEfficiency } = await supabase
-        .rpc('analyze_fuel_efficiency', { p_user_id: userId });
+      // TODO: Implementar função analyze_fuel_efficiency no PostgreSQL
+      const fuelEfficiencyQuery = `
+        SELECT 
+          AVG(fuel_consumption / distance) as efficiency,
+          SUM(fuel_consumption * 1.5) as potential_saving
+        FROM vehicle_trips
+        WHERE user_id = $1 AND created_at >= $2
+      `;
+      const fuelEfficiencyResult = await pool.query(fuelEfficiencyQuery, [userId, new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()]);
+      const fuelEfficiency = fuelEfficiencyResult.rows[0];
 
       if (fuelEfficiency && fuelEfficiency.efficiency < 0.8) {
         insights.push({
@@ -314,12 +365,13 @@ export class AnalyticsService {
       }
 
       // Insight sobre manutenção preventiva
-      const { data: maintenanceData } = await supabase
-        .from('maintenance_schedules')
-        .select('*')
-        .eq('user_id', userId)
-        .lte('next_maintenance', new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString())
-        .eq('status', 'pending');
+      const maintenanceQuery = `
+        SELECT *
+        FROM maintenance_schedules
+        WHERE user_id = $1 AND next_maintenance <= $2 AND status = 'pending'
+      `;
+      const maintenanceResult = await pool.query(maintenanceQuery, [userId, new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()]);
+      const maintenanceData = maintenanceResult.rows;
 
       if (maintenanceData && maintenanceData.length > 0) {
         insights.push({
@@ -358,12 +410,13 @@ export class AnalyticsService {
 
       // Verificar velocidade excessiva
       if (thresholds.maxSpeed) {
-        const { data: speedingVehicles } = await supabase
-          .from('vehicle_positions')
-          .select('vehicle_id, speed')
-          .eq('user_id', userId)
-          .gt('speed', thresholds.maxSpeed)
-          .gte('created_at', new Date(now.getTime() - 5 * 60 * 1000).toISOString());
+        const speedingQuery = `
+          SELECT vehicle_id, speed
+          FROM vehicle_positions
+          WHERE user_id = $1 AND speed > $2 AND created_at >= $3
+        `;
+        const speedingResult = await pool.query(speedingQuery, [userId, thresholds.maxSpeed, new Date(now.getTime() - 5 * 60 * 1000).toISOString()]);
+        const speedingVehicles = speedingResult.rows;
 
         speedingVehicles?.forEach(vehicle => {
           alerts.push({
@@ -383,11 +436,13 @@ export class AnalyticsService {
 
       // Verificar combustível baixo
       if (thresholds.minFuelLevel) {
-        const { data: lowFuelVehicles } = await supabase
-          .from('vehicles')
-          .select('id, name, fuel_level')
-          .eq('user_id', userId)
-          .lt('fuel_level', thresholds.minFuelLevel);
+        const lowFuelQuery = `
+          SELECT id, name, fuel_level
+          FROM vehicles
+          WHERE user_id = $1 AND fuel_level < $2
+        `;
+        const lowFuelResult = await pool.query(lowFuelQuery, [userId, thresholds.minFuelLevel]);
+        const lowFuelVehicles = lowFuelResult.rows;
 
         lowFuelVehicles?.forEach(vehicle => {
           alerts.push({

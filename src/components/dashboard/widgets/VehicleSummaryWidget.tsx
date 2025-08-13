@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, TrendingUp, TrendingDown } from 'lucide-react';
 import DashboardWidget from '../DashboardWidget';
-import { useVehicles } from '@/lib/vehicles';
+import { useVehicles } from '@/lib/vehicles-client';
 
 interface VehicleStats {
   total: number;
@@ -104,4 +104,4 @@ export default function VehicleSummaryWidget() {
       ) : null}
     </DashboardWidget>
   );
-} 
+}

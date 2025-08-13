@@ -1,7 +1,7 @@
 import React, { useMemo, memo, Suspense, lazy } from 'react';
 import { useLoadScript, GoogleMap, Marker, InfoWindow, TrafficLayer } from '@react-google-maps/api';
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Vehicle } from '@/lib/vehicles';
+import { Vehicle } from '@/lib/vehicles-client';
 import { calculateCenter } from '@/lib/google-maps';
 import { libraries } from './GoogleMapsProvider';
 

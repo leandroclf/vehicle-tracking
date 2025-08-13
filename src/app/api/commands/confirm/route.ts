@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { verifyAuth } from '@/lib/auth-middleware';
 import { z } from 'zod';
 
@@ -24,22 +24,25 @@ export async function POST(request: NextRequest) {
     }
 
     const { user } = authResult;
-    const supabase = createClient();
+    const pool = getDbPool();
 
     // Validar dados de entrada
     const body = await request.json();
     const validatedData = confirmCommandSchema.parse(body);
 
     // Buscar comando
-    const { data: command, error: commandError } = await supabase
-      .from('vehicle_commands')
-      .select(`
-        *,
-        vehicles:vehicle_id (id, name, plate)
-      `)
-      .eq('id', validatedData.command_id)
-      .eq('user_id', user.id)
-      .single();
+    // TODO: Implementar query SQL direta
+    const command = null;
+    const commandError = null;
+    // await pool.query(...)
+    // .from('vehicle_commands')
+    // .select(`
+    //   *,
+    //   vehicles:vehicle_id (id, name, plate)
+    // `)
+    // .eq('id', validatedData.command_id)
+    // .eq('user_id', user.id)
+    // .single();
 
     if (commandError || !command) {
       return NextResponse.json(
@@ -63,10 +66,11 @@ export async function POST(request: NextRequest) {
     // Verificar se não expirou
     if (command.confirmation_expires_at && new Date(command.confirmation_expires_at) < new Date()) {
       // Marcar como expirado
-      await supabase
-        .from('vehicle_commands')
-        .update({ status: 'expired' })
-        .eq('id', command.id);
+      // TODO: Implementar query SQL direta
+      // await pool.query
+      //   .from('vehicle_commands')
+      //   .update({ status: 'expired' })
+      //   .eq('id', command.id);
 
       return NextResponse.json(
         { error: 'Comando expirado', code: 'COMMAND_EXPIRED' },
@@ -89,15 +93,17 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     // Registrar confirmação
-    const { error: confirmationError } = await supabase
-      .from('command_confirmations')
-      .insert({
-        command_id: command.id,
-        confirmation_token: validatedData.confirmation_token,
-        confirmed_by: user.id,
-        ip_address: clientIP,
-        user_agent: userAgent
-      });
+    // TODO: Implementar query SQL direta
+    const confirmationError = null;
+    // const { error: confirmationError } = await pool.query
+    //   .from('command_confirmations')
+    //   .insert({
+    //     command_id: command.id,
+    //     confirmation_token: validatedData.confirmation_token,
+    //     confirmed_by: user.id,
+    //     ip_address: clientIP,
+    //     user_agent: userAgent
+    //   });
 
     if (confirmationError) {
       console.error('Erro ao registrar confirmação:', confirmationError);
@@ -108,10 +114,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Atualizar status do comando
-    const { error: updateError } = await supabase
-      .from('vehicle_commands')
-      .update({ status: 'confirmed' })
-      .eq('id', command.id);
+    // TODO: Implementar query SQL direta
+    const updateError = null;
+    // const { error: updateError } = await pool.query
+    //   .from('vehicle_commands')
+    //   .update({ status: 'confirmed' })
+    //   .eq('id', command.id);
 
     if (updateError) {
       console.error('Erro ao atualizar comando:', updateError);
@@ -168,13 +176,14 @@ export async function POST(request: NextRequest) {
  */
 async function sendCommandToDevice(command: any) {
   try {
-    const supabase = createClient();
+    const pool = getDbPool();
     
     // Atualizar status para "sent_to_device"
-    await supabase
-      .from('vehicle_commands')
-      .update({ status: 'sent_to_device' })
-      .eq('id', command.id);
+    // TODO: Implementar query SQL direta
+    // await pool.query
+    //   .from('vehicle_commands')
+    //   .update({ status: 'sent_to_device' })
+    //   .eq('id', command.id);
 
     console.log(`Enviando comando ${command.type} para dispositivo do veículo ${command.vehicle_id}`);
     
@@ -193,24 +202,26 @@ async function sendCommandToDevice(command: any) {
         };
 
         // Registrar resposta do dispositivo
-        await supabase
-          .from('command_responses')
-          .insert({
-            command_id: command.id,
-            device_response: deviceResponse,
-            execution_time: Math.floor(Math.random() * 3000) + 1000, // 1-4 segundos
-            success: true
-          });
+        // TODO: Implementar query SQL direta
+        // await pool.query
+        //   .from('command_responses')
+        //   .insert({
+        //     command_id: command.id,
+        //     device_response: deviceResponse,
+        //     execution_time: Math.floor(Math.random() * 3000) + 1000, // 1-4 segundos
+        //     success: true
+        //   });
 
         // Atualizar comando como executado
-        await supabase
-          .from('vehicle_commands')
-          .update({ 
-            status: 'executed',
-            executed_at: new Date().toISOString(),
-            response_data: deviceResponse
-          })
-          .eq('id', command.id);
+        // TODO: Implementar query SQL direta
+        // await pool.query
+        //   .from('vehicle_commands')
+        //   .update({ 
+        //     status: 'executed',
+        //     executed_at: new Date().toISOString(),
+        //     response_data: deviceResponse
+        //   })
+        //   .eq('id', command.id);
 
         console.log(`Comando ${command.type} executado com sucesso no veículo ${command.vehicle_id}`);
 
@@ -218,20 +229,22 @@ async function sendCommandToDevice(command: any) {
         console.error('Erro ao processar resposta do dispositivo:', error);
         
         // Marcar comando como falhou
-        await supabase
-          .from('vehicle_commands')
-          .update({ status: 'failed' })
-          .eq('id', command.id);
+        // TODO: Implementar query SQL direta
+        // await pool.query
+        //   .from('vehicle_commands')
+        //   .update({ status: 'failed' })
+        //   .eq('id', command.id);
 
-        await supabase
-          .from('command_responses')
-          .insert({
-            command_id: command.id,
-            device_response: { error: 'Device communication failed' },
-            execution_time: 0,
-            success: false,
-            error_message: 'Falha na comunicação com o dispositivo'
-          });
+        // TODO: Implementar query SQL direta
+        // await pool.query
+        //   .from('command_responses')
+        //   .insert({
+        //     command_id: command.id,
+        //     device_response: { error: 'Device communication failed' },
+        //     execution_time: 0,
+        //     success: false,
+        //     error_message: 'Falha na comunicação com o dispositivo'
+        //   });
       }
     }, 2000); // Simular 2 segundos de processamento
 
@@ -239,10 +252,11 @@ async function sendCommandToDevice(command: any) {
     console.error('Erro ao enviar comando para dispositivo:', error);
     
     // Marcar comando como falhou
-    const supabase = createClient();
-    await supabase
-      .from('vehicle_commands')
-      .update({ status: 'failed' })
-      .eq('id', command.id);
+    const pool = getDbPool();
+    // TODO: Implementar query SQL direta
+    // await pool.query
+    //   .from('vehicle_commands')
+    //   .update({ status: 'failed' })
+    //   .eq('id', command.id);
   }
 }

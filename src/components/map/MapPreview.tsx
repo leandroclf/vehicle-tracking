@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useVehicles } from '@/lib/vehicles';
+import { useVehicles } from '@/lib/vehicles-client';
 import { Truck, MapPin } from 'lucide-react';
 
 /**
@@ -82,4 +82,4 @@ export default function MapPreview() {
       </div>
     </div>
   );
-} 
+}

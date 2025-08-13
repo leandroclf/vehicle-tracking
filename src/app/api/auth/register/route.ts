@@ -1,84 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { RegisterRequest, AuthResponse } from '@/types/auth';
+import { AuthService } from '@/lib/auth/auth-service';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as RegisterRequest;
-    const { name, email, password, phone } = body;
+    const body = await request.json();
+    const { email, password, name, phone } = body;
 
-    if (!name || !email || !password) {
+    if (!email || !password || !name) {
       return NextResponse.json(
-        { error: 'Email, password, and name are required' },
+        { error: 'Email, senha e nome são obrigatórios' },
         { status: 400 }
       );
     }
 
-    // Registro nativo Supabase
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, phone, role: 'user' }
-      }
-    });
+    const { user, token } = await AuthService.signUp(email, password, name);
 
-    if (error) {
-      // Check if the error message indicates that the user already exists
-      if (error.message && error.message.includes('User already registered')) {
-        return NextResponse.json(
-          { error: 'Email already in use' },
-          { status: 409 }
-        );
-      }
-      // For other errors from signUp
-      return NextResponse.json(
-        { error: error.message || 'Failed to create user' },
-        { status: 500 } // Or a more specific status if available from the error
-      );
+    // Atualizar telefone se fornecido
+    if (phone) {
+      await AuthService.updateProfile(user.id, { phone });
     }
 
-    if (!data || !data.user) {
-      // This case should ideally be covered by the error above,
-      // but as a fallback if no error is thrown but data is incomplete.
-      return NextResponse.json(
-        { error: 'Failed to create user: Incomplete data' },
-        { status: 500 }
-      );
-    }
-
-    // Buscar perfil criado automaticamente
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .maybeSingle();
-
-    // Montar resposta
-    const user = {
-      ...data.user,
-      name: profile?.name || name,
-      email: data.user.email || email,
-      role: data.user.role || 'user',
-      created_at: data.user.created_at ? new Date(data.user.created_at) : new Date(),
-      updated_at: data.user.updated_at ? new Date(data.user.updated_at) : undefined,
-      profile
-    };
-    const token = data.session?.access_token || '';
-
-    // Criar resposta com cookie
-    const response = NextResponse.json<AuthResponse>({
-      message: 'User registered successfully',
+    return NextResponse.json({
+      message: 'Registro realizado com sucesso',
       token,
-      user
-    }, { status: 201 });
-
-    return response;
-  } catch (error) {
-    console.error('Error during registration:', error);
+      user,
+    });
+  } catch (error: any) {
+    console.error('Erro durante o registro:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: error.message || 'Erro interno do servidor' },
+      { status: error.message.includes('já existe') ? 409 : 500 }
     );
   }
 }
@@ -105,4 +56,4 @@ function methodNotAllowed() {
     { error: 'Method not allowed' },
     { status: 405 }
   );
-} 
+}

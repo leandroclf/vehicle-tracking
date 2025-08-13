@@ -27,7 +27,7 @@ CREATE TYPE command_status AS ENUM (
 CREATE TABLE vehicle_commands (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   vehicle_id UUID NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type command_type NOT NULL,
   status command_status DEFAULT 'pending_confirmation',
   confirmation_required BOOLEAN DEFAULT true,
@@ -45,7 +45,7 @@ CREATE TABLE command_confirmations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   command_id UUID NOT NULL REFERENCES vehicle_commands(id) ON DELETE CASCADE,
   confirmation_token VARCHAR(64) NOT NULL,
-  confirmed_by UUID NOT NULL REFERENCES profiles(id),
+  confirmed_by UUID NOT NULL REFERENCES users(id),
   confirmed_at TIMESTAMPTZ DEFAULT NOW(),
   ip_address INET,
   user_agent TEXT
@@ -89,34 +89,34 @@ ALTER TABLE vehicle_commands ENABLE ROW LEVEL SECURITY;
 ALTER TABLE command_confirmations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE command_responses ENABLE ROW LEVEL SECURITY;
 
--- Políticas de segurança
-CREATE POLICY "Users can view their own vehicle commands" ON vehicle_commands
-  FOR SELECT USING (user_id = auth.uid());
+-- Políticas de segurança (desabilitadas temporariamente - implementar com JWT)
+-- CREATE POLICY "Users can view their own vehicle commands" ON vehicle_commands
+--   FOR SELECT USING (user_id = current_user_id());
 
-CREATE POLICY "Users can create commands for their vehicles" ON vehicle_commands
-  FOR INSERT WITH CHECK (
-    user_id = auth.uid() AND 
-    vehicle_id IN (SELECT id FROM vehicles WHERE user_id = auth.uid())
-  );
+-- CREATE POLICY "Users can create commands for their vehicles" ON vehicle_commands
+--   FOR INSERT WITH CHECK (
+--     user_id = current_user_id() AND 
+--     vehicle_id IN (SELECT id FROM vehicles WHERE user_id = current_user_id())
+--   );
 
-CREATE POLICY "Users can update their own commands" ON vehicle_commands
-  FOR UPDATE USING (user_id = auth.uid());
+-- CREATE POLICY "Users can update their own commands" ON vehicle_commands
+--   FOR UPDATE USING (user_id = current_user_id());
 
-CREATE POLICY "Users can view confirmations for their commands" ON command_confirmations
-  FOR SELECT USING (
-    command_id IN (SELECT id FROM vehicle_commands WHERE user_id = auth.uid())
-  );
+-- CREATE POLICY "Users can view confirmations for their commands" ON command_confirmations
+--   FOR SELECT USING (
+--     command_id IN (SELECT id FROM vehicle_commands WHERE user_id = current_user_id())
+--   );
 
-CREATE POLICY "Users can create confirmations for their commands" ON command_confirmations
-  FOR INSERT WITH CHECK (
-    confirmed_by = auth.uid() AND
-    command_id IN (SELECT id FROM vehicle_commands WHERE user_id = auth.uid())
-  );
+-- CREATE POLICY "Users can create confirmations for their commands" ON command_confirmations
+--   FOR INSERT WITH CHECK (
+--     confirmed_by = current_user_id() AND
+--     command_id IN (SELECT id FROM vehicle_commands WHERE user_id = current_user_id())
+--   );
 
-CREATE POLICY "Users can view responses for their commands" ON command_responses
-  FOR SELECT USING (
-    command_id IN (SELECT id FROM vehicle_commands WHERE user_id = auth.uid())
-  );
+-- CREATE POLICY "Users can view responses for their commands" ON command_responses
+--   FOR SELECT USING (
+--     command_id IN (SELECT id FROM vehicle_commands WHERE user_id = current_user_id())
+--   );
 
 -- Função para gerar token de confirmação
 CREATE OR REPLACE FUNCTION generate_confirmation_token()

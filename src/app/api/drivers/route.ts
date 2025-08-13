@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 import { errorResponse, successResponse, handleApiError } from '@/lib/api-helpers';
 import { v4 as uuidv4 } from 'uuid';
@@ -115,11 +115,12 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(url.searchParams.get('offset') || '0');
     
     // Construir consulta
-    let query = supabase
-      .from('drivers')
-      .select('*, vehicles!driver_vehicle(*)', { count: 'exact' })
-      .eq('user_id', userId)
-      .range(offset, offset + limit - 1);
+    // TODO: Implementar query SQL direta
+    let query = null; // pool.query
+    //   .from('drivers')
+    //   .select('*, vehicles!driver_vehicle(*)', { count: 'exact' })
+    //   .eq('user_id', userId)
+    //   .range(offset, offset + limit - 1);
     
     // Aplicar filtros opcionais
     if (status) {
@@ -127,7 +128,11 @@ export async function GET(request: NextRequest) {
     }
     
     // Executar consulta
-    const { data: drivers, error, count } = await query;
+    // TODO: Implementar query SQL direta
+    const drivers = null;
+    const error = null;
+    const count = 0;
+    // const { data: drivers, error, count } = await query;
     
     if (error) {
       console.error('Erro ao buscar motoristas:', error);
@@ -204,11 +209,14 @@ export async function POST(request: NextRequest) {
     };
     
     // Inserir no banco de dados
-    const { data: driver, error } = await supabase
-      .from('drivers')
-      .insert(driverData)
-      .select()
-      .single();
+    // TODO: Implementar query SQL direta
+    const driver = null;
+    const error = null;
+    // await pool.query(...)
+    //   .from('drivers')
+    //   .insert(driverData)
+    //   .select()
+    //   .single();
     
     if (error) {
       console.error('Erro ao criar motorista:', error);
@@ -289,12 +297,15 @@ export async function PUT(request: NextRequest) {
     }
     
     // Verificar se o motorista existe e pertence ao usuário
-    const { data: existingDriver, error: checkError } = await supabase
-      .from('drivers')
-      .select('id')
-      .eq('id', driverId)
-      .eq('user_id', userId)
-      .single();
+    // TODO: Implementar query SQL direta
+    const existingDriver = null;
+    const checkError = null;
+    // await pool.query(...)
+    //   .from('drivers')
+    //   .select('id')
+    //   .eq('id', driverId)
+    //   .eq('user_id', userId)
+    //   .single();
     
     if (checkError || !existingDriver) {
       return errorResponse('Motorista não encontrado', undefined, 404);
@@ -307,12 +318,15 @@ export async function PUT(request: NextRequest) {
     };
     
     // Atualizar no banco de dados
-    const { data: driver, error } = await supabase
-      .from('drivers')
-      .update(updateData)
-      .eq('id', driverId)
-      .select()
-      .single();
+    // TODO: Implementar query SQL direta
+    const driver = null;
+    const error = null;
+    // await pool.query(...)
+    //   .from('drivers')
+    //   .update(updateData)
+    //   .eq('id', driverId)
+    //   .select()
+    //   .single();
     
     if (error) {
       console.error('Erro ao atualizar motorista:', error);
@@ -373,22 +387,26 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Verificar se o motorista existe e pertence ao usuário
-    const { data: existingDriver, error: checkError } = await supabase
-      .from('drivers')
-      .select('id')
-      .eq('id', driverId)
-      .eq('user_id', userId)
-      .single();
+    // TODO: Implementar query SQL direta
+    const existingDriver = null;
+    const checkError = null;
+    // await pool.query(...)
+    //   .from('drivers')
+    //   .select('id')
+    //   .eq('id', driverId)
+    //   .eq('user_id', userId)
+    //   .single();
     
     if (checkError || !existingDriver) {
       return errorResponse('Motorista não encontrado', undefined, 404);
     }
     
     // Excluir do banco de dados
-    const { error } = await supabase
-      .from('drivers')
-      .delete()
-      .eq('id', driverId);
+    // TODO: Implementar query SQL direta
+    const error = null; // await pool.query(...)
+    //   .from('drivers')
+    //   .delete()
+    //   .eq('id', driverId);
     
     if (error) {
       console.error('Erro ao excluir motorista:', error);
@@ -400,4 +418,4 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     return handleApiError(error);
   }
-} 
+}

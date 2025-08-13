@@ -1,7 +1,7 @@
 require("dotenv").config();
 const net = require("net");
 const dgram = require("dgram"); // Adicionar suporte a UDP
-const { createClient } = require("@supabase/supabase-js");
+const { Pool } = require('pg');
 const winston = require('winston');
 const { decodeTeltonikaCodec8, createTeltonikaResponse } = require("./teltonika-decoder");
 const { decodeQueclinkData, createQueclinkResponse } = require("./queclink-decoder");
@@ -27,31 +27,30 @@ const TCP_PORT = process.env.TRACKER_TCP_PORT || 5027; // Porta padrão para Tel
 const UDP_PORT = process.env.TRACKER_UDP_PORT || 5028; // Porta UDP para dispositivos que usam UDP
 const QUECLINK_TCP_PORT = process.env.QUECLINK_TCP_PORT || 5029; // Porta TCP para Queclink
 const CONCOX_TCP_PORT = process.env.CONCOX_TCP_PORT || 5030; // Porta TCP para Concox
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // Usar chave de serviço para operações no backend
-const RECONNECT_INTERVAL = 5000; // Intervalo de reconexão ao Supabase em ms
+const DATABASE_URL = process.env.DATABASE_URL;
+const RECONNECT_INTERVAL = 5000; // Intervalo de reconexão ao banco em ms
 
 // Validar configurações essenciais
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  logger.error("Erro: Variáveis de ambiente Supabase (URL e SERVICE_ROLE_KEY) não configuradas.");
+if (!DATABASE_URL) {
+  logger.error("Erro: Variável de ambiente DATABASE_URL não configurada.");
   process.exit(1);
 }
 
-// Inicializar cliente Supabase
-let supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-let isSupabaseConnected = true; // Flag para controlar estado da conexão com Supabase
+// Inicializar cliente PostgreSQL
+let pool = new Pool({ connectionString: DATABASE_URL });
+let isDatabaseConnected = true; // Flag para controlar estado da conexão com o banco
 
-// Função para reconectar ao Supabase em caso de erros
-function reconnectSupabase() {
-  logger.info("Tentando reconexão com Supabase...");
+// Função para reconectar ao banco em caso de erros
+function reconnectDatabase() {
+  logger.info("Tentando reconexão com o banco de dados...");
   try {
-    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    isSupabaseConnected = true;
-    logger.info("Reconectado ao Supabase com sucesso.");
+    pool = new Pool({ connectionString: DATABASE_URL });
+    isDatabaseConnected = true;
+    logger.info("Reconectado ao banco de dados com sucesso.");
   } catch (error) {
-    logger.error(`Falha ao reconectar com Supabase: ${error.message}`);
-    isSupabaseConnected = false;
-    setTimeout(reconnectSupabase, RECONNECT_INTERVAL);
+    logger.error(`Falha ao reconectar com o banco: ${error.message}`);
+    isDatabaseConnected = false;
+    setTimeout(reconnectDatabase, RECONNECT_INTERVAL);
   }
 }
 
@@ -85,92 +84,100 @@ setInterval(cleanupIdleUdpClients, 10 * 60 * 1000); // A cada 10 minutos
 
 // Função para verificar alertas de velocidade
 async function checkSpeedAlert(vehicle, speed, status, location) {
+  if (!isDatabaseConnected) {
+    logger.warn("Banco desconectado. Não foi possível verificar alertas de velocidade.");
+    return;
+  }
+
   try {
     // Buscar configurações de alerta de velocidade para o veículo
-    const { data: speedSettings, error: settingsError } = await supabase
-      .from("speed_alerts")
-      .select("id, max_speed, active")
-      .eq("vehicle_id", vehicle.id)
-      .eq("active", true)
-      .single();
+    const settingsQuery = `
+      SELECT id, max_speed, active
+      FROM speed_alerts
+      WHERE vehicle_id = $1 AND active = true
+      LIMIT 1
+    `;
+    const settingsResult = await pool.query(settingsQuery, [vehicle.id]);
 
-    if (settingsError && settingsError.code !== 'PGRST116') { // PGRST116 = Não encontrado
-      logger.error(`Erro ao buscar configurações de alerta de velocidade: ${settingsError.message}`);
-      return;
-    }
+    if (settingsResult.rows.length > 0) {
+      const speedSettings = settingsResult.rows[0];
+      
+      if (speed > speedSettings.max_speed) {
+        // Criar alerta de velocidade
+        const alertQuery = `
+          INSERT INTO alerts (user_id, vehicle_id, type, message, details, status, created_at, severity)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          RETURNING id
+        `;
+        const alertValues = [
+          vehicle.user_id,
+          vehicle.id,
+          "speed",
+          `Velocidade excedida: ${speed} km/h (limite: ${speedSettings.max_speed} km/h)`,
+          JSON.stringify({
+            speed,
+            max_speed: speedSettings.max_speed,
+            location
+          }),
+          "unread",
+          new Date(),
+          "medium"
+        ];
 
-    if (speedSettings && speed > speedSettings.max_speed) {
-      // Criar alerta de velocidade
-      const alertData = {
-        user_id: vehicle.user_id,
-        vehicle_id: vehicle.id,
-        type: "speed",
-        message: `Velocidade excedida: ${speed} km/h (limite: ${speedSettings.max_speed} km/h)`,
-        details: JSON.stringify({
-          speed,
-          max_speed: speedSettings.max_speed,
-          location
-        }),
-        status: "unread",
-        created_at: new Date().toISOString(),
-        severity: "medium"
-      };
-
-      const { error: insertError } = await supabase
-        .from("alerts")
-        .insert([alertData]);
-
-      if (insertError) {
-        logger.error(`Erro ao criar alerta de velocidade: ${insertError.message}`);
-      } else {
-        logger.info(`Alerta de velocidade criado para veículo ${vehicle.id}: ${speed} km/h`);
+        const alertResult = await pool.query(alertQuery, alertValues);
+        
+        if (alertResult.rowCount > 0) {
+          logger.info(`Alerta de velocidade criado para veículo ${vehicle.id}: ${speed} km/h`);
+        }
       }
     }
   } catch (error) {
     logger.error("Erro na verificação de alerta de velocidade:", error);
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      isDatabaseConnected = false;
+      setTimeout(reconnectDatabase, RECONNECT_INTERVAL);
+    }
   }
 }
 
 // Função para verificar alertas de geocerca
 async function checkGeofenceAlert(vehicle, lat, lng, status) {
+  if (!isDatabaseConnected) {
+    logger.warn("Banco desconectado. Não foi possível verificar alertas de geocerca.");
+    return;
+  }
+
   try {
     // Buscar geocercas ativas para o veículo ou usuário
-    const { data: geofences, error: geofenceError } = await supabase
-      .from("geofences")
-      .select("*")
-      .eq("active", true)
-      .or(`vehicle_id.eq.${vehicle.id},user_id.eq.${vehicle.user_id}`);
+    const geofenceQuery = `
+      SELECT *
+      FROM geofences
+      WHERE active = true AND (vehicle_id = $1 OR user_id = $2)
+    `;
+    const geofenceResult = await pool.query(geofenceQuery, [vehicle.id, vehicle.user_id]);
 
-    if (geofenceError) {
-      logger.error(`Erro ao buscar geocercas: ${geofenceError.message}`);
-      return;
-    }
-
-    if (!geofences || geofences.length === 0) {
+    if (geofenceResult.rows.length === 0) {
       return; // Nenhuma geocerca configurada
     }
 
     // Status atual do veículo na geocerca
-    const { data: currentStates, error: statesError } = await supabase
-      .from("vehicle_geofence_state")
-      .select("*")
-      .eq("vehicle_id", vehicle.id);
-
-    if (statesError) {
-      logger.error(`Erro ao buscar estado atual de geocercas: ${statesError.message}`);
-      return;
-    }
+    const statesQuery = `
+      SELECT *
+      FROM vehicle_geofence_state
+      WHERE vehicle_id = $1
+    `;
+    const statesResult = await pool.query(statesQuery, [vehicle.id]);
 
     // Mapa de estados atuais por geocerca
     const currentStateMap = new Map();
-    if (currentStates && currentStates.length > 0) {
-      currentStates.forEach(state => {
+    if (statesResult.rows.length > 0) {
+      statesResult.rows.forEach(state => {
         currentStateMap.set(state.geofence_id, state.inside);
       });
     }
 
     // Verificar cada geocerca
-    for (const geofence of geofences) {
+    for (const geofence of geofenceResult.rows) {
       // Verificar se coordenadas estão dentro da geocerca
       // Aqui implementamos uma lógica simples para exemplo - polígonos precisariam de algo mais complexo
       let inside = false;
@@ -198,132 +205,127 @@ async function checkGeofenceAlert(vehicle, lat, lng, status) {
       
       if (wasInside !== null && wasInside !== inside) {
         // Estado mudou, gerar alerta
-        const alertData = {
-          user_id: vehicle.user_id,
-          vehicle_id: vehicle.id,
-          geofence_id: geofence.id,
-          type: "geofence",
-          message: inside 
+        const alertQuery = `
+          INSERT INTO alerts (user_id, vehicle_id, geofence_id, type, message, details, status, created_at, severity)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          RETURNING id
+        `;
+        const alertValues = [
+          vehicle.user_id,
+          vehicle.id,
+          geofence.id,
+          "geofence",
+          inside 
             ? `Veículo entrou na geocerca "${geofence.name}"` 
             : `Veículo saiu da geocerca "${geofence.name}"`,
-          details: JSON.stringify({
+          JSON.stringify({
             geofence_name: geofence.name,
             geofence_id: geofence.id,
             action: inside ? "entered" : "exited",
             location: { lat, lng }
           }),
-          status: "unread",
-          created_at: new Date().toISOString(),
-          severity: geofence.alert_severity || "medium"
-        };
+          "unread",
+          new Date(),
+          geofence.alert_severity || "medium"
+        ];
 
-        const { error: insertError } = await supabase
-          .from("alerts")
-          .insert([alertData]);
+        const alertResult = await pool.query(alertQuery, alertValues);
 
-        if (insertError) {
-          logger.error(`Erro ao criar alerta de geocerca: ${insertError.message}`);
-        } else {
-          logger.info(`Alerta de geocerca criado para veículo ${vehicle.id}: ${alertData.message}`);
+        if (alertResult.rowCount > 0) {
+          logger.info(`Alerta de geocerca criado para veículo ${vehicle.id}: ${inside ? 'entrada' : 'saída'} em ${geofence.name}`);
         }
       }
       
       // Atualizar o estado
-      const { error: upsertError } = await supabase
-        .from("vehicle_geofence_state")
-        .upsert({
-          vehicle_id: vehicle.id,
-          geofence_id: geofence.id,
-          inside,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'vehicle_id,geofence_id' });
+      const upsertQuery = `
+        INSERT INTO vehicle_geofence_state (vehicle_id, geofence_id, inside, updated_at)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (vehicle_id, geofence_id) DO UPDATE SET
+          inside = EXCLUDED.inside,
+          updated_at = EXCLUDED.updated_at
+      `;
       
-      if (upsertError) {
-        logger.error(`Erro ao atualizar estado de geocerca: ${upsertError.message}`);
-      }
+      await pool.query(upsertQuery, [vehicle.id, geofence.id, inside, new Date()]);
     }
   } catch (error) {
     logger.error("Erro na verificação de alertas de geocerca:", error);
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      isDatabaseConnected = false;
+      setTimeout(reconnectDatabase, RECONNECT_INTERVAL);
+    }
   }
 }
 
 // Função para verificar alertas de parada prolongada
 async function checkIdleAlert(vehicle, status, isMoving) {
+  if (!isDatabaseConnected) {
+    logger.warn("Banco desconectado. Não foi possível verificar alertas de parada.");
+    return;
+  }
+
   try {
     // Se o veículo está em movimento, resetar o contador de parada
     if (isMoving) {
       // Verificar se havia um alerta de parada pendente
-      const { data: pendingIdleState, error: stateError } = await supabase
-        .from("vehicle_idle_state")
-        .select("*")
-        .eq("vehicle_id", vehicle.id)
-        .single();
+      const stateQuery = `
+        SELECT *
+        FROM vehicle_idle_state
+        WHERE vehicle_id = $1
+        LIMIT 1
+      `;
+      const stateResult = await pool.query(stateQuery, [vehicle.id]);
       
-      if (!stateError && pendingIdleState && pendingIdleState.idle_start_time) {
+      if (stateResult.rows.length > 0 && stateResult.rows[0].idle_start_time) {
         // O veículo voltou a se mover após uma parada - resetar estado
-        const { error: updateError } = await supabase
-          .from("vehicle_idle_state")
-          .update({ 
-            idle_start_time: null,
-            is_idle: false,
-            updated_at: new Date().toISOString()
-          })
-          .eq("vehicle_id", vehicle.id);
+        const updateQuery = `
+          UPDATE vehicle_idle_state
+          SET idle_start_time = NULL, is_idle = false, updated_at = $1
+          WHERE vehicle_id = $2
+        `;
         
-        if (updateError) {
-          logger.error(`Erro ao resetar estado de parada: ${updateError.message}`);
-        }
+        await pool.query(updateQuery, [new Date(), vehicle.id]);
       }
       return;
     }
     
     // Veículo está parado, verificar configurações de alerta de parada
-    const { data: idleSettings, error: settingsError } = await supabase
-      .from("idle_alerts")
-      .select("*")
-      .eq("vehicle_id", vehicle.id)
-      .eq("active", true)
-      .single();
+    const settingsQuery = `
+      SELECT *
+      FROM idle_alerts
+      WHERE vehicle_id = $1 AND active = true
+      LIMIT 1
+    `;
+    const settingsResult = await pool.query(settingsQuery, [vehicle.id]);
     
-    if (settingsError && settingsError.code !== 'PGRST116') {
-      logger.error(`Erro ao buscar configurações de alerta de parada: ${settingsError.message}`);
-      return;
-    }
-    
-    if (!idleSettings) {
+    if (settingsResult.rows.length === 0) {
       return; // Sem configurações de alerta de parada para este veículo
     }
     
+    const idleSettings = settingsResult.rows[0];
+    
     // Verificar o estado atual de parada do veículo
-    const { data: idleState, error: stateError } = await supabase
-      .from("vehicle_idle_state")
-      .select("*")
-      .eq("vehicle_id", vehicle.id)
-      .single();
+    const stateQuery = `
+      SELECT *
+      FROM vehicle_idle_state
+      WHERE vehicle_id = $1
+      LIMIT 1
+    `;
+    const stateResult = await pool.query(stateQuery, [vehicle.id]);
     
     const now = new Date();
     
-    if (stateError && stateError.code === 'PGRST116') {
+    if (stateResult.rows.length === 0) {
       // Primeiro registro de parada para este veículo
-      const { error: insertError } = await supabase
-        .from("vehicle_idle_state")
-        .insert([{
-          vehicle_id: vehicle.id,
-          idle_start_time: now.toISOString(),
-          is_idle: true,
-          updated_at: now.toISOString()
-        }]);
+      const insertQuery = `
+        INSERT INTO vehicle_idle_state (vehicle_id, idle_start_time, is_idle, updated_at)
+        VALUES ($1, $2, $3, $4)
+      `;
       
-      if (insertError) {
-        logger.error(`Erro ao criar estado de parada: ${insertError.message}`);
-      }
+      await pool.query(insertQuery, [vehicle.id, now, true, now]);
       return;
     }
     
-    if (stateError) {
-      logger.error(`Erro ao verificar estado de parada: ${stateError.message}`);
-      return;
-    }
+    const idleState = stateResult.rows[0];
     
     // Se o veículo já está em estado de parada, verificar se excedeu o tempo máximo
     if (idleState && idleState.idle_start_time && !idleState.alert_triggered) {
@@ -332,62 +334,75 @@ async function checkIdleAlert(vehicle, status, isMoving) {
       
       if (idleDurationMinutes >= idleSettings.max_idle_minutes) {
         // Criar alerta de parada prolongada
-        const alertData = {
-          user_id: vehicle.user_id,
-          vehicle_id: vehicle.id,
-          type: "idle",
-          message: `Veículo parado por ${Math.round(idleDurationMinutes)} minutos`,
-          details: JSON.stringify({
+        const alertQuery = `
+          INSERT INTO alerts (user_id, vehicle_id, type, message, details, status, created_at, severity)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          RETURNING id
+        `;
+        const alertValues = [
+          vehicle.user_id,
+          vehicle.id,
+          "idle",
+          `Veículo parado por ${Math.round(idleDurationMinutes)} minutos`,
+          JSON.stringify({
             idle_minutes: Math.round(idleDurationMinutes),
             max_idle_minutes: idleSettings.max_idle_minutes,
             idle_start_time: idleState.idle_start_time,
             location: { lat: status.lat, lng: status.lng }
           }),
-          status: "unread",
-          created_at: now.toISOString(),
-          severity: idleSettings.severity || "low"
-        };
+          "unread",
+          now,
+          idleSettings.severity || "low"
+        ];
         
-        const { error: insertError } = await supabase
-          .from("alerts")
-          .insert([alertData]);
+        const alertResult = await pool.query(alertQuery, alertValues);
         
-        if (insertError) {
-          logger.error(`Erro ao criar alerta de parada: ${insertError.message}`);
-        } else {
-          logger.info(`Alerta de parada criado para veículo ${vehicle.id}: ${alertData.message}`);
+        if (alertResult.rowCount > 0) {
+          logger.info(`Alerta de parada criado para veículo ${vehicle.id}: ${Math.round(idleDurationMinutes)} minutos`);
           
           // Marcar que o alerta foi disparado para esta parada
-          const { error: updateError } = await supabase
-            .from("vehicle_idle_state")
-            .update({ alert_triggered: true, updated_at: now.toISOString() })
-            .eq("vehicle_id", vehicle.id);
+          const updateQuery = `
+            UPDATE vehicle_idle_state
+            SET alert_triggered = true, updated_at = $1
+            WHERE vehicle_id = $2
+          `;
           
-          if (updateError) {
-            logger.error(`Erro ao atualizar estado de alerta de parada: ${updateError.message}`);
-          }
+          await pool.query(updateQuery, [now, vehicle.id]);
         }
       }
     }
   } catch (error) {
     logger.error("Erro na verificação de alerta de parada:", error);
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      isDatabaseConnected = false;
+      setTimeout(reconnectDatabase, RECONNECT_INTERVAL);
+    }
   }
 }
 
 // Função para verificar todos os tipos de alertas
 async function checkAllAlerts(vehicleId, status) {
+  if (!isDatabaseConnected) {
+    logger.warn("Banco desconectado. Não foi possível verificar alertas.");
+    return;
+  }
+
   try {
     // Buscar dados do veículo
-    const { data: vehicle, error: vehicleError } = await supabase
-      .from("vehicles")
-      .select("id, user_id, name, license_plate")
-      .eq("id", vehicleId)
-      .single();
+    const vehicleQuery = `
+      SELECT id, user_id, name, license_plate
+      FROM vehicles
+      WHERE id = $1
+      LIMIT 1
+    `;
+    const vehicleResult = await pool.query(vehicleQuery, [vehicleId]);
     
-    if (vehicleError) {
-      logger.error(`Erro ao buscar dados do veículo para alertas: ${vehicleError.message}`);
+    if (vehicleResult.rows.length === 0) {
+      logger.error(`Veículo com ID ${vehicleId} não encontrado para verificação de alertas`);
       return;
     }
+    
+    const vehicle = vehicleResult.rows[0];
     
     // Verificar alertas de velocidade
     await checkSpeedAlert(
@@ -416,47 +431,41 @@ async function checkAllAlerts(vehicleId, status) {
     
   } catch (error) {
     logger.error(`Erro na verificação de alertas para veículo ${vehicleId}:`, error);
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      isDatabaseConnected = false;
+      setTimeout(reconnectDatabase, RECONNECT_INTERVAL);
+    }
   }
 }
 
-// Função para atualizar o status do veículo no Supabase
-async function updateVehicleStatusInSupabase(imei, record) {
+// Função para atualizar o status do veículo no banco
+async function updateVehicleStatusInDatabase(imei, record) {
   if (!imei) {
-    logger.error("IMEI não conhecido para este registro, não é possível atualizar o Supabase.");
+    logger.error("IMEI não conhecido para este registro, não é possível atualizar o banco.");
     return;
   }
 
-  if (!isSupabaseConnected) {
-    logger.error("Supabase desconectado. Não é possível atualizar os dados.");
+  if (!isDatabaseConnected) {
+    logger.error("Banco desconectado. Não é possível atualizar os dados.");
     return;
   }
 
   try {
     // 1. Encontrar o veículo pelo IMEI
-    const { data: vehicle, error: vehicleError } = await supabase
-      .from("vehicles")
-      .select("id, user_id")
-      .eq("device_imei", imei)
-      .single();
+    const vehicleQuery = `
+      SELECT id, user_id
+      FROM vehicles
+      WHERE device_imei = $1
+      LIMIT 1
+    `;
+    const vehicleResult = await pool.query(vehicleQuery, [imei]);
 
-    if (vehicleError) {
-      if (vehicleError.code === 'PGRST116') { // Não encontrado
-        logger.warn(`Veículo com IMEI ${imei} não encontrado no banco de dados.`);
-      } else {
-        logger.error(`Erro ao buscar veículo com IMEI ${imei}: ${vehicleError.message}`);
-        // Verificar se é um erro de conexão e tentar reconectar
-        if (vehicleError.code === 'PGRST301' || vehicleError.message.includes('connection')) {
-          isSupabaseConnected = false;
-          setTimeout(reconnectSupabase, RECONNECT_INTERVAL);
-        }
-      }
+    if (vehicleResult.rows.length === 0) {
+      logger.warn(`Veículo com IMEI ${imei} não encontrado no banco de dados.`);
       return;
     }
 
-    if (!vehicle) {
-      logger.warn(`Veículo com IMEI ${imei} não encontrado.`);
-      return;
-    }
+    const vehicle = vehicleResult.rows[0];
 
     // 2. Preparar os dados de status
     const statusData = {
@@ -472,23 +481,46 @@ async function updateVehicleStatusInSupabase(imei, record) {
       is_moving: record.ioEvents.movement_status !== undefined ? Boolean(record.ioEvents.movement_status) : (record.speed > 0),
       status: "online", // Assumir online se recebemos dados
       // Adicionar outros campos relevantes do ioEvents se necessário
-      // address: será preenchido por um trigger ou função no Supabase (geocodificação reversa)
+      // address: será preenchido por um trigger ou função no banco (geocodificação reversa)
     };
 
     // 3. Atualizar ou inserir o status do veículo (upsert)
-    const { error: upsertError } = await supabase
-      .from("vehicle_status")
-      .upsert(statusData, { onConflict: "vehicle_id" });
+    const upsertQuery = `
+      INSERT INTO vehicle_status (
+        vehicle_id, last_update, lat, lng, speed, direction, ignition, 
+        battery, satellites, is_moving, status
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ON CONFLICT (vehicle_id) DO UPDATE SET
+        last_update = EXCLUDED.last_update,
+        lat = EXCLUDED.lat,
+        lng = EXCLUDED.lng,
+        speed = EXCLUDED.speed,
+        direction = EXCLUDED.direction,
+        ignition = EXCLUDED.ignition,
+        battery = EXCLUDED.battery,
+        satellites = EXCLUDED.satellites,
+        is_moving = EXCLUDED.is_moving,
+        status = EXCLUDED.status
+      RETURNING vehicle_id
+    `;
+    
+    const upsertValues = [
+      statusData.vehicle_id,
+      statusData.last_update,
+      statusData.lat,
+      statusData.lng,
+      statusData.speed,
+      statusData.direction,
+      statusData.ignition,
+      statusData.battery,
+      statusData.satellites,
+      statusData.is_moving,
+      statusData.status
+    ];
 
-    if (upsertError) {
-      logger.error(`Erro ao atualizar status para veículo ${vehicle.id} (IMEI: ${imei}): ${upsertError.message}`);
-      
-      // Verificar se é um erro de conexão e tentar reconectar
-      if (upsertError.code === 'PGRST301' || upsertError.message.includes('connection')) {
-        isSupabaseConnected = false;
-        setTimeout(reconnectSupabase, RECONNECT_INTERVAL);
-      }
-    } else {
+    const upsertResult = await pool.query(upsertQuery, upsertValues);
+
+    if (upsertResult.rowCount > 0) {
       logger.info(`Status atualizado para veículo ${vehicle.id} (IMEI: ${imei})`);
     }
 
@@ -499,9 +531,9 @@ async function updateVehicleStatusInSupabase(imei, record) {
     logger.error(`Erro inesperado ao processar registro para IMEI ${imei}: ${error.message}`);
     
     // Verificar se é um erro de conexão e tentar reconectar
-    if (error.message && error.message.includes('connection')) {
-      isSupabaseConnected = false;
-      setTimeout(reconnectSupabase, RECONNECT_INTERVAL);
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      isDatabaseConnected = false;
+      setTimeout(reconnectDatabase, RECONNECT_INTERVAL);
     }
   }
 }
@@ -635,7 +667,7 @@ async function processData(data, connectionInfo, sendResponse) {
 
     // Processar cada registro AVL
     for (const record of decodedData.records) {
-      await updateVehicleStatusInSupabase(imei, record);
+      await updateVehicleStatusInDatabase(imei, record);
     }
 
     // Enviar confirmação com o número de registros recebidos baseada no protocolo

@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { createClient, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { Database } from '../../types/database.types';
 import { RealtimeConnectionManager, ConnectionState, LogLevel } from '../realtime-connection-manager';
+import { RealtimeEvent } from '../realtime/websocket-client';
 
 // Tipos de entidades que podem ser monitoradas em tempo real
 export type RealtimeEntity = 'vehicles' | 'drivers' | 'geofences' | 'alerts' | 'reports' | 'notifications';
@@ -22,7 +21,7 @@ export interface SubscriptionConfig {
 
 // Interface para o retorno do hook
 export interface RealtimeConnectionResult<T> {
-  subscribe: (config: SubscriptionConfig, callback: (payload: RealtimePostgresChangesPayload<T>) => void) => Promise<string>;
+  subscribe: (config: SubscriptionConfig, callback: (payload: RealtimeEvent<T>) => void) => Promise<string>;
   unsubscribe: (channelName: string) => Promise<void>;
   unsubscribeAll: () => Promise<void>;
   connectionState: ConnectionState;
@@ -42,18 +41,18 @@ export interface UseRealtimeConnectionOptions {
 }
 
 /**
- * Hook personalizado para gerenciar conexões Realtime com o Supabase
+ * Hook personalizado para gerenciar conexões Realtime com WebSockets
  * 
  * Este hook utiliza o RealtimeConnectionManager para fornecer uma interface
  * amigável para os componentes React, com recursos de reconexão automática,
  * verificação de saúde e sincronização de dados.
  * 
- * @param supabaseClient Cliente Supabase inicializado
+ * @param wsUrl URL do servidor WebSocket
  * @param options Opções de configuração para o gerenciador de conexão
  * @returns Interface para gerenciar assinaturas e monitorar o estado da conexão
  */
 export function useRealtimeConnection<T>(
-  supabaseClient: ReturnType<typeof createClient<Database>>,
+  wsUrl: string,
   options: UseRealtimeConnectionOptions = {}
 ): RealtimeConnectionResult<T> {
   // Referência para o gerenciador de conexão
@@ -87,7 +86,7 @@ export function useRealtimeConnection<T>(
     };
     
     // Criar instância do gerenciador de conexão
-    const manager = new RealtimeConnectionManager(supabaseClient, {
+    const manager = new RealtimeConnectionManager(wsUrl, {
       ...options,
       onConnectionStateChange: handleConnectionStateChange,
       onConnectionError: handleConnectionError
@@ -110,12 +109,12 @@ export function useRealtimeConnection<T>(
         managerRef.current = null;
       }
     };
-  }, [supabaseClient]);
+  }, [wsUrl]);
   
   // Função para assinar um canal
   const subscribe = useCallback(async (
     config: SubscriptionConfig,
-    callback: (payload: RealtimePostgresChangesPayload<T>) => void
+    callback: (payload: RealtimeEvent<T>) => void
   ): Promise<string> => {
     if (!managerRef.current) {
       throw new Error('Gerenciador de conexão não inicializado');
@@ -183,16 +182,16 @@ export function useRealtimeConnection<T>(
  * a assinatura em uma única entidade, gerenciando automaticamente o ciclo de vida
  * da assinatura.
  * 
- * @param supabaseClient Cliente Supabase inicializado
+ * @param wsUrl URL do servidor WebSocket
  * @param config Configuração da assinatura
  * @param callback Função a ser chamada quando ocorrer um evento
  * @param options Opções de configuração para o gerenciador de conexão
  * @returns Estado da conexão e funções para gerenciar a assinatura
  */
 export function useRealtimeSubscription<T>(
-  supabaseClient: ReturnType<typeof createClient<Database>>,
+  wsUrl: string,
   config: SubscriptionConfig,
-  callback: (payload: RealtimePostgresChangesPayload<T>) => void,
+  callback: (payload: RealtimeEvent<T>) => void,
   options: UseRealtimeConnectionOptions = {}
 ) {
   const {
@@ -201,7 +200,7 @@ export function useRealtimeSubscription<T>(
     connectionState,
     connectionStats,
     error
-  } = useRealtimeConnection<T>(supabaseClient, options);
+  } = useRealtimeConnection<T>(wsUrl, options);
   
   // Referência para o nome do canal
   const channelNameRef = useRef<string | null>(null);
@@ -213,7 +212,7 @@ export function useRealtimeSubscription<T>(
   }, [callback]);
   
   // Criar uma versão estável do callback
-  const stableCallback = useCallback((payload: RealtimePostgresChangesPayload<T>) => {
+  const stableCallback = useCallback((payload: RealtimeEvent<T>) => {
     callbackRef.current(payload);
   }, []);
   

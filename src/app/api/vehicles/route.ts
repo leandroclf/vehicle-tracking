@@ -1,24 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { requireAuth } from '@/lib/auth/auth-middleware';
+import { db } from '@/lib/database';
+import { vehicles } from '@/lib/schema';
+import { eq, and, ilike } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
 const querySchema = z.object({
   limit: z.string().optional().transform(val => val ? parseInt(val, 10) : 50),
   offset: z.string().optional().transform(val => val ? parseInt(val, 10) : 0),
-  status: z.enum(['active', 'inactive', 'all']).optional().default('all'),
+  status: z.enum(['active', 'inactive', 'maintenance', 'all']).optional().default('all'),
   sort: z.enum(['asc', 'desc']).optional().default('asc')
 });
 
 // Esquema para validar dados de criação/atualização de veículo
 const vehicleSchema = z.object({
   name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
-  license_plate: z.string().min(3, 'Placa deve ter pelo menos 3 caracteres'),
+  licensePlate: z.string().min(3, 'Placa deve ter pelo menos 3 caracteres'),
   model: z.string().optional(),
   year: z.number().int().positive().optional(),
-  device_id: z.string().optional(),
-  status: z.enum(['active', 'inactive']).default('active'),
+  deviceId: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'maintenance']).default('active'),
   color: z.string().optional(),
   vin: z.string().optional()
 });
@@ -27,12 +29,12 @@ const vehicleSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Verificar autenticação do usuário
-    const authResult = await verifyAuth(request);
-    if (!authResult.user) {
-      return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
     
-    const userId = authResult.user.id;
+    const { user } = authResult;
     
     // Extrair e validar parâmetros de consulta
     const url = new URL(request.url);
@@ -44,37 +46,39 @@ export async function GET(request: NextRequest) {
     
     const { limit, offset, status, sort } = queryResult.data;
     
-    // Construir consulta base
-    let query = supabase
-      .from('vehicles')
-      .select('*')
-      .eq('user_id', userId)
-      .order('name', { ascending: sort === 'asc' })
-      .range(offset, offset + limit - 1);
+    // Construir condições WHERE
+    let whereConditions = [eq(vehicles.userId, user.id)];
     
     // Aplicar filtro de status se não for 'all'
     if (status !== 'all') {
-      query = query.eq('status', status);
+      whereConditions.push(eq(vehicles.status, status));
     }
     
     // Executar consulta
-    const { data: vehicles, error, count } = await query;
+    const result = await db
+      .select()
+      .from(vehicles)
+      .where(and(...whereConditions))
+      .limit(limit)
+      .offset(offset)
+      .orderBy(sort === 'asc' ? vehicles.name : vehicles.name);
     
-    if (error) {
-      console.error('Erro ao buscar veículos:', error);
-      return NextResponse.json({ error: 'Erro ao buscar veículos' }, { status: 500 });
-    }
+    // Contar total de registros
+    const totalResult = await db
+      .select({ count: vehicles.id })
+      .from(vehicles)
+      .where(and(...whereConditions));
     
     // Retornar resultados
     return NextResponse.json({
-      vehicles,
+      vehicles: result,
       pagination: {
-        total: count || 0,
+        total: totalResult.length,
         limit,
         offset
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
@@ -84,12 +88,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticação do usuário
-    const authResult = await verifyAuth(request);
-    if (!authResult.user) {
-      return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
     
-    const userId = authResult.user.id;
+    const { user } = authResult;
     
     // Extrair e validar corpo da requisição
     const body = await request.json();
@@ -102,40 +106,33 @@ export async function POST(request: NextRequest) {
     const vehicleData = vehicleResult.data;
     
     // Verificar se já existe veículo com a mesma placa
-    const { data: existingVehicle, error: checkError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('license_plate', vehicleData.license_plate)
-      .eq('user_id', userId)
-      .maybeSingle();
+    const existingVehicle = await db
+      .select()
+      .from(vehicles)
+      .where(
+        and(
+          eq(vehicles.licensePlate, vehicleData.licensePlate),
+          eq(vehicles.userId, user.id)
+        )
+      )
+      .limit(1);
     
-    if (checkError) {
-      console.error('Erro ao verificar veículo existente:', checkError);
-      return NextResponse.json({ error: 'Erro ao verificar veículo existente' }, { status: 500 });
-    }
-    
-    if (existingVehicle) {
+    if (existingVehicle.length > 0) {
       return NextResponse.json({ error: 'Já existe um veículo com esta placa' }, { status: 409 });
     }
     
     // Inserir novo veículo
-    const { data: newVehicle, error: insertError } = await supabase
-      .from('vehicles')
-      .insert({
+    const newVehicle = await db
+      .insert(vehicles)
+      .values({
         ...vehicleData,
-        user_id: userId
+        userId: user.id,
       })
-      .select()
-      .single();
-    
-    if (insertError) {
-      console.error('Erro ao criar veículo:', insertError);
-      return NextResponse.json({ error: 'Erro ao criar veículo' }, { status: 500 });
-    }
+      .returning();
     
     // Retornar veículo criado
-    return NextResponse.json(newVehicle, { status: 201 });
-  } catch (error) {
+    return NextResponse.json(newVehicle[0], { status: 201 });
+  } catch (error: any) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
@@ -145,12 +142,12 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Verificar autenticação do usuário
-    const authResult = await verifyAuth(request);
-    if (!authResult.user) {
-      return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
     
-    const userId = authResult.user.id;
+    const { user } = authResult;
     
     // Extrair e validar corpo da requisição
     const body = await request.json() as { id: string; [key: string]: unknown };
@@ -167,39 +164,39 @@ export async function PUT(request: NextRequest) {
     }
     
     // Verificar se o veículo existe e pertence ao usuário
-    const { data: existingVehicle, error: checkError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .maybeSingle();
+    const existingVehicle = await db
+      .select()
+      .from(vehicles)
+      .where(
+        and(
+          eq(vehicles.id, id),
+          eq(vehicles.userId, user.id)
+        )
+      )
+      .limit(1);
     
-    if (checkError) {
-      console.error('Erro ao verificar veículo:', checkError);
-      return NextResponse.json({ error: 'Erro ao verificar veículo' }, { status: 500 });
-    }
-    
-    if (!existingVehicle) {
+    if (existingVehicle.length === 0) {
       return NextResponse.json({ error: 'Veículo não encontrado' }, { status: 404 });
     }
     
     // Atualizar veículo
-    const { data: updatedVehicle, error: updateError } = await supabase
-      .from('vehicles')
-      .update(vehicleResult.data)
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select()
-      .single();
-    
-    if (updateError) {
-      console.error('Erro ao atualizar veículo:', updateError);
-      return NextResponse.json({ error: 'Erro ao atualizar veículo' }, { status: 500 });
-    }
+    const updatedVehicle = await db
+      .update(vehicles)
+      .set({
+        ...vehicleResult.data,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(vehicles.id, id),
+          eq(vehicles.userId, user.id)
+        )
+      )
+      .returning();
     
     // Retornar veículo atualizado
-    return NextResponse.json(updatedVehicle);
-  } catch (error) {
+    return NextResponse.json(updatedVehicle[0]);
+  } catch (error: any) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
@@ -209,12 +206,12 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     // Verificar autenticação do usuário
-    const authResult = await verifyAuth(request);
-    if (!authResult.user) {
-      return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
     
-    const userId = authResult.user.id;
+    const { user } = authResult;
     
     // Extrair ID do veículo da URL
     const url = new URL(request.url);
@@ -225,37 +222,34 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Verificar se o veículo existe e pertence ao usuário
-    const { data: existingVehicle, error: checkError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .maybeSingle();
+    const existingVehicle = await db
+      .select()
+      .from(vehicles)
+      .where(
+        and(
+          eq(vehicles.id, id),
+          eq(vehicles.userId, user.id)
+        )
+      )
+      .limit(1);
     
-    if (checkError) {
-      console.error('Erro ao verificar veículo:', checkError);
-      return NextResponse.json({ error: 'Erro ao verificar veículo' }, { status: 500 });
-    }
-    
-    if (!existingVehicle) {
+    if (existingVehicle.length === 0) {
       return NextResponse.json({ error: 'Veículo não encontrado' }, { status: 404 });
     }
     
     // Excluir veículo
-    const { error: deleteError } = await supabase
-      .from('vehicles')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
-    
-    if (deleteError) {
-      console.error('Erro ao excluir veículo:', deleteError);
-      return NextResponse.json({ error: 'Erro ao excluir veículo' }, { status: 500 });
-    }
+    await db
+      .delete(vehicles)
+      .where(
+        and(
+          eq(vehicles.id, id),
+          eq(vehicles.userId, user.id)
+        )
+      );
     
     // Retornar sucesso
     return NextResponse.json({ message: 'Veículo excluído com sucesso' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }

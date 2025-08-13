@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase';
+// Removido import do database - frontend deve usar APIs REST
 
 // Definição do tipo de veículo
 export interface Vehicle {
@@ -102,29 +102,13 @@ export function VehicleProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      const supabase = createClient();
+      // Buscar veículos via API REST
+      const response = await fetch('/api/vehicles');
+      if (!response.ok) {
+        throw new Error('Falha ao buscar veículos');
+      }
       
-      // Buscar dados do Supabase
-      const { data, error } = await supabase
-        .from('vehicles')
-        .select(`
-          id,
-          name,
-          plate:license_plate,
-          type,
-          brand,
-          model,
-          year,
-          color,
-          active,
-          trackers(
-            imei,
-            protocol,
-            active
-          )
-        `);
-      
-      if (error) throw error;
+      const data = await response.json();
       
       if (!data || data.length === 0) {
         setVehicles([]);
@@ -136,16 +120,15 @@ export function VehicleProvider({ children }: { children: ReactNode }) {
       const vehiclesWithPositions = await Promise.all(
         data.map(async (vehicle) => {
           // Buscar a posição mais recente para este veículo
-          const { data: positionData, error: positionError } = await supabase
-            .from('positions')
-            .select('*')
-            .eq('vehicle_id', vehicle.id)
-            .order('timestamp', { ascending: false })
-            .limit(1)
-            .single();
-            
-          if (positionError && !positionError.message.includes('No rows found')) {
-            console.error(`Erro ao buscar posição para veículo ${vehicle.id}:`, positionError);
+          // Buscar posição mais recente via API
+          let positionData = null;
+          try {
+            const posResponse = await fetch(`/api/vehicles/${vehicle.id}/position`);
+            if (posResponse.ok) {
+              positionData = await posResponse.json();
+            }
+          } catch (error) {
+            console.error(`Erro ao buscar posição para veículo ${vehicle.id}:`, error);
           }
           
           // Transformar para o formato esperado pela UI
@@ -206,80 +189,25 @@ export function VehicleProvider({ children }: { children: ReactNode }) {
 
   // Configurar canal de tempo real para atualizações
   useEffect(() => {
-    const supabase = createClient();
+    // TODO: Implementar WebSocket para atualizações em tempo real
+    // const wsManager = new WebSocketManager(process.env.NEXT_PUBLIC_WS_URL!);
+    // wsManager.subscribe('positions', (event) => {
+    //   if (event.type === 'INSERT') {
+    //     // Atualizar veículo específico com novos dados de posição
+    //     // ... lógica de atualização
+    //   }
+    // });
     
-    const positionsSubscription = supabase
-      .channel('position-updates')
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'positions' 
-        }, 
-        (payload) => {
-          // Atualizar veículo específico com novos dados de posição
-          setVehicles(currentVehicles => {
-            return currentVehicles.map(vehicle => {
-              if (vehicle.id === payload.new.vehicle_id) {
-                return {
-                  ...vehicle,
-                  lat: payload.new.latitude,
-                  lng: payload.new.longitude,
-                  location: {
-                    lat: payload.new.latitude,
-                    lng: payload.new.longitude
-                  },
-                  speed: payload.new.speed || 0,
-                  heading: payload.new.direction,
-                  direction: getDirectionFromHeading(payload.new.direction),
-                  status: payload.new.ignition ? 'online' : 'offline',
-                  ignition: payload.new.ignition,
-                  isMoving: payload.new.speed > 0,
-                  is_moving: payload.new.speed > 0,
-                  lastUpdate: new Date(payload.new.timestamp).toLocaleString('pt-BR'),
-                  last_update: payload.new.timestamp,
-                  battery: payload.new.battery_level,
-                  satellites: payload.new.satellites
-                };
-              }
-              return vehicle;
-            });
-          });
-          
-          // Atualizar veículo selecionado se for o mesmo
-          setSelectedVehicle(current => {
-            if (current && current.id === payload.new.vehicle_id) {
-              return {
-                ...current,
-                lat: payload.new.latitude,
-                lng: payload.new.longitude,
-                location: {
-                  lat: payload.new.latitude,
-                  lng: payload.new.longitude
-                },
-                speed: payload.new.speed || 0,
-                heading: payload.new.direction,
-                direction: getDirectionFromHeading(payload.new.direction),
-                status: payload.new.ignition ? 'online' : 'offline',
-                ignition: payload.new.ignition,
-                isMoving: payload.new.speed > 0,
-                is_moving: payload.new.speed > 0,
-                lastUpdate: new Date(payload.new.timestamp).toLocaleString('pt-BR'),
-                last_update: payload.new.timestamp,
-                battery: payload.new.battery_level,
-                satellites: payload.new.satellites
-              };
-            }
-            return current;
-          });
-        }
-      )
-      .subscribe();
+    // Por enquanto, usar polling como fallback
+    const intervalId = setInterval(() => {
+      // Recarregar dados periodicamente
+      fetchVehicles();
+    }, 30000); // A cada 30 segundos
       
     return () => {
-      supabase.channel('position-updates').unsubscribe();
+      clearInterval(intervalId);
     };
-  }, []);
+  }, [fetchVehicles]);
 
   function getDirectionFromHeading(heading?: number): string {
     if (heading === undefined) return 'N/A';
@@ -389,21 +317,21 @@ export function useVehicles() {
 // Função para obter eventos de um veículo
 export async function getVehicleEvents(vehicleId: number): Promise<VehicleEvent[]> {
   try {
-    const supabase = createClient();
+    const pool = getDbPool();
     
-    const { data, error } = await supabase
-      .from('events')
-      .select(`
-        id,
-        vehicle_id,
-        type,
-        description,
-        timestamp,
-        positions(latitude, longitude)
-      `)
-      .eq('vehicle_id', vehicleId)
-      .order('timestamp', { ascending: false })
-      .limit(50);
+    // TODO: Implementar query SQL direta
+    const eventsQuery = `
+      SELECT e.id, e.vehicle_id, e.type, e.description, e.timestamp,
+             p.latitude, p.longitude
+      FROM events e
+      LEFT JOIN positions p ON e.position_id = p.id
+      WHERE e.vehicle_id = $1
+      ORDER BY e.timestamp DESC
+      LIMIT 50
+    `;
+    const eventsResult = await pool.query(eventsQuery, [vehicleId]);
+    const data = eventsResult.rows;
+    const error = null;
       
     if (error) throw error;
     
@@ -418,8 +346,8 @@ export async function getVehicleEvents(vehicleId: number): Promise<VehicleEvent[
       type: event.type as 'ignition_on' | 'ignition_off' | 'speed_alert' | 'movement' | 'panic' | 'battery_low',
       timestamp: event.timestamp,
       location: {
-        lat: event.positions?.[0]?.latitude || 0,
-        lng: event.positions?.[0]?.longitude || 0,
+        lat: event.latitude || 0,
+        lng: event.longitude || 0,
         address: 'Obtendo endereço...' // Pode ser implementado com serviço de geocodificação reversa
       },
       details: event.description
@@ -433,26 +361,23 @@ export async function getVehicleEvents(vehicleId: number): Promise<VehicleEvent[
 // Função para obter viagens de um veículo
 export async function getVehicleTrips(vehicleId: number): Promise<Trip[]> {
   try {
-    const supabase = createClient();
+    const pool = getDbPool();
     
     // Buscar as viagens do veículo
-    const { data, error } = await supabase
-      .from('trips')
-      .select(`
-        id,
-        vehicle_id,
-        vehicles(name, license_plate),
-        start_time,
-        end_time,
-        distance,
-        max_speed,
-        avg_speed,
-        start_position_id,
-        end_position_id
-      `)
-      .eq('vehicle_id', vehicleId)
-      .order('start_time', { ascending: false })
-      .limit(20);
+    // TODO: Implementar query SQL direta
+    const tripsQuery = `
+      SELECT t.id, t.vehicle_id, t.start_time, t.end_time, t.distance,
+             t.max_speed, t.avg_speed, t.start_position_id, t.end_position_id,
+             v.name, v.license_plate
+      FROM trips t
+      LEFT JOIN vehicles v ON t.vehicle_id = v.id
+      WHERE t.vehicle_id = $1
+      ORDER BY t.start_time DESC
+      LIMIT 20
+    `;
+    const tripsResult = await pool.query(tripsQuery, [vehicleId]);
+    const data = tripsResult.rows;
+    const error = null;
       
     if (error) throw error;
     
@@ -471,8 +396,8 @@ export async function getVehicleTrips(vehicleId: number): Promise<Trip[]> {
       return {
         id: trip.id,
         vehicleId: trip.vehicle_id,
-        vehicleName: trip.vehicles?.[0]?.name || 'Veículo sem nome',
-        vehiclePlate: trip.vehicles?.[0]?.license_plate || 'Sem placa',
+        vehicleName: trip.name || 'Veículo sem nome',
+        vehiclePlate: trip.license_plate || 'Sem placa',
         date: startTime.toLocaleDateString('pt-BR'),
         startTime: startTime.toLocaleTimeString('pt-BR'),
         endTime: trip.end_time ? endTime.toLocaleTimeString('pt-BR') : 'Em andamento',

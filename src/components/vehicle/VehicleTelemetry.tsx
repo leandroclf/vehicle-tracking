@@ -1,4 +1,4 @@
-import { useVehicles } from '@/lib/vehicles';
+import { useVehicles } from '@/lib/vehicles-client';
 
 // Componente para exibir telemetria do veículo
 export default function VehicleTelemetry({ vehicleId }: { vehicleId: number }) {

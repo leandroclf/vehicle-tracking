@@ -1,10 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { createClient, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { Database } from '../../types/database.types';
 import { useRealtimeConnection, RealtimeConnectionResult, UseRealtimeConnectionOptions, SubscriptionConfig } from '../hooks/useRealtimeConnection';
 import { ConnectionState } from '../realtime-connection-manager';
+import { RealtimeEvent } from '../realtime/websocket-client';
 
 // Contexto para o provedor Realtime
 interface RealtimeContextType<T> extends RealtimeConnectionResult<T> {
@@ -17,7 +16,7 @@ const RealtimeContext = createContext<RealtimeContextType<any> | undefined>(unde
 
 // Props para o provedor Realtime
 interface RealtimeProviderProps {
-  supabaseClient: ReturnType<typeof createClient<Database>>;
+  wsUrl: string;
   options?: UseRealtimeConnectionOptions;
   children: ReactNode;
 }
@@ -30,7 +29,7 @@ interface RealtimeProviderProps {
  * garantir reconexão automática e sincronização de dados.
  */
 export function RealtimeProvider<T>({
-  supabaseClient,
+  wsUrl,
   options = {},
   children
 }: RealtimeProviderProps) {
@@ -66,7 +65,7 @@ export function RealtimeProvider<T>({
   });
   
   // Usar o hook de conexão Realtime com as opções configuradas
-  const connection = useRealtimeConnection<T>(supabaseClient, {
+  const connection = useRealtimeConnection<T>(wsUrl, {
     ...options,
     logger: customLogger,
     onConnectionStateChange: handleConnectionStateChange,
@@ -113,7 +112,7 @@ export function GlobalSubscriptions({
 }: {
   subscriptions: Array<{
     config: SubscriptionConfig;
-    callback: (payload: RealtimePostgresChangesPayload<any>) => void;
+    callback: (payload: RealtimeEvent) => void;
   }>;
 }) {
   const { subscribe, unsubscribe, connectionState } = useRealtimeContext();

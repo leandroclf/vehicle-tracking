@@ -1,10 +1,4 @@
 import { WebSocket } from 'ws';
-import { createClient } from '@supabase/supabase-js';
-
-// Configuração do Supabase
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 interface CommandMessage {
   command_id: string;
@@ -22,8 +16,10 @@ interface DeviceConnection {
 class GPSCommandService {
   private deviceConnections = new Map<string, DeviceConnection>();
   private commandQueue = new Map<string, CommandMessage[]>();
+  private apiBaseUrl: string;
 
   constructor() {
+    this.apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000';
     this.setupCommandListener();
     this.setupCleanupInterval();
   }
@@ -149,58 +145,59 @@ class GPSCommandService {
   }
 
   /**
-   * Atualizar status do comando no banco
+   * Atualizar status do comando no banco via API REST
    */
   private async updateCommandStatus(commandId: string, status: string) {
     try {
-      const { error } = await supabase
-        .from('vehicle_commands')
-        .update({ 
+      const response = await fetch(`${this.apiBaseUrl}/api/vehicle-commands/${commandId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.API_TOKEN || ''}`,
+        },
+        body: JSON.stringify({
           status,
           updated_at: new Date().toISOString()
         })
-        .eq('id', commandId);
+      });
 
-      if (error) {
-        console.error('[GPS] Erro ao atualizar status do comando:', error);
+      if (!response.ok) {
+        console.error('[GPS] Erro ao atualizar status do comando:', response.statusText);
       }
     } catch (error) {
-      console.error('[GPS] Erro ao conectar com banco:', error);
+      console.error('[GPS] Erro ao conectar com API:', error);
     }
   }
 
   /**
-   * Escutar novos comandos confirmados no banco
+   * Escutar novos comandos confirmados no banco via API REST
    */
   private setupCommandListener() {
     console.log('[GPS] Configurando listener de comandos...');
 
-    // Polling para comandos confirmados (em produção, usar Supabase Realtime)
+    // Polling para comandos confirmados
     setInterval(async () => {
       try {
-        const { data: commands, error } = await supabase
-          .from('vehicle_commands')
-          .select(`
-            id,
-            vehicle_id,
-            type,
-            metadata,
-            vehicles!inner(device_id)
-          `)
-          .eq('status', 'confirmed')
-          .order('created_at', { ascending: true })
-          .limit(50);
+        const response = await fetch(`${this.apiBaseUrl}/api/vehicle-commands?status=confirmed&limit=50`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.API_TOKEN || ''}`,
+          }
+        });
 
-        if (error) {
-          console.error('[GPS] Erro ao buscar comandos:', error);
+        if (!response.ok) {
+          console.error('[GPS] Erro ao buscar comandos:', response.statusText);
           return;
         }
+
+        const commands = await response.json();
 
         if (commands && commands.length > 0) {
           console.log(`[GPS] Processando ${commands.length} comandos confirmados`);
 
           for (const command of commands) {
-            const deviceId = (command.vehicles as any).device_id;
+            const deviceId = command.vehicle?.device_id;
             
             if (deviceId) {
               await this.sendCommand(

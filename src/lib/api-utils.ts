@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { verifyAuth } from './auth-middleware';
+import { requireAuth } from './auth/auth-middleware';
+import { db } from './database';
 import { ZodSchema } from 'zod';
+import { SQL, eq, and, gt, lt, gte, lte, ne, like, inArray } from 'drizzle-orm';
+import { PgTable } from 'drizzle-orm/pg-core';
 
 // Tipo para handlers de API
 export type ApiHandler = (
   req: NextRequest, 
-  params: { user: { id: string; email: string; name: string }, supabase: SupabaseClient }
+  params: { user: { id: string; email: string; name: string } }
 ) => Promise<NextResponse>;
 
 // Tipo para resposta de erro
@@ -16,38 +18,19 @@ export interface ApiError {
   status: number;
 }
 
-// Cria cliente Supabase com configurações adequadas
-export function getSupabaseClient(): SupabaseClient {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Credenciais do Supabase não encontradas');
-  }
-  
-  return createClient(supabaseUrl, supabaseKey);
-}
-
 // Wrapper para handlers de API com autenticação e tratamento de erros
 export function withApiAuth(handler: ApiHandler) {
   return async (req: NextRequest) => {
     try {
       // Verificar autenticação do usuário
-      const authResult = await verifyAuth(req);
-      if (!authResult.user) {
-        return NextResponse.json(
-          { error: authResult.error || 'Não autorizado' }, 
-          { status: authResult.status || 401 }
-        );
+      const authResult = await requireAuth(req);
+      if (authResult instanceof NextResponse) {
+        return authResult;
       }
-
-      // Criar cliente Supabase
-      const supabase = getSupabaseClient();
       
       // Executar o handler com os parâmetros
       return await handler(req, { 
-        user: authResult.user,
-        supabase
+        user: authResult.user
       });
     } catch (error) {
       console.error('Erro na API:', error);
@@ -122,66 +105,109 @@ export function respondWithError(error: ApiError): NextResponse {
   );
 }
 
-// Verificar se uma tabela existe
-export async function tableExists(supabase: SupabaseClient, tableName: string): Promise<boolean> {
+// Verificar se uma tabela existe (usando PostgreSQL)
+export async function tableExists(tableName: string): Promise<boolean> {
   try {
-    const { error } = await supabase.from(tableName).select('id').limit(1);
-    return !error;
+    const result = await db.execute(
+      `SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = '${tableName}'
+      )`
+    );
+    return result.rows[0]?.exists === true;
   } catch (error) {
     return false;
   }
 }
 
-// Construir consulta paginada
-export function buildPaginatedQuery(
-  supabase: SupabaseClient,
-  table: string,
+// Construir consulta paginada com Drizzle ORM
+export function buildPaginatedQuery<T extends PgTable>(
+  table: T,
   userId: string,
   options: {
     limit?: number;
     offset?: number;
-    orderBy?: string;
+    orderBy?: any;
     ascending?: boolean;
     filter?: Record<string, any>;
-    select?: string;
+    select?: any;
   }
 ) {
   const {
     limit = 50,
     offset = 0,
-    orderBy = 'created_at',
+    orderBy,
     ascending = false,
     filter = {},
-    select = '*'
+    select
   } = options;
 
-  let query = supabase
-    .from(table)
-    .select(select)
-    .eq('user_id', userId)
-    .order(orderBy, { ascending })
-    .range(offset, offset + limit - 1);
+  // Construir condições WHERE
+  const whereConditions: SQL[] = [];
+  
+  // Adicionar filtro de usuário se a tabela tiver userId
+  if ('userId' in table) {
+    whereConditions.push(eq(table.userId, userId));
+  }
 
   // Aplicar filtros adicionais
   Object.entries(filter).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    if (value !== undefined && value !== null && key in table) {
+      const column = table[key as keyof typeof table];
+      
       if (Array.isArray(value)) {
-        query = query.in(key, value);
+        whereConditions.push(inArray(column, value));
       } else if (typeof value === 'object') {
         // Suporte para operadores como gt, lt, etc.
         Object.entries(value).forEach(([op, val]) => {
-          if (op === 'gt') query = query.gt(key, val);
-          else if (op === 'lt') query = query.lt(key, val);
-          else if (op === 'gte') query = query.gte(key, val);
-          else if (op === 'lte') query = query.lte(key, val);
-          else if (op === 'neq') query = query.neq(key, val);
-          else if (op === 'like') query = query.like(key, `%${val}%`);
+          if (op === 'gt') whereConditions.push(gt(column, val));
+          else if (op === 'lt') whereConditions.push(lt(column, val));
+          else if (op === 'gte') whereConditions.push(gte(column, val));
+          else if (op === 'lte') whereConditions.push(lte(column, val));
+          else if (op === 'neq') whereConditions.push(ne(column, val));
+          else if (op === 'like') whereConditions.push(like(column, `%${val}%`));
         });
       } else {
-        query = query.eq(key, value);
+        whereConditions.push(eq(column, value));
       }
     }
   });
 
+  // Construir query base
+  let query = select ? db.select(select).from(table) : db.select().from(table);
+  
+  // Aplicar condições WHERE
+  if (whereConditions.length > 0) {
+    query = query.where(and(...whereConditions));
+  }
+  
+  // Aplicar ordenação
+  if (orderBy) {
+    query = ascending ? query.orderBy(orderBy) : query.orderBy(orderBy);
+  }
+  
+  // Aplicar paginação
+  query = query.limit(limit).offset(offset);
+
   return query;
-} 
+}
+
+// Função auxiliar para criar resposta paginada
+export function createPaginatedResponse<T>(
+  data: T[],
+  total: number,
+  limit: number,
+  offset: number
+) {
+  return {
+    data,
+    pagination: {
+      total,
+      limit,
+      offset,
+      hasNext: offset + limit < total,
+      hasPrev: offset > 0
+    }
+  };
+}

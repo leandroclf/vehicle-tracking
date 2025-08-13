@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { createClient } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 
 // Definição dos tipos para estatísticas do dashboard
 export interface DashboardStatistics {
@@ -69,8 +69,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       setError(null);
 
-      const supabase = createClient();
-      const { data: session } = await supabase.auth.getSession();
+      const pool = getDbPool();
+      const { data: session } = await // TODO: Implementar autenticação JWT // getSession();
 
       if (!session?.session) {
         throw new Error('Sessão não encontrada');
@@ -105,14 +105,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       
-      const supabase = createClient();
-      const { data: session } = await supabase.auth.getSession();
+      const pool = getDbPool();
+      const { data: session } = await // TODO: Implementar autenticação JWT // getSession();
 
       if (!session?.session) {
         throw new Error('Sessão não encontrada');
       }
 
-      const { data, error } = await supabase
+      // TODO: Implementar query SQL direta
+    const data = null; const error = null; // await pool.query(...)
         .from('user_settings')
         .select('dashboard_widgets')
         .eq('user_id', session.session.user.id)
@@ -142,14 +143,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       
-      const supabase = createClient();
-      const { data: session } = await supabase.auth.getSession();
+      const pool = getDbPool();
+      const { data: session } = await // TODO: Implementar autenticação JWT // getSession();
 
       if (!session?.session) {
         throw new Error('Sessão não encontrada');
       }
 
-      const { error } = await supabase
+      // TODO: Implementar query SQL direta
+    const error = null; // await pool.query(...)
         .from('user_settings')
         .upsert({
           user_id: session.session.user.id,

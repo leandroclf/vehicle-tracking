@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from 'react';
-import { useVehicles } from '@/lib/vehicles';
+import { useVehicles } from '@/lib/vehicles-client';
 
 /**
  * Componente invisível que atualiza dados em tempo real

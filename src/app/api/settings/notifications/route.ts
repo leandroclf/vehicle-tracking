@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar dados de notificações
@@ -26,11 +26,16 @@ export async function GET(request: NextRequest) {
     const userId = authResult.user.id;
     
     // Buscar configurações de notificação existentes
-    const { data: settings, error } = await supabase
-      .from('user_settings')
-      .select('notification_settings')
-      .eq('user_id', userId)
-      .single();
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const settingsQuery = `
+      SELECT notification_settings
+      FROM user_settings
+      WHERE user_id = $1
+    `;
+    const settingsResult = await pool.query(settingsQuery, [userId]);
+    const settings = settingsResult.rows[0];
+    const error = null;
       
     if (error && error.code !== 'PGRST116') { // PGRST116 = No rows returned
       console.error('Erro ao buscar configurações de notificação:', error);
@@ -76,11 +81,16 @@ export async function PUT(request: NextRequest) {
     const notificationSettings = validationResult.data;
     
     // Verificar se o usuário já tem configurações
-    const { data: existingSettings, error: checkError } = await supabase
-      .from('user_settings')
-      .select('id')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const checkQuery = `
+      SELECT id
+      FROM user_settings
+      WHERE user_id = $1
+    `;
+    const checkResult = await pool.query(checkQuery, [userId]);
+    const existingSettings = checkResult.rows[0];
+    const checkError = null;
       
     if (checkError) {
       console.error('Erro ao verificar configurações existentes:', checkError);
@@ -92,27 +102,33 @@ export async function PUT(request: NextRequest) {
     // Se já existir, atualizar; caso contrário, inserir
     if (existingSettings) {
       // Atualizar configurações existentes
-      result = await supabase
-        .from('user_settings')
-        .update({
-          notification_settings: notificationSettings,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId)
-        .select('notification_settings')
-        .single();
+      const updateQuery = `
+        UPDATE user_settings
+        SET notification_settings = $1, updated_at = $2
+        WHERE user_id = $3
+        RETURNING notification_settings
+      `;
+      const updateResult = await pool.query(updateQuery, [
+        JSON.stringify(notificationSettings),
+        new Date().toISOString(),
+        userId
+      ]);
+      result = { data: updateResult.rows[0], error: null };
     } else {
       // Inserir novas configurações
-      result = await supabase
-        .from('user_settings')
-        .insert({
-          user_id: userId,
-          notification_settings: notificationSettings,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select('notification_settings')
-        .single();
+      const insertQuery = `
+        INSERT INTO user_settings (
+          user_id, notification_settings, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4)
+        RETURNING notification_settings
+      `;
+      const insertResult = await pool.query(insertQuery, [
+        userId,
+        JSON.stringify(notificationSettings),
+        new Date().toISOString(),
+        new Date().toISOString()
+      ]);
+      result = { data: insertResult.rows[0], error: null };
     }
     
     // Verificar erro na operação
@@ -133,4 +149,4 @@ export async function PUT(request: NextRequest) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
-} 
+}

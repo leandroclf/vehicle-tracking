@@ -9,10 +9,10 @@ import GoogleMapsComponent from '@/components/map/GoogleMapsComponent';
 import { Geofence } from '@/lib/geofences';
 import { RoutePoint } from '@/components/map/RouteHistory';
 import { MapIcon, AlertTriangle, Clock, Settings, Layers } from 'lucide-react';
-import { useVehicles } from '@/lib/vehicles';
+import { useVehicles } from '@/lib/vehicles-client';
 import { useGeofences } from '@/lib/geofences';
 import { calculateCenter } from '@/lib/google-maps';
-import { Vehicle } from '@/lib/vehicles';
+import { Vehicle } from '@/lib/vehicles-client';
 import MapCustomizationPanel from '@/components/map/MapCustomizationPanel';
 
 export default function MapPage() {
@@ -525,4 +525,4 @@ export default function MapPage() {
       <Tabs items={tabItems} />
     </div>
   );
-} 
+}

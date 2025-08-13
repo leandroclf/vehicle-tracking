@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useVehicles } from '@/lib/vehicles';
+import { useVehicles } from '@/lib/vehicles-client';
 import { DataTable, DataTableColumn } from '@/components/ui/data-table';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

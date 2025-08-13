@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { trackingService, Position, VehicleStatus, Trip, TrackingEvent } from './tracking-service';
+import { getTrackingService, Position, VehicleStatus, Trip, TrackingEvent } from './tracking-service';
 
 export interface UseTrackingOptions {
   vehicleId?: number;
@@ -56,7 +56,7 @@ export function useTracking(options: UseTrackingOptions = {}) {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
       if (enableRealtime) {
-        await trackingService.startTracking();
+        await getTrackingService().startTracking();
       }
       
       setState(prev => ({ ...prev, isTracking: true, isLoading: false }));
@@ -77,7 +77,7 @@ export function useTracking(options: UseTrackingOptions = {}) {
       setState(prev => ({ ...prev, isLoading: true }));
       
       if (enableRealtime) {
-        await trackingService.stopTracking();
+        await getTrackingService().stopTracking();
       }
       
       setState(prev => ({ ...prev, isTracking: false, isLoading: false }));
@@ -98,19 +98,19 @@ export function useTracking(options: UseTrackingOptions = {}) {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
       // Carregar última posição
-      const lastPosition = await trackingService.getLatestPosition(vId);
+      const lastPosition = await getTrackingService().getLatestPosition(vId);
       
       // Carregar status do veículo
-      const vehicleStatus = await trackingService.getVehicleStatus(vId);
+      const vehicleStatus = await getTrackingService().getVehicleStatus(vId);
       
       // Carregar viagem atual (se houver)
-      const trips = await trackingService.getVehicleTrips(vId);
+      const trips = await getTrackingService().getVehicleTrips(vId);
       const currentTrip = trips.find(trip => !trip.end_time) || null;
       
       // Carregar eventos recentes
       const endDate = new Date().toISOString();
       const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // Últimas 24h
-      const recentEvents = await trackingService.getVehicleEvents(vId, undefined, startDate, endDate);
+      const recentEvents = await getTrackingService().getVehicleEvents(vId, undefined, startDate, endDate);
 
       setState(prev => ({
         ...prev,
@@ -185,7 +185,7 @@ export function useTracking(options: UseTrackingOptions = {}) {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      const history = await trackingService.getPositionHistory(vId, startTime, endTime, limit);
+      const history = await getTrackingService().getPositionHistory(vId, startTime, endTime, limit);
       
       setState(prev => ({ ...prev, isLoading: false }));
       return history;
@@ -210,7 +210,7 @@ export function useTracking(options: UseTrackingOptions = {}) {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      const trips = await trackingService.getVehicleTrips(vId, startDate, endDate);
+      const trips = await getTrackingService().getVehicleTrips(vId, startDate, endDate);
       
       setState(prev => ({ ...prev, isLoading: false }));
       return trips;
@@ -236,7 +236,7 @@ export function useTracking(options: UseTrackingOptions = {}) {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       
-      const events = await trackingService.getVehicleEvents(vId, eventType, startDate, endDate);
+      const events = await getTrackingService().getVehicleEvents(vId, eventType, startDate, endDate);
       
       setState(prev => ({ ...prev, isLoading: false }));
       return events;
@@ -260,14 +260,14 @@ export function useTracking(options: UseTrackingOptions = {}) {
   // Efeito para configurar subscrições em tempo real
   useEffect(() => {
     if (enableRealtime) {
-      trackingService.on('position_update', handlePositionUpdate);
-      trackingService.on('status_update', handleStatusUpdate);
-      trackingService.on('tracking_event', handleEventUpdate);
+      getTrackingService().on('position_update', handlePositionUpdate);
+      getTrackingService().on('status_update', handleStatusUpdate);
+      getTrackingService().on('tracking_event', handleEventUpdate);
 
       return () => {
-        trackingService.off('position_update', handlePositionUpdate);
-        trackingService.off('status_update', handleStatusUpdate);
-        trackingService.off('tracking_event', handleEventUpdate);
+        getTrackingService().off('position_update', handlePositionUpdate);
+      getTrackingService().off('status_update', handleStatusUpdate);
+      getTrackingService().off('tracking_event', handleEventUpdate);
       };
     }
   }, [enableRealtime, handlePositionUpdate, handleStatusUpdate, handleEventUpdate]);
@@ -326,9 +326,9 @@ export function useMultiVehicleTracking(vehicleIds: number[] = []) {
 
       for (const vehicleId of vehicleIds) {
         try {
-          const lastPosition = await trackingService.getLatestPosition(vehicleId);
-          const vehicleStatus = await trackingService.getVehicleStatus(vehicleId);
-          const trips = await trackingService.getVehicleTrips(vehicleId);
+          const lastPosition = await getTrackingService().getLatestPosition(vehicleId);
+        const vehicleStatus = await getTrackingService().getVehicleStatus(vehicleId);
+        const trips = await getTrackingService().getVehicleTrips(vehicleId);
           const currentTrip = trips.find(trip => !trip.end_time) || null;
 
           vehicleData.set(vehicleId, {
@@ -401,12 +401,12 @@ export function useMultiVehicleTracking(vehicleIds: number[] = []) {
 
   // Efeito para configurar subscrições
   useEffect(() => {
-    trackingService.on('position_update', handlePositionUpdate);
-    trackingService.on('status_update', handleStatusUpdate);
+    getTrackingService().on('position_update', handlePositionUpdate);
+      getTrackingService().on('status_update', handleStatusUpdate);
 
     return () => {
-      trackingService.off('position_update', handlePositionUpdate);
-      trackingService.off('status_update', handleStatusUpdate);
+      getTrackingService().off('position_update', handlePositionUpdate);
+      getTrackingService().off('status_update', handleStatusUpdate);
     };
   }, [handlePositionUpdate, handleStatusUpdate]);
 
@@ -445,7 +445,7 @@ export function useTrackingStats(vehicleId?: number) {
       const endDate = new Date().toISOString();
       const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-      const trips = await trackingService.getVehicleTrips(vId, startDate, endDate);
+      const trips = await getTrackingService().getVehicleTrips(vId, startDate, endDate);
       
       const totalTrips = trips.length;
       const totalDistance = trips.reduce((sum, trip) => sum + (trip.distance_meters || 0), 0);

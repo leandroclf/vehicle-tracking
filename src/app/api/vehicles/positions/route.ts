@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { supabase } from '@/lib/supabase';
+import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
@@ -42,12 +42,16 @@ export async function GET(request: NextRequest) {
     // Se um ID de veículo específico for fornecido
     if (vehicleId) {
       // Verificar se o veículo pertence ao usuário
-      const { data: vehicle, error: vehicleError } = await supabase
-        .from('vehicles')
-        .select('id')
-        .eq('id', vehicleId)
-        .eq('user_id', userId)
-        .maybeSingle();
+      // TODO: Implementar query SQL direta
+      const pool = getDbPool();
+      const vehicleQuery = `
+        SELECT id
+        FROM vehicles
+        WHERE id = $1 AND user_id = $2
+      `;
+      const vehicleResult = await pool.query(vehicleQuery, [vehicleId, userId]);
+      const vehicle = vehicleResult.rows[0];
+      const vehicleError = null;
         
       if (vehicleError) {
         console.error('Erro ao verificar propriedade do veículo:', vehicleError);
@@ -60,12 +64,17 @@ export async function GET(request: NextRequest) {
       
       // Se history > 0, retornar o histórico de posições
       if (history > 0) {
-        const { data: positions, error: positionsError } = await supabase
-          .from('positions')
-          .select('*')
-          .eq('vehicle_id', vehicleId)
-          .order('timestamp', { ascending: false })
-          .limit(history);
+        // TODO: Implementar query SQL direta
+        const positionsQuery = `
+          SELECT *
+          FROM positions
+          WHERE vehicle_id = $1
+          ORDER BY timestamp DESC
+          LIMIT $2
+        `;
+        const positionsResult = await pool.query(positionsQuery, [vehicleId, history]);
+        const positions = positionsResult.rows;
+        const positionsError = null;
           
         if (positionsError) {
           console.error('Erro ao buscar histórico de posições:', positionsError);
@@ -76,13 +85,17 @@ export async function GET(request: NextRequest) {
       }
       
       // Caso contrário, retornar apenas a última posição
-      const { data: position, error: positionError } = await supabase
-        .from('positions')
-        .select('*')
-        .eq('vehicle_id', vehicleId)
-        .order('timestamp', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // TODO: Implementar query SQL direta
+      const positionQuery = `
+        SELECT *
+        FROM positions
+        WHERE vehicle_id = $1
+        ORDER BY timestamp DESC
+        LIMIT 1
+      `;
+      const positionResult = await pool.query(positionQuery, [vehicleId]);
+      const position = positionResult.rows[0];
+      const positionError = null;
         
       if (positionError) {
         console.error('Erro ao buscar posição do veículo:', positionError);
@@ -99,10 +112,16 @@ export async function GET(request: NextRequest) {
     // Caso nenhum ID específico seja fornecido, retornar a última posição de todos os veículos do usuário
     
     // Primeiro, obter a lista de veículos do usuário
-    const { data: vehicles, error: vehiclesError } = await supabase
-      .from('vehicles')
-      .select('id')
-      .eq('user_id', userId);
+    // TODO: Implementar query SQL direta
+    const pool = getDbPool();
+    const vehiclesQuery = `
+      SELECT id
+      FROM vehicles
+      WHERE user_id = $1
+    `;
+    const vehiclesResult = await pool.query(vehiclesQuery, [userId]);
+    const vehicles = vehiclesResult.rows;
+    const vehiclesError = null;
       
     if (vehiclesError) {
       console.error('Erro ao buscar veículos do usuário:', vehiclesError);
@@ -117,11 +136,16 @@ export async function GET(request: NextRequest) {
     const vehicleIds = vehicles.map(v => v.id);
     
     // Buscar a última posição registrada para cada veículo
-    const { data: latestPositions, error: positionsError } = await supabase
-      .from('positions')
-      .select('*')
-      .in('vehicle_id', vehicleIds)
-      .order('timestamp', { ascending: false });
+    // TODO: Implementar query SQL direta
+    const latestPositionsQuery = `
+      SELECT *
+      FROM positions
+      WHERE vehicle_id = ANY($1)
+      ORDER BY timestamp DESC
+    `;
+    const latestPositionsResult = await pool.query(latestPositionsQuery, [vehicleIds]);
+    const latestPositions = latestPositionsResult.rows;
+    const positionsError = null;
       
     if (positionsError) {
       console.error('Erro ao buscar posições dos veículos:', positionsError);
@@ -144,4 +168,4 @@ export async function GET(request: NextRequest) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
-} 
+}

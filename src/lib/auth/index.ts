@@ -1,10 +1,7 @@
-// Importações
-import { verifyAuth } from './verify-auth';
-import { verifyToken, createJWT } from './jwt-utils';
-import { hashPassword, comparePasswords } from './password-utils';
-
-// Exportações
-export { verifyAuth };
-export { verifyToken, createJWT };
-export { hashPassword, comparePasswords };
+// Exportações apenas para o frontend (sem dependências do database)
 export { AuthProvider, useAuth } from './auth-context';
+
+// Funções server-side (apenas para APIs)
+// export { verifyAuth } from './verify-auth';
+// export { verifyToken, createJWT } from './jwt-utils';
+// export { hashPassword, comparePasswords } from './password-utils';

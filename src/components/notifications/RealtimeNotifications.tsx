@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { supabaseRealtime } from '@/lib/supabase';
 import { Toast } from '@/components/ui/toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
@@ -34,25 +33,25 @@ export const RealtimeNotifications: React.FC = () => {
     console.log('Componente de notificações inicializado');
   }, []);
   
-  // Configurar subscription para notificações em tempo real
+  // Configurar WebSocket para notificações em tempo real
   useEffect(() => {
     if (!user || !notificationsTableExistsRef.current) return;
     
-    console.log('Configurando subscription para notificações do usuário:', user.id);
+    console.log('Configurando WebSocket para notificações do usuário:', user.id);
     
-    // Inscrever-se em atualizações da tabela de notificações
-    const subscription = supabaseRealtime
-      .channel('notifications-channel')
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`
-        }, 
-        (payload) => {
-          console.log('Nova notificação recebida:', payload);
-          const newNotification = payload.new as Notification;
+    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001'}/notifications?userId=${user.id}`;
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      console.log('WebSocket conectado para notificações');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'notification') {
+          console.log('Nova notificação recebida:', data.payload);
+          const newNotification = data.payload as Notification;
           
           // Adicionar à lista de notificações
           setNotifications(prev => [newNotification, ...prev]);
@@ -61,12 +60,22 @@ export const RealtimeNotifications: React.FC = () => {
           setCurrentNotification(newNotification);
           setShowToast(true);
         }
-      )
-      .subscribe();
+      } catch (error) {
+        console.error('Erro ao processar mensagem WebSocket:', error);
+      }
+    };
     
-    // Limpar subscription ao desmontar
+    ws.onerror = (error) => {
+      console.error('Erro no WebSocket:', error);
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket desconectado');
+    };
+    
+    // Limpar WebSocket ao desmontar
     return () => {
-      subscription.unsubscribe();
+      ws.close();
     };
   }, [user]);
   
@@ -76,18 +85,14 @@ export const RealtimeNotifications: React.FC = () => {
     
     const loadNotifications = async () => {
       try {
-        const { data, error } = await supabaseRealtime
-          .from('notifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('read', false)
-          .order('timestamp', { ascending: false })
-          .limit(5);
+        const response = await fetch(`/api/notifications?userId=${user.id}&read=false&limit=5`);
         
-        if (error) {
-          console.error('Erro ao carregar notificações:', error);
+        if (!response.ok) {
+          console.error('Erro ao carregar notificações:', response.statusText);
           return;
         }
+        
+        const data = await response.json();
         
         if (data && data.length > 0) {
           setNotifications(data as Notification[]);
@@ -105,13 +110,16 @@ export const RealtimeNotifications: React.FC = () => {
     if (!notificationsTableExistsRef.current) return;
     
     try {
-      const { error } = await supabaseRealtime
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', id);
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, read: true }),
+      });
       
-      if (error) {
-        console.error('Erro ao marcar notificação como lida:', error);
+      if (!response.ok) {
+        console.error('Erro ao marcar notificação como lida:', response.statusText);
         return;
       }
       
