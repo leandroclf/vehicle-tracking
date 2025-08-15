@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNotifications } from './NotificationsProvider';
-import { Badge } from '@/components/ui/badge';
-import { Dropdown } from '@/components/ui/dropdown';
+import { Badge } from '@/components/ui/Badge';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';

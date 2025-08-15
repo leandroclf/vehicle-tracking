@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Container } from '@/components/ui/container';
-import { Breadcrumb } from '@/components/ui/breadcrumb';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Container } from '@/components/ui/Container';
+import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { TrackingDashboard } from '@/components/tracking/simple-tracking-dashboard';
 import { SimpleMap } from '@/components/tracking/simple-map';
 import { Map, Activity, BarChart3, Settings } from 'lucide-react';

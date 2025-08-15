@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useVehicles } from '@/lib/vehicles-client';
 import { DataTable, DataTableColumn } from '@/components/ui/data-table';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { Terminal, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

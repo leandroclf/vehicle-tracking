@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { Clock, Car, Info, Calendar, Map, Power, Zap } from 'lucide-react';
 import { DataTable, DataTableColumn } from '@/components/ui/data-table';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
 interface HistoryRecord {

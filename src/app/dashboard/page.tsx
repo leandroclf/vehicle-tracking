@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Container } from '@/components/ui/container';
-import { Breadcrumb } from '@/components/ui/breadcrumb';
+import { Container } from '@/components/ui/Container';
+import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import dynamic from 'next/dynamic';
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from '@/components/ui/resizable-panels';
 import { getFromStorage, saveToStorage } from '@/lib/utils';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Tooltip } from '@/components/ui/tooltip';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { Settings, Sliders, PlusCircle, RotateCcw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { DashboardConfigurator, WidgetConfig, UserProfile } from '@/components/dashboard/DashboardConfigurator';
 import { RealTimeUpdater } from '@/components/dashboard/RealTimeUpdater';
 import { TrackingDashboard } from '@/components/tracking/tracking-dashboard';

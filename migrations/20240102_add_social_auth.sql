@@ -7,7 +7,7 @@ CREATE TYPE social_provider AS ENUM ('google', 'facebook', 'apple');
 -- Tabela para contas sociais vinculadas
 CREATE TABLE IF NOT EXISTS social_accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     provider social_provider NOT NULL,
     provider_id VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS social_providers_config (
 -- Tabela para logs de autenticação social
 CREATE TABLE IF NOT EXISTS social_auth_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     provider social_provider NOT NULL,
     action VARCHAR(50) NOT NULL, -- 'login', 'signup', 'link', 'unlink'
     success BOOLEAN NOT NULL,
@@ -112,9 +112,9 @@ DECLARE
     auth_user_id UUID;
     social_user_id UUID;
 BEGIN
-    -- Verificar se email existe na tabela auth.users
+    -- Verificar se email existe na tabela users
     SELECT id INTO auth_user_id 
-    FROM auth.users 
+    FROM users 
     WHERE email = p_email;
     
     -- Verificar se combinação provider/provider_id já existe

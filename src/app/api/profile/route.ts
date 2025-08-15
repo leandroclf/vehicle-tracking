@@ -1,38 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, AuthenticatedRequest } from '@/lib/auth/auth-middleware';
-// Usando auth-service mock temporariamente até resolver problema do PostgreSQL
 import { AuthService } from '@/lib/auth/auth-service-mock';
 
-export const GET = withAuth(async (request: AuthenticatedRequest) => {
+export async function GET(request: NextRequest) {
   try {
-    const user = request.user;
-    if (!user) {
+    const authHeader = request.headers.get('authorization');
+    const token = AuthService.extractTokenFromHeader(authHeader || '');
+
+    if (!token) {
       return NextResponse.json(
-        { error: 'Usuário não autenticado' },
+        { error: 'Token de autenticação necessário' },
         { status: 401 }
       );
     }
+
+    const user = await AuthService.verifyToken(token);
 
     return NextResponse.json({ user });
   } catch (error: any) {
     console.error('Erro ao buscar perfil:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
+      { error: error.message || 'Erro interno do servidor' },
+      { status: error.message === 'Token inválido' ? 401 : 500 }
     );
   }
-});
+}
 
-export const PUT = withAuth(async (request: AuthenticatedRequest) => {
+export async function PUT(request: NextRequest) {
   try {
-    const user = request.user;
-    if (!user) {
+    const authHeader = request.headers.get('authorization');
+    const token = AuthService.extractTokenFromHeader(authHeader || '');
+
+    if (!token) {
       return NextResponse.json(
-        { error: 'Usuário não autenticado' },
+        { error: 'Token de autenticação necessário' },
         { status: 401 }
       );
     }
 
+    const user = await AuthService.verifyToken(token);
     const body = await request.json();
     const { name, phone, avatar_url } = body;
 
@@ -50,8 +55,8 @@ export const PUT = withAuth(async (request: AuthenticatedRequest) => {
   } catch (error: any) {
     console.error('Erro ao atualizar perfil:', error);
     return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
+      { error: error.message || 'Erro interno do servidor' },
+      { status: error.message === 'Token inválido' ? 401 : 500 }
     );
   }
-});
+}

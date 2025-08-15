@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/ui/Card';
 import { useDashboard, DashboardStatistics } from '@/lib/dashboard';
 import { Car, Activity, AlertTriangle, Droplet, MapPin } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs-fixed';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs-fixed';
 
 interface StatisticsWidgetProps {
   type: 'vehicle_count' | 'active_vehicles' | 'total_distance' | 'alerts' | 'fuel';

@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Tabs } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Dropdown } from '@/components/ui/dropdown';
+import { Tabs } from '@/components/ui/Tabs';
+import { Badge } from '@/components/ui/Badge';
+import { Dropdown } from '@/components/ui/Dropdown';
 import GoogleMapsComponent from '@/components/map/GoogleMapsComponent';
 import { Geofence } from '@/lib/geofences';
 import { RoutePoint } from '@/components/map/RouteHistory';

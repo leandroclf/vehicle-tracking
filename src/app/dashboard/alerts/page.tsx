@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Alert } from '@/components/ui/alert';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Alert } from '@/components/ui/Alert';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { Bell, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { useAlerts } from '@/lib/alerts';
 import AlertNotifications from '@/components/dashboard/AlertNotifications';
 
@@ -54,7 +54,7 @@ export default function AlertsPage() {
       
       <Card 
         title="Lista de Alertas" 
-        elevated={true}
+        elevated="true"
         className="mb-6"
       >
         <div className="space-y-4">

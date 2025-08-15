@@ -6,18 +6,18 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/Table";
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/Select";
 import { LoadingOverlay } from "@/components/ui/loading-overlay";
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/Badge';
 import { cardVariants } from "@/lib/variants";
 import { cn } from "@/lib/utils";
 import { 

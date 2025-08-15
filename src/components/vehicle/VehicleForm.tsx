@@ -2,7 +2,7 @@ import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Form } from '@/components/ui/form';
 import { FormFieldWithValidation } from '@/components/ui/form-field-with-validation';
 import {
@@ -11,8 +11,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+} from '@/components/ui/Select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
 import { cn } from '@/lib/utils';
 

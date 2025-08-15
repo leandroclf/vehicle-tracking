@@ -2,7 +2,7 @@
 
 import React, { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/ui/Card';
 import { Maximize2, Minimize2, MoreVertical, RefreshCw } from 'lucide-react';
 
 export type WidgetSize = 'small' | 'medium' | 'large' | 'full';

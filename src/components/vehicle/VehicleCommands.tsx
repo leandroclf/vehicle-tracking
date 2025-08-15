@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useVehicles } from '@/lib/vehicles-client';
 import { motion } from 'framer-motion';
-import { Tooltip } from '@/components/ui/tooltip';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { AlertTriangle, Power, VolumeX, Lightbulb } from 'lucide-react';
 
 // Componente para enviar comandos para veículos
