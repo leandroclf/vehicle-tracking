@@ -13,7 +13,7 @@ import RealtimeIntegration from '@/components/realtime/RealtimeIntegration';
 import { RealtimeProvider } from '@/lib/providers/RealtimeProvider';
 import { RadixPatchProvider } from '@/components/ui/RadixPatchProvider'
 import { UpdateLoopDetector } from '@/components/ui/UpdateLoopDetector'
-import { TooltipProvider } from '@/components/ui/tooltip'
+import { TooltipProvider } from '@/components/ui/Tooltip'
 import Script from 'next/script'
 
 export const metadata: Metadata = {

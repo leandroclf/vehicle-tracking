@@ -6,10 +6,10 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { 
   RefreshCw, 
   Download, 

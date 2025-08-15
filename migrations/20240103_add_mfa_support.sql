@@ -4,7 +4,7 @@
 -- Tabela para configurações MFA do usuário
 CREATE TABLE IF NOT EXISTS user_mfa_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   enabled BOOLEAN DEFAULT false,
   
   -- SMS MFA
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS user_mfa_config (
 -- Tabela para configurações temporárias durante setup MFA
 CREATE TABLE IF NOT EXISTS mfa_setup_temp (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   provider VARCHAR(20) NOT NULL, -- 'sms', 'totp', 'email'
   
   -- Dados temporários
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS mfa_setup_temp (
 -- Tabela para sessões MFA
 CREATE TABLE IF NOT EXISTS mfa_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   provider VARCHAR(20) NOT NULL,
   verified BOOLEAN DEFAULT false,
   verified_at TIMESTAMPTZ,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS mfa_sessions (
 -- Tabela para logs de tentativas MFA
 CREATE TABLE IF NOT EXISTS mfa_attempts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   provider VARCHAR(20) NOT NULL,
   success BOOLEAN NOT NULL,
   ip_address INET,

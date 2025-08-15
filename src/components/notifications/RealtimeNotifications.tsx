@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Toast } from '@/components/ui/toast';
+import { Toast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 

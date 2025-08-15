@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/Card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { Progress } from '@/components/ui/Progress';
+import { Button } from '@/components/ui/Button';
 import { DataTable, DataTableColumn } from '@/components/ui/data-table';
 import { Droplet, TrendingDown, TrendingUp, BarChart3, Calendar, Fuel } from 'lucide-react';
 

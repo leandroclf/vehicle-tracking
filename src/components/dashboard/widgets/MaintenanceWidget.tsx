@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/ui/Card';
 import Tabs, { TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs-fixed';
-import { Progress } from '@/components/ui/progress';
+import { Progress } from '@/components/ui/Progress';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Calendar, AlertTriangle, CheckCircle, Clock, ArrowRight, Wrench } from 'lucide-react';
 

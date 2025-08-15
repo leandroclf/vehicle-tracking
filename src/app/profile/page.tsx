@@ -3,10 +3,10 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
-import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
-import { Container } from '@/components/ui/container';
-import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/Button';
+import { Alert } from '@/components/ui/Alert';
+import { Container } from '@/components/ui/Container';
+import { Card } from '@/components/ui/Card';
 import { SocialAuthError, LinkedSocialAccount } from '@/types/social-auth';
 
 function SocialAccountItem({ account, onUnlink }: { 

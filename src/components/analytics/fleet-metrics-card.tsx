@@ -6,9 +6,9 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Progress } from '@/components/ui/Progress';
+import { Badge } from '@/components/ui/Badge';
 import { 
   Car, 
   Fuel, 

@@ -9,10 +9,10 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GoogleMap, LoadScript, Marker, Polyline, InfoWindow, Circle } from '@react-google-maps/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/Tooltip';
 import { 
   Play, 
   Pause, 

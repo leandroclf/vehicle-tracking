@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDbPool, getRedisClient } from '@/lib/database';
+import { getDbPool, redis } from '@/lib/database';
 
 // Interface para resposta de health check
 interface HealthCheckResponse {
@@ -50,9 +50,10 @@ export async function GET(request: NextRequest): Promise<NextResponse<HealthChec
     let redisStatus: 'connected' | 'disconnected' | 'error' = 'disconnected';
     
     try {
-      const redis = getRedisClient();
-      await redis.ping();
-      redisStatus = 'connected';
+      if (redis) {
+        await redis.ping();
+        redisStatus = 'connected';
+      }
     } catch (error) {
       console.error('Erro ao verificar conexão com Redis:', error);
       redisStatus = 'error';

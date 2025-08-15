@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { CheckCircle, X, Filter, Car, Truck, Bus, Bike, Ship, Tractor, Smartphone, PawPrint, Package } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 
 interface VehicleFilterOption {

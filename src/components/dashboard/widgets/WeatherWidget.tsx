@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card } from '@/components/ui/Card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
 import { Cloud, CloudRain, Sun, Wind, Thermometer, Droplets, CloudFog } from 'lucide-react';
 
 interface WeatherData {

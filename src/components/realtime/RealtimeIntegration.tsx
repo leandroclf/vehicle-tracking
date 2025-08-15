@@ -11,7 +11,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRealtimeContext, ConnectionState } from '@/lib/providers/RealtimeProvider';
 import { useOfflineSync } from '@/lib/offline-sync';
-import { Alert } from '../ui/alert';
+import { Alert } from '../ui/Alert';
 import { Skeleton } from '../ui/skeleton';
 import Layout from '../layout/Layout';
 

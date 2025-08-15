@@ -2,7 +2,7 @@
 
 import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { toast } from 'react-hot-toast';
-import { Tabs } from '@/components/ui/tabs';
+import { Tabs } from '@/components/ui/Tabs';
 import { useSettings } from '@/lib/settings';
 
 export default function SettingsPage() {

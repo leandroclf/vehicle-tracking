@@ -1,6 +1,6 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
-import { Label } from "@/components/ui/label"
+import { Label } from "@/components/ui/Label"
 
 interface FormFieldProps {
   label?: string

@@ -1,14 +1,14 @@
 import { lazy, Suspense, forwardRef } from "react";
-import { LoadingOverlay } from "@/components/ui/loading-overlay";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import { cn } from "@/lib/utils";
 
 // Lazy loading dos componentes pesados
-const LazyDialog = lazy(() => import("@/components/ui/dialog").then(module => ({ default: module.Dialog })));
-const LazyDialogContent = lazy(() => import("@/components/ui/dialog").then(module => ({ default: module.DialogContent })));
-const LazySheet = lazy(() => import("@/components/ui/sheet").then(module => ({ default: module.Sheet })));
-const LazySheetContent = lazy(() => import("@/components/ui/sheet").then(module => ({ default: module.SheetContent })));
+const LazyDialog = lazy(() => import("@/components/ui/Dialog").then(module => ({ default: module.Dialog })));
+const LazyDialogContent = lazy(() => import("@/components/ui/Dialog").then(module => ({ default: module.DialogContent })));
+const LazySheet = lazy(() => import("@/components/ui/Sheet").then(module => ({ default: module.Sheet })));
+const LazySheetContent = lazy(() => import("@/components/ui/Sheet").then(module => ({ default: module.SheetContent })));
 const LazyActionMenu = lazy(() => import("@/components/ui/ActionMenu"));
-const LazyDataTable = lazy(() => import("@/components/ui/DataTable").then(module => ({ default: module.DataTable })));
+const LazyDataTable = lazy(() => import("@/components/ui/data-table").then(module => ({ default: module.DataTable })));
 
 // Componente de fallback customizável
 interface LazyFallbackProps {
@@ -175,11 +175,11 @@ LazyDataTableWrapper.displayName = "LazyDataTableWrapper";
 // Hook para preload de componentes
 export const usePreloadComponents = () => {
   const preloadDialog = () => {
-    import("@/components/ui/dialog");
+    import("@/components/ui/Dialog");
   };
   
   const preloadSheet = () => {
-    import("@/components/ui/sheet");
+    import("@/components/ui/Sheet");
   };
   
   const preloadActionMenu = () => {
@@ -187,7 +187,7 @@ export const usePreloadComponents = () => {
   };
   
   const preloadDataTable = () => {
-    import("@/components/ui/DataTable");
+    import("@/components/ui/data-table");
   };
   
   const preloadAll = () => {
