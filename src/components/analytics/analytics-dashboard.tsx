@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -29,8 +29,78 @@ import { UsageChartsCard } from './usage-charts-card';
 import { SecurityMetricsCard } from './security-metrics-card';
 import { InsightsAndAlertsCard } from './insights-alerts-card';
 import { DashboardFilters } from './dashboard-filters';
-import { ExportDialog } from './export-dialog';
+import { ExportDialog, type ExportConfig } from './export-dialog';
 import { cn } from '@/lib/utils';
+import type { DashboardConfig } from '@/types/analytics';
+
+type FilterPeriod =
+  | 'today'
+  | 'yesterday'
+  | 'last_7_days'
+  | 'last_30_days'
+  | 'last_90_days'
+  | 'this_month'
+  | 'last_month'
+  | 'custom';
+
+interface UiFilters {
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
+  vehicles: string[];
+  drivers: string[];
+  regions: string[];
+  period: FilterPeriod;
+}
+
+const createDefaultUiFilters = (): UiFilters => ({
+  dateRange: {
+    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+    end: new Date(),
+  },
+  vehicles: [],
+  drivers: [],
+  regions: [],
+  period: 'last_30_days',
+});
+
+const presetToPeriod = (
+  preset?: DashboardConfig['filters']['dateRange']['preset']
+): UiFilters['period'] => {
+  switch (preset) {
+    case 'today':
+      return 'today';
+    case 'week':
+      return 'last_7_days';
+    case 'month':
+      return 'last_30_days';
+    case 'quarter':
+      return 'last_90_days';
+    case 'year':
+      return 'last_90_days';
+    default:
+      return 'custom';
+  }
+};
+
+const periodToPreset = (
+  period: UiFilters['period']
+): DashboardConfig['filters']['dateRange']['preset'] | undefined => {
+  switch (period) {
+    case 'today':
+      return 'today';
+    case 'last_7_days':
+      return 'week';
+    case 'last_30_days':
+    case 'this_month':
+      return 'month';
+    case 'last_90_days':
+      return 'quarter';
+    default:
+      return undefined;
+  }
+};
 
 interface AnalyticsDashboardProps {
   className?: string;
@@ -47,13 +117,52 @@ export function AnalyticsDashboard({ className }: AnalyticsDashboardProps) {
     updateConfig,
     exportData,
     checkAlerts,
+    filters: activeFilters,
     setFilters,
-    toggleAutoRefresh
   } = useAnalyticsDashboard();
 
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  const defaultUiFilters = useMemo(() => createDefaultUiFilters(), []);
+
+  const filters = useMemo<UiFilters>(() => {
+    if (!activeFilters) {
+      return defaultUiFilters;
+    }
+
+    const startValue = activeFilters.dateRange?.start
+      ? new Date(activeFilters.dateRange.start)
+      : defaultUiFilters.dateRange.start;
+    const endValue = activeFilters.dateRange?.end
+      ? new Date(activeFilters.dateRange.end)
+      : defaultUiFilters.dateRange.end;
+
+    return {
+      dateRange: {
+        start: startValue,
+        end: endValue,
+      },
+      vehicles: activeFilters.vehicles ?? [],
+      drivers: activeFilters.drivers ?? [],
+      regions: activeFilters.routes ?? [],
+      period: presetToPeriod(activeFilters.dateRange?.preset),
+    };
+  }, [activeFilters, defaultUiFilters]);
+
+  const handleFiltersChange = useCallback((updatedFilters: UiFilters) => {
+    setFilters({
+      dateRange: {
+        start: updatedFilters.dateRange.start?.toISOString?.() ?? new Date().toISOString(),
+        end: updatedFilters.dateRange.end?.toISOString?.() ?? new Date().toISOString(),
+        preset: periodToPreset(updatedFilters.period),
+      },
+      vehicles: updatedFilters.vehicles ?? [],
+      drivers: updatedFilters.drivers ?? [],
+      routes: updatedFilters.regions ?? [],
+    });
+  }, [setFilters]);
 
   /**
    * Handle manual refresh
@@ -70,13 +179,9 @@ export function AnalyticsDashboard({ className }: AnalyticsDashboardProps) {
   /**
    * Handle export
    */
-  const handleExport = useCallback(async (
-    type: 'analytics' | 'raw_data' | 'report',
-    format: 'csv' | 'excel' | 'json'
-  ) => {
+  const handleExport = useCallback(async (exportConfig: ExportConfig) => {
     try {
-      const downloadUrl = await exportData(type, format);
-      // Abrir download
+      const downloadUrl = await exportData(exportConfig.type, exportConfig.format);
       window.open(downloadUrl, '_blank');
     } catch (err) {
       console.error('Erro ao exportar:', err);
@@ -173,8 +278,8 @@ export function AnalyticsDashboard({ className }: AnalyticsDashboardProps) {
         
         <div className="flex items-center space-x-3">
           <DashboardFilters
-            filters={config?.filters}
-            onFiltersChange={setFilters}
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
             vehicles={[]} // TODO: Buscar veículos da API
             drivers={[]}  // TODO: Buscar motoristas da API
             regions={[]}  // TODO: Buscar regiões da API
@@ -212,8 +317,8 @@ export function AnalyticsDashboard({ className }: AnalyticsDashboardProps) {
           </CardHeader>
           <CardContent>
             <DashboardFilters
-              onFiltersChange={setFilters}
-              initialFilters={config?.filters}
+              filters={filters}
+              onFiltersChange={handleFiltersChange}
             />
           </CardContent>
         </Card>
@@ -330,6 +435,6 @@ export function AnalyticsDashboard({ className }: AnalyticsDashboardProps) {
          filters={filters}
          onExport={handleExport}
        />
-     </div>
-   );
- }
+    </div>
+  );
+}

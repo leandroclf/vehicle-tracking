@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 // Usando vehicles-service mock temporariamente até resolver problema do PostgreSQL
 import { VehiclesService } from '@/lib/vehicles-mock';
-import { AuthService } from '@/lib/auth/auth-service-mock';
+import { requireAuth } from '@/lib/auth/auth-middleware';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
@@ -27,16 +27,12 @@ const vehicleSchema = z.object({
 // Handler para listar veículos (GET)
 export async function GET(request: NextRequest) {
   try {
-    // Extrair token de autenticação
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Token de autenticação necessário' }, { status: 401 });
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
-    
-    // Verificar token e obter usuário
-    const user = await AuthService.verifyToken(token);
+
+    const { user } = authResult;
     
     // Extrair e validar parâmetros de consulta
     const url = new URL(request.url);
@@ -67,16 +63,12 @@ export async function GET(request: NextRequest) {
 // Handler para criar veículo (POST)
 export async function POST(request: NextRequest) {
   try {
-    // Extrair token de autenticação
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Token de autenticação necessário' }, { status: 401 });
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
-    
-    // Verificar token e obter usuário
-    const user = await AuthService.verifyToken(token);
+
+    const { user } = authResult;
     
     // Extrair e validar dados do corpo da requisição
     const body = await request.json();
@@ -107,16 +99,12 @@ export async function POST(request: NextRequest) {
 // Handler para atualizar veículo (PUT)
 export async function PUT(request: NextRequest) {
   try {
-    // Extrair token de autenticação
-    const authHeader = request.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-    
-    if (!token) {
-      return NextResponse.json({ error: 'Token de autenticação necessário' }, { status: 401 });
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
-    
-    // Verificar token e obter usuário
-    const user = await AuthService.verifyToken(token);
+
+    const { user } = authResult;
     
     // Extrair e validar corpo da requisição
     const body = await request.json() as { id: string; [key: string]: unknown };
@@ -151,50 +139,29 @@ export async function PUT(request: NextRequest) {
 // Handler para excluir veículo (DELETE)
 export async function DELETE(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
     const authResult = await requireAuth(request);
     if (authResult instanceof NextResponse) {
       return authResult;
     }
-    
+
     const { user } = authResult;
-    
-    // Extrair ID do veículo da URL
+
     const url = new URL(request.url);
     const id = url.searchParams.get('id');
-    
+
     if (!id) {
       return NextResponse.json({ error: 'ID do veículo é obrigatório' }, { status: 400 });
     }
-    
-    // Verificar se o veículo existe e pertence ao usuário
-    const existingVehicle = await db
-      .select()
-      .from(vehicles)
-      .where(
-        and(
-          eq(vehicles.id, id),
-          eq(vehicles.userId, user.id)
-        )
-      )
-      .limit(1);
-    
-    if (existingVehicle.length === 0) {
-      return NextResponse.json({ error: 'Veículo não encontrado' }, { status: 404 });
+
+    try {
+      await VehiclesService.deleteVehicle(user.id, id);
+      return NextResponse.json({ message: 'Veículo excluído com sucesso' });
+    } catch (serviceError: any) {
+      if (serviceError.message === 'Veículo não encontrado') {
+        return NextResponse.json({ error: serviceError.message }, { status: 404 });
+      }
+      throw serviceError;
     }
-    
-    // Excluir veículo
-    await db
-      .delete(vehicles)
-      .where(
-        and(
-          eq(vehicles.id, id),
-          eq(vehicles.userId, user.id)
-        )
-      );
-    
-    // Retornar sucesso
-    return NextResponse.json({ message: 'Veículo excluído com sucesso' });
   } catch (error: any) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });

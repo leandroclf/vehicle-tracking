@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -29,18 +29,28 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { DashboardFilters } from '@/types/analytics';
+import type { DashboardConfig } from '@/types/analytics';
+
+type ExportDialogFilters = Omit<DashboardConfig['filters'], 'dateRange'> & {
+  dateRange?: {
+    start?: Date | string;
+    end?: Date | string;
+    preset?: DashboardConfig['filters']['dateRange']['preset'];
+  };
+  regions?: string[];
+  period?: string;
+};
 
 interface ExportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  filters: DashboardFilters;
+  filters: ExportDialogFilters;
   onExport: (config: ExportConfig) => Promise<void>;
 }
 
-interface ExportConfig {
-  format: 'csv' | 'xlsx' | 'pdf' | 'json';
-  type: 'metrics' | 'raw_data' | 'report';
+export interface ExportConfig {
+  format: 'csv' | 'excel' | 'json';
+  type: 'analytics' | 'raw_data' | 'report';
   sections: string[];
   includeCharts: boolean;
   dateRange: {
@@ -51,15 +61,25 @@ interface ExportConfig {
 
 export function ExportDialog({ open, onOpenChange, filters, onExport }: ExportDialogProps) {
   const [config, setConfig] = useState<ExportConfig>({
-    format: 'xlsx',
-    type: 'metrics',
+    format: 'excel',
+    type: 'analytics',
     sections: ['fleet', 'usage', 'security'],
     includeCharts: true,
-    dateRange: filters.dateRange || {
-      start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      end: new Date()
+    dateRange: {
+      start: filters.dateRange?.start ? new Date(filters.dateRange.start) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      end: filters.dateRange?.end ? new Date(filters.dateRange.end) : new Date()
     }
   });
+
+  useEffect(() => {
+    setConfig(prev => ({
+      ...prev,
+      dateRange: {
+        start: filters.dateRange?.start ? new Date(filters.dateRange.start) : prev.dateRange.start,
+        end: filters.dateRange?.end ? new Date(filters.dateRange.end) : prev.dateRange.end,
+      }
+    }));
+  }, [filters]);
   
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -67,14 +87,13 @@ export function ExportDialog({ open, onOpenChange, filters, onExport }: ExportDi
   const [exportError, setExportError] = useState<string | null>(null);
 
   const formatOptions = [
-    { value: 'xlsx', label: 'Excel (.xlsx)', icon: FileSpreadsheet },
+    { value: 'excel', label: 'Excel (.xlsx)', icon: FileSpreadsheet },
     { value: 'csv', label: 'CSV (.csv)', icon: FileText },
-    { value: 'pdf', label: 'PDF (.pdf)', icon: FileText },
     { value: 'json', label: 'JSON (.json)', icon: FileJson },
   ];
 
   const typeOptions = [
-    { value: 'metrics', label: 'Métricas Consolidadas', description: 'Resumo das principais métricas' },
+    { value: 'analytics', label: 'Métricas Consolidadas', description: 'Resumo das principais métricas' },
     { value: 'raw_data', label: 'Dados Brutos', description: 'Dados detalhados para análise' },
     { value: 'report', label: 'Relatório Completo', description: 'Relatório formatado com gráficos' },
   ];
@@ -236,11 +255,11 @@ export function ExportDialog({ open, onOpenChange, filters, onExport }: ExportDi
             </div>
           </div>
 
-          {/* Include Charts Option */}
-          {(config.format === 'pdf' || config.format === 'xlsx') && (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="includeCharts"
+        {/* Include Charts Option */}
+        {config.format === 'excel' && (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="includeCharts"
                 checked={config.includeCharts}
                 onCheckedChange={(checked) => 
                   setConfig(prev => ({ ...prev, includeCharts: !!checked }))

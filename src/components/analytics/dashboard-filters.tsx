@@ -27,8 +27,28 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { DashboardFilters as FilterType } from '@/types/analytics';
 import { cn } from '@/lib/utils';
+
+type PeriodOption =
+  | 'today'
+  | 'yesterday'
+  | 'last_7_days'
+  | 'last_30_days'
+  | 'last_90_days'
+  | 'this_month'
+  | 'last_month'
+  | 'custom';
+
+interface FilterType {
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
+  vehicles: string[];
+  drivers: string[];
+  regions: string[];
+  period: PeriodOption;
+}
 
 interface DashboardFiltersProps {
   filters: FilterType;
