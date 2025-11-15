@@ -125,12 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (updates: { name?: string; phone?: string }) => {
     if (!user) throw new Error('Usuário não autenticado');
-    
+
     try {
       const token = localStorage.getItem(TOKEN_KEY);
       if (!token) throw new Error('Token não encontrado');
 
-      const response = await fetch('/api/auth/profile', {
+      const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -155,13 +155,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updatePassword = async (currentPassword: string, newPassword: string) => {
     if (!user) throw new Error('Usuário não autenticado');
-    
+
     try {
       const token = localStorage.getItem(TOKEN_KEY);
       if (!token) throw new Error('Token não encontrado');
 
-      const response = await fetch('/api/auth/password', {
-        method: 'PUT',
+      const response = await fetch('/api/auth/update-password', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,

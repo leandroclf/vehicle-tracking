@@ -1,5 +1,3 @@
-import { AuthUser } from './auth/auth-service-mock';
-
 export interface Vehicle {
   id: string;
   userId: string;
