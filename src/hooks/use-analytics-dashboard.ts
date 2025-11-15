@@ -36,18 +36,30 @@ interface UseAnalyticsDashboardReturn {
   loading: boolean;
   error: string | null;
   lastUpdated: Date | null;
-  
+  filters: DashboardConfig['filters'];
+
   // Actions
   refreshData: () => Promise<void>;
   updateConfig: (config: DashboardConfig) => Promise<void>;
   exportData: (type: 'analytics' | 'raw_data' | 'report', format: 'csv' | 'excel' | 'json') => Promise<string>;
   checkAlerts: (thresholds: Record<string, number>) => Promise<AnalyticsAlert[]>;
-  
+
   // State management
   setFilters: (filters: DashboardConfig['filters']) => void;
   setRefreshInterval: (interval: number) => void;
   toggleAutoRefresh: () => void;
 }
+
+const DEFAULT_FILTERS: DashboardConfig['filters'] = {
+  dateRange: {
+    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    end: new Date().toISOString(),
+    preset: 'month'
+  },
+  vehicles: [],
+  drivers: [],
+  routes: []
+};
 
 export function useAnalyticsDashboard(
   options: UseAnalyticsDashboardOptions = {}
@@ -64,7 +76,7 @@ export function useAnalyticsDashboard(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [currentFilters, setCurrentFilters] = useState(initialFilters);
+  const [currentFilters, setCurrentFilters] = useState<DashboardConfig['filters']>(() => initialFilters ?? DEFAULT_FILTERS);
   const [currentRefreshInterval, setCurrentRefreshInterval] = useState(refreshInterval);
   const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(autoRefresh);
 
@@ -256,7 +268,7 @@ export function useAnalyticsDashboard(
    * Define filtros
    */
   const setFilters = useCallback((filters: DashboardConfig['filters']) => {
-    setCurrentFilters(filters);
+    setCurrentFilters(filters ?? DEFAULT_FILTERS);
   }, []);
 
   /**
@@ -311,9 +323,7 @@ export function useAnalyticsDashboard(
 
   // Effect para atualizar dados quando filtros mudam
   useEffect(() => {
-    if (currentFilters) {
-      fetchData();
-    }
+    fetchData();
   }, [currentFilters, fetchData]);
 
   // Cleanup
@@ -334,6 +344,7 @@ export function useAnalyticsDashboard(
     loading,
     error,
     lastUpdated,
+    filters: currentFilters,
     refreshData,
     updateConfig,
     exportData,
