@@ -14,7 +14,7 @@ import { SocialAuthError } from '@/types/social-auth';
 
 function RegisterForm() {
   const router = useRouter();
-  const { register, socialSignup } = useAuth();
+  const { signUp, socialLogin } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -28,16 +28,11 @@ function RegisterForm() {
     setIsLoading(true);
 
     try {
-      const result = await register(name, email, phone, password);
-      if (result.success) {
-        // Redirecionar para a página de login com mensagem de sucesso
-        router.push('/login?registered=true');
-      } else {
-        setError(result.error || 'Erro ao registrar');
-      }
-    } catch (err) {
-      setError('Ocorreu um erro ao tentar registrar');
-      console.error(err);
+      await signUp(email, password, name);
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err?.message || 'Ocorreu um erro ao tentar registrar');
+      console.error('Erro ao registrar usuário:', err);
     } finally {
       setIsLoading(false);
     }
@@ -53,14 +48,7 @@ function RegisterForm() {
       const accessToken = 'demo-access-token';
       const idToken = provider === 'apple' || provider === 'google' ? 'demo-id-token' : undefined;
       
-      // Dados do usuário que seriam obtidos do provedor social
-      const userData = {
-        name: 'Usuário Demo',
-        email: 'demo@example.com',
-        phone: '(11) 99999-9999'
-      };
-      
-      await socialSignup(provider, accessToken, idToken, userData);
+      await socialLogin(provider, accessToken, idToken);
       router.push('/dashboard');
     } catch (err: any) {
       const socialError = err as SocialAuthError;

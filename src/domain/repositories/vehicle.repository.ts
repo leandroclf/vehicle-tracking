@@ -2,7 +2,7 @@
  * Interface do repositório de veículos
  * Define o contrato para persistência de dados
  */
-import { Vehicle } from '../entities/vehicle.entity';
+import { Vehicle, VehicleStatus } from '../entities/vehicle.entity';
 
 export interface VehicleRepository {
   findById(id: string): Promise<Vehicle | null>;
