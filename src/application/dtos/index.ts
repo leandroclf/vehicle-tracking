@@ -1,1 +1,1 @@
-// Barrel export - adicione exports aqui
+export * from './vehicle.dto';

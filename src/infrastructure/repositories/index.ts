@@ -1,1 +1,1 @@
-// Barrel export - adicione exports aqui
+export * from './in-memory-vehicle.repository';
