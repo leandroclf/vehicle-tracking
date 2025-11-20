@@ -47,20 +47,16 @@ const dashboardConfigSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Implementar autenticação JWT
-    const user = null;
-    const authError = null;
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Não autorizado' },
-        { status: 401 }
-      );
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
+
+    const { user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'all';
-    
+
     // Parse filters se fornecidos
     let filters;
     const filtersParam = searchParams.get('filters');
@@ -116,20 +112,16 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // TODO: Implementar autenticação JWT
-    const user = null;
-    const authError = null;
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Não autorizado' },
-        { status: 401 }
-      );
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
     }
+
+    const { user } = authResult;
 
     const body = await request.json();
     const thresholdsSchema = z.record(z.number());
-    
+
     const thresholds = thresholdsSchema.parse(body.thresholds || {});
 
     const alerts = await analyticsService.checkAlerts(user.id, thresholds);
