@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Usando vehicles-service mock temporariamente até resolver problema do PostgreSQL
-import { VehiclesService } from '@/lib/vehicles-mock';
+import { VehiclesService } from '@/lib/vehicles/vehicles-service';
 import { requireAuth } from '@/lib/auth/auth-middleware';
 import { z } from 'zod';
+import { ApiError, handleApiError } from '@/lib/api-error';
 
 // Esquema para validar parâmetros de consulta
 const querySchema = z.object({
@@ -33,30 +33,29 @@ export async function GET(request: NextRequest) {
     }
 
     const { user } = authResult;
-    
+
     // Extrair e validar parâmetros de consulta
     const url = new URL(request.url);
     const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
-    
+
     if (!queryResult.success) {
-      return NextResponse.json({ error: 'Parâmetros de consulta inválidos', details: queryResult.error.format() }, { status: 400 });
+      throw new ApiError(400, 'Parâmetros de consulta inválidos', queryResult.error.format());
     }
-    
+
     const { limit, offset, status, sort } = queryResult.data;
-    
-    // Buscar veículos usando o serviço mock
+
+    // Buscar veículos usando o serviço real
     const result = await VehiclesService.getVehicles(user.id, {
       limit,
       offset,
       status,
       sort
     });
-    
+
     // Retornar resultados
     return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('Erro ao processar requisição:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -69,30 +68,22 @@ export async function POST(request: NextRequest) {
     }
 
     const { user } = authResult;
-    
+
     // Extrair e validar dados do corpo da requisição
     const body = await request.json();
     const bodyResult = vehicleSchema.safeParse(body);
-    
+
     if (!bodyResult.success) {
-      return NextResponse.json({ error: 'Dados inválidos', details: bodyResult.error.format() }, { status: 400 });
+      throw new ApiError(400, 'Dados inválidos', bodyResult.error.format());
     }
-    
+
     const vehicleData = bodyResult.data;
-    
-    try {
-      // Criar novo veículo usando o serviço mock
-      const newVehicle = await VehiclesService.createVehicle(user.id, vehicleData);
-      return NextResponse.json(newVehicle, { status: 201 });
-    } catch (serviceError: any) {
-      if (serviceError.message === 'Já existe um veículo com esta placa') {
-        return NextResponse.json({ error: serviceError.message }, { status: 409 });
-      }
-      throw serviceError;
-    }
-  } catch (error: any) {
-    console.error('Erro ao criar veículo:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+
+    // Criar novo veículo usando o serviço real
+    const newVehicle = await VehiclesService.createVehicle(user.id, vehicleData);
+    return NextResponse.json(newVehicle, { status: 201 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -105,34 +96,26 @@ export async function PUT(request: NextRequest) {
     }
 
     const { user } = authResult;
-    
+
     // Extrair e validar corpo da requisição
-    const body = await request.json() as { id: string; [key: string]: unknown };
+    const body = await request.json() as { id: string;[key: string]: unknown };
     const { id, ...vehicleData } = body;
-    
+
     if (!id) {
-      return NextResponse.json({ error: 'ID do veículo é obrigatório' }, { status: 400 });
+      throw new ApiError(400, 'ID do veículo é obrigatório');
     }
-    
+
     const vehicleResult = vehicleSchema.partial().safeParse(vehicleData);
-    
+
     if (!vehicleResult.success) {
-      return NextResponse.json({ error: 'Dados inválidos', details: vehicleResult.error.format() }, { status: 400 });
+      throw new ApiError(400, 'Dados inválidos', vehicleResult.error.format());
     }
-    
-    try {
-       // Atualizar veículo usando o serviço mock
-       const updatedVehicle = await VehiclesService.updateVehicle(user.id, id, vehicleData);
-       return NextResponse.json(updatedVehicle);
-    } catch (serviceError: any) {
-      if (serviceError.message === 'Veículo não encontrado') {
-        return NextResponse.json({ error: serviceError.message }, { status: 404 });
-      }
-      throw serviceError;
-    }
-  } catch (error: any) {
-    console.error('Erro ao atualizar veículo:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+
+    // Atualizar veículo usando o serviço real
+    const updatedVehicle = await VehiclesService.updateVehicle(user.id, id, vehicleData);
+    return NextResponse.json(updatedVehicle);
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -150,20 +133,12 @@ export async function DELETE(request: NextRequest) {
     const id = url.searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: 'ID do veículo é obrigatório' }, { status: 400 });
+      throw new ApiError(400, 'ID do veículo é obrigatório');
     }
 
-    try {
-      await VehiclesService.deleteVehicle(user.id, id);
-      return NextResponse.json({ message: 'Veículo excluído com sucesso' });
-    } catch (serviceError: any) {
-      if (serviceError.message === 'Veículo não encontrado') {
-        return NextResponse.json({ error: serviceError.message }, { status: 404 });
-      }
-      throw serviceError;
-    }
-  } catch (error: any) {
-    console.error('Erro ao processar requisição:', error);
-    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
+    await VehiclesService.deleteVehicle(user.id, id);
+    return NextResponse.json({ message: 'Veículo excluído com sucesso' });
+  } catch (error) {
+    return handleApiError(error);
   }
 }

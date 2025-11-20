@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Usando auth-service mock temporariamente até resolver problema do PostgreSQL
-import { AuthService, AuthUser } from './auth-service-mock';
+import { AuthService, AuthUser } from './auth-service';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: AuthUser;
@@ -48,7 +47,7 @@ async function authenticateRequest(
   }
 }
 
-export async function withAuth(
+export function withAuth(
   handler: AuthHandler,
   options: { required?: boolean } = { required: true }
 ) {
