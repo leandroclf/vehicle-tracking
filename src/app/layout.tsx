@@ -4,15 +4,11 @@ import { ThemeProvider } from '@/components/ui/theme-provider'
 import { HighContrastProvider } from '@/components/ui/HighContrastProvider'
 import { AuthProvider } from '@/lib/auth'
 import NotificationProvider from '@/components/ui/NotificationProvider'
-import { SidebarProvider } from '@/lib/sidebar-context'
 import { AccessibleNotificationsProvider } from '@/components/ui/AccessibleNotifications'
 import { KeyboardNavigationProvider } from '@/components/ui/KeyboardNavigationProvider'
 import NotificationsProvider from '@/components/notifications/NotificationsProvider'
 import React from 'react'
-import RealtimeIntegration from '@/components/realtime/RealtimeIntegration';
-import { RealtimeProvider } from '@/lib/providers/RealtimeProvider';
 import { RadixPatchProvider } from '@/components/ui/RadixPatchProvider'
-import { UpdateLoopDetector } from '@/components/ui/UpdateLoopDetector'
 import { TooltipProvider } from '@/components/ui/Tooltip'
 import Script from 'next/script'
 
@@ -43,36 +39,28 @@ export default function RootLayout({
       </head>
       <body>
         <RadixPatchProvider>
-          <UpdateLoopDetector maxUpdatesPerSecond={40}>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="light"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <HighContrastProvider>
-                <AccessibleNotificationsProvider>
-                  <TooltipProvider>
-                    <AuthProvider>
-                      <NotificationsProvider>
-                        <NotificationProvider>
-                          <KeyboardNavigationProvider>
-                            <SidebarProvider>
-                              <RealtimeProvider wsUrl={process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001"}>
-                                <RealtimeIntegration>
-                                  {children}
-                                </RealtimeIntegration>
-                              </RealtimeProvider>
-                            </SidebarProvider>
-                          </KeyboardNavigationProvider>
-                        </NotificationProvider>
-                      </NotificationsProvider>
-                    </AuthProvider>
-                  </TooltipProvider>
-                </AccessibleNotificationsProvider>
-              </HighContrastProvider>
-            </ThemeProvider>
-          </UpdateLoopDetector>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <HighContrastProvider>
+              <AccessibleNotificationsProvider>
+                <TooltipProvider>
+                  <AuthProvider>
+                    <NotificationsProvider>
+                      <NotificationProvider>
+                        <KeyboardNavigationProvider>
+                          {children}
+                        </KeyboardNavigationProvider>
+                      </NotificationProvider>
+                    </NotificationsProvider>
+                  </AuthProvider>
+                </TooltipProvider>
+              </AccessibleNotificationsProvider>
+            </HighContrastProvider>
+          </ThemeProvider>
         </RadixPatchProvider>
       </body>
     </html>

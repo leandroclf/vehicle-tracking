@@ -6,10 +6,10 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { RealTimeUpdater } from '@/components/dashboard/RealTimeUpdater';
 
 // Importar componentes diretamente para evitar problemas de webpack chunks
-import { VehicleSummaryWidget } from '@/components/dashboard/widgets/VehicleSummaryWidget';
-import { AlertsWidget } from '@/components/dashboard/widgets/AlertsWidget';
-import { MapPreviewWidget } from '@/components/dashboard/widgets/MapPreviewWidget';
-import { ActivityWidget } from '@/components/dashboard/widgets/ActivityWidget';
+import VehicleSummaryWidget from '@/components/dashboard/widgets/VehicleSummaryWidget';
+import AlertsWidget from '@/components/dashboard/widgets/AlertsWidget';
+import MapPreviewWidget from '@/components/dashboard/widgets/MapPreviewWidget';
+import ActivityWidget from '@/components/dashboard/widgets/ActivityWidget';
 
 export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -37,14 +37,14 @@ export default function DashboardPage() {
   return (
     <Container className="h-full flex flex-col">
       <RealTimeUpdater />
-      
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Dashboard</h1>
           <Breadcrumb />
         </div>
       </div>
-      
+
       <div className="flex-1 overflow-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 h-full">
           <div className="space-y-6">
@@ -55,11 +55,11 @@ export default function DashboardPage() {
               <AlertsWidget />
             </div>
           </div>
-          
+
           <div className="h-full">
             <MapPreviewWidget />
           </div>
-          
+
           <div className="h-full">
             <ActivityWidget />
           </div>
