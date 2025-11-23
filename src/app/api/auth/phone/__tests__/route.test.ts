@@ -17,7 +17,7 @@ jest.mock('@/lib/database', () => ({
   executeQuery: jest.fn()
 }));
 
-jest.mock('@/lib/supabase', () => ({
+jest.mock('@/lib/database-legacy', () => ({
   executeQuery: jest.fn(),
   generateToken: jest.fn(),
   verifyToken: jest.fn()
@@ -108,8 +108,8 @@ describe('/api/auth/phone', () => {
   describe('PUT - Verificar código OTP', () => {
     it('deve verificar código OTP com sucesso', async () => {
       const mockSmsService = require('@/lib/services/sms-service');
-      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
-      const mockGenerateToken = require('@/lib/supabase').generateToken;
+      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
+      const mockGenerateToken = require('@/lib/database-legacy').generateToken;
       
       // Mock para verificação OTP
       mockSmsService.verifyOtpCode.mockResolvedValue({
@@ -148,8 +148,8 @@ describe('/api/auth/phone', () => {
 
     it('deve criar perfil para novo usuário', async () => {
       const mockSmsService = require('@/lib/services/sms-service');
-      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
-      const mockGenerateToken = require('@/lib/supabase').generateToken;
+      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
+      const mockGenerateToken = require('@/lib/database-legacy').generateToken;
       
       // Mock para verificação OTP
       mockSmsService.verifyOtpCode.mockResolvedValue({

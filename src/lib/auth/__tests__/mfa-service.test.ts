@@ -18,7 +18,7 @@ jest.mock('@/lib/database', () => ({
 }));
 
 // Mock do sistema de cache Redis
-jest.mock('@/lib/supabase', () => ({
+jest.mock('@/lib/database-legacy', () => ({
   executeQuery: jest.fn(),
   getRedisClient: jest.fn(() => ({
     get: jest.fn(),
@@ -38,7 +38,7 @@ describe('MfaService', () => {
 
   describe('getMfaStatus', () => {
     it('deve retornar status correto quando MFA não está configurado', async () => {
-      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
       mockExecuteQuery.mockResolvedValue({
         rows: [],
         rowCount: 0
@@ -51,7 +51,7 @@ describe('MfaService', () => {
     });
 
     it('deve retornar status correto quando MFA está configurado', async () => {
-      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
       mockExecuteQuery.mockResolvedValue({
         rows: [{
           sms_enabled: true,
@@ -79,7 +79,7 @@ describe('MfaService', () => {
         phoneNumber: mockPhoneNumber
       };
 
-      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
       mockExecuteQuery.mockResolvedValue({
         rows: [{ temp_secret: 'temp-secret-123' }],
         rowCount: 1
@@ -97,7 +97,7 @@ describe('MfaService', () => {
         provider: MfaProvider.TOTP
       };
 
-      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
       mockExecuteQuery.mockResolvedValue({
         rows: [{ 
           temp_secret: 'JBSWY3DPEHPK3PXP',
@@ -127,7 +127,7 @@ describe('MfaService', () => {
 
   describe('verifyMfaCode', () => {
     it('deve verificar código SMS corretamente', async () => {
-      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
       
       // Mock para buscar configuração temporária
       mockExecuteQuery
@@ -152,7 +152,7 @@ describe('MfaService', () => {
     });
 
     it('deve retornar erro para código inválido', async () => {
-      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
       mockExecuteQuery.mockResolvedValue({
         rows: [],
         rowCount: 0
@@ -167,7 +167,7 @@ describe('MfaService', () => {
 
   describe('disableMfa', () => {
     it('deve desabilitar MFA corretamente', async () => {
-      const mockExecuteQuery = require('@/lib/supabase').executeQuery;
+      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
       mockExecuteQuery.mockResolvedValue({
         rows: [],
         rowCount: 1
