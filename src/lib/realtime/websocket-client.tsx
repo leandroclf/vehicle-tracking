@@ -28,7 +28,7 @@ interface RealtimeContextType {
 
 const RealtimeContext = createContext<RealtimeContextType | undefined>(undefined);
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8084';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
 const RECONNECT_INTERVAL = 5000; // 5 segundos
 const MAX_RECONNECT_ATTEMPTS = 10;
 
@@ -36,7 +36,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
   const [isConnected, setIsConnected] = useState(false);
-  
+
   const wsRef = useRef<WebSocket | null>(null);
   const subscriptionsRef = useRef<Map<string, Subscription>>(new Map());
   const reconnectAttemptsRef = useRef(0);
@@ -63,7 +63,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
     try {
       setConnectionStatus('connecting');
-      
+
       const token = localStorage.getItem('auth_token');
       if (!token) {
         console.error('Token de autenticação não encontrado');
@@ -80,7 +80,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         setConnectionStatus('connected');
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
-        
+
         // Reinscrever em todas as assinaturas existentes
         subscriptionsRef.current.forEach((subscription, key) => {
           sendMessage({
@@ -108,7 +108,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         setConnectionStatus('disconnected');
         setIsConnected(false);
         stopHeartbeat();
-        
+
         // Tentar reconectar se não foi um fechamento intencional
         if (event.code !== 1000 && user) {
           scheduleReconnect();
@@ -133,14 +133,14 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
-    
+
     stopHeartbeat();
-    
+
     if (wsRef.current) {
       wsRef.current.close(1000, 'Disconnecting');
       wsRef.current = null;
     }
-    
+
     setConnectionStatus('disconnected');
     setIsConnected(false);
   };
@@ -158,9 +158,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
     const delay = RECONNECT_INTERVAL * Math.pow(2, reconnectAttemptsRef.current); // Backoff exponencial
     reconnectAttemptsRef.current++;
-    
+
     console.log(`Tentando reconectar em ${delay}ms (tentativa ${reconnectAttemptsRef.current})`);
-    
+
     reconnectTimeoutRef.current = setTimeout(() => {
       if (user) {
         connect();
@@ -193,24 +193,24 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       case 'connected':
         console.log('Conexão WebSocket confirmada para usuário:', message.userId);
         break;
-        
+
       case 'db_change':
         handleDatabaseChange(message);
         break;
-        
+
       case 'subscription_success':
         console.log('Inscrição confirmada:', message.table);
         break;
-        
+
       case 'error':
         console.error('Erro do servidor WebSocket:', message.message);
         toast.error(message.message || 'Erro na conexão em tempo real');
         break;
-        
+
       case 'pong':
         // Resposta ao ping - conexão está ativa
         break;
-        
+
       default:
         console.log('Mensagem WebSocket não tratada:', message);
     }
@@ -218,7 +218,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   const handleDatabaseChange = (message: WebSocketMessage) => {
     const { table, operation, data } = message;
-    
+
     if (!table || !operation || !data) {
       console.warn('Mudança de banco incompleta:', message);
       return;
@@ -243,7 +243,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   const subscribe = (table: string, callback: (data: any) => void, filter?: any): (() => void) => {
     const subscriptionKey = `${table}:${JSON.stringify(filter || {})}`;
-    
+
     // Adicionar assinatura
     subscriptionsRef.current.set(subscriptionKey, {
       table,
@@ -263,11 +263,11 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     // Retornar função de cancelamento
     return () => {
       subscriptionsRef.current.delete(subscriptionKey);
-      
+
       // Se não há mais assinaturas para esta tabela, cancelar no servidor
       const hasOtherSubscriptions = Array.from(subscriptionsRef.current.keys())
         .some(key => key.startsWith(`${table}:`));
-      
+
       if (!hasOtherSubscriptions && isConnected) {
         sendMessage({
           type: 'unsubscribe',
@@ -281,7 +281,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     // Remover todas as assinaturas da tabela
     const keysToRemove = Array.from(subscriptionsRef.current.keys())
       .filter(key => key.startsWith(`${table}:`));
-    
+
     keysToRemove.forEach(key => {
       subscriptionsRef.current.delete(key);
     });
@@ -325,10 +325,10 @@ export function useRealtimeSubscription(
   enabled: boolean = true
 ) {
   const { subscribe } = useRealtime();
-  
+
   useEffect(() => {
     if (!enabled) return;
-    
+
     const unsubscribe = subscribe(table, callback, filter);
     return unsubscribe;
   }, [table, callback, filter, enabled, subscribe]);
@@ -355,7 +355,7 @@ export class WebSocketManager {
   connect() {
     // Implementação básica - usar RealtimeProvider para funcionalidade completa
     console.warn('WebSocketManager.connect() - Use RealtimeProvider para funcionalidade completa');
-    
+
     // Simular conexão bem-sucedida para compatibilidade
     setTimeout(() => {
       this.triggerEvent('connect');

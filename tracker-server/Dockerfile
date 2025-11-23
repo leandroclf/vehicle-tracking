@@ -45,6 +45,7 @@ COPY --from=builder --chown=nodeapp:nodejs /app/server.js ./
 COPY --from=builder --chown=nodeapp:nodejs /app/teltonika-decoder.js ./
 COPY --from=builder --chown=nodeapp:nodejs /app/queclink-decoder.js ./
 COPY --from=builder --chown=nodeapp:nodejs /app/concox-decoder.js ./
+COPY --from=builder --chown=nodeapp:nodejs /app/src ./src
 
 # Mudar para usuário não-root
 USER nodeapp
