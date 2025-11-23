@@ -4,6 +4,8 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: yukz-postgres
+    env_file:
+      - .env.docker
     environment:
       - POSTGRES_DB=vehicle_tracking
       - POSTGRES_USER=postgres
@@ -17,7 +19,7 @@ services:
       - yukz-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -33,7 +35,7 @@ services:
       - yukz-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -52,7 +54,9 @@ services:
     container_name: yukz-app
     ports:
       - "3000:3000"
-      - "3001:3001"  # WebSocket server
+      - "3001:3001" # WebSocket server
+    env_file:
+      - .env.docker
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vehicle_tracking
@@ -74,7 +78,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -98,10 +102,12 @@ services:
     image: vehicle-tracking-tracker-server:latest
     container_name: yukz-tracker-server
     ports:
-      - "8080:8080"  # Teltonika
-      - "8081:8081"  # Queclink  
-      - "8082:8082"  # Concox
-      - "8083:8083"  # UDP
+      - "8080:5027" # Teltonika
+      - "8081:5029" # Queclink  
+      - "8082:5030" # Concox
+      - "8083:5028" # UDP
+    env_file:
+      - .env.docker
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vehicle_tracking
@@ -115,7 +121,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      test: [ "CMD", "nc", "-z", "localhost", "5027" ]
       interval: 30s
       timeout: 10s
       retries: 3

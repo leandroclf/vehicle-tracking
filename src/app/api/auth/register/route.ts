@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 // Usando auth-service mock temporariamente até resolver problema do PostgreSQL
-import { AuthService } from '@/lib/auth/auth-service-mock';
+import { AuthService } from '@/lib/auth/auth-service';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, password, name, phone } = body;
+    console.log('Register attempt:', { email, name, phone }); // Debug log
 
     if (!email || !password || !name) {
       return NextResponse.json(

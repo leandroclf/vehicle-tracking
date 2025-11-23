@@ -1,0 +1,17 @@
+
+> yukz-app@0.1.0 build
+> next build
+
+   Ôû▓ Next.js 15.5.6
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+Failed to compile.
+
+./src/app/api-doc/page.tsx
+Module not found: Can't resolve 'swagger-ui-react'
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+> Build failed because of webpack errors

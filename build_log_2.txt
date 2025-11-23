@@ -1,0 +1,110 @@
+
+> yukz-app@0.1.0 build
+> next build
+
+   Ôû▓ Next.js 15.5.6
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+ Ô£ô Compiled successfully in 14.4s
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+(node:14844) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:13216) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:9900) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:532) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:4204) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:8712) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:21068) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+   Generating static pages (0/59) ...
+(node:1456) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+(node:22256) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+   Generating static pages (14/59) 
+(node:12696) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+   Generating static pages (29/59) 
+   Generating static pages (44/59) 
+ Ô£ô Generating static pages (59/59)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+Ôöî Ôùï /                                    6.13 kB         153 kB
+Ôö£ Ôùï /_not-found                            238 B         102 kB
+Ôö£ ãÆ /api                                   238 B         102 kB
+Ôö£ ãÆ /api/alerts                            238 B         102 kB
+Ôö£ ãÆ /api/alerts/read-all                   238 B         102 kB
+Ôö£ ãÆ /api/analytics/dashboard/config        238 B         102 kB
+Ôö£ ãÆ /api/analytics/export                  238 B         102 kB
+Ôö£ ãÆ /api/analytics/metrics                 238 B         102 kB
+Ôö£ ãÆ /api/auth/login                        238 B         102 kB
+Ôö£ ãÆ /api/auth/logout                       238 B         102 kB
+Ôö£ ãÆ /api/auth/me                           238 B         102 kB
+Ôö£ ãÆ /api/auth/phone                        238 B         102 kB
+Ôö£ ãÆ /api/auth/register                     238 B         102 kB
+Ôö£ ãÆ /api/auth/reset-password               238 B         102 kB
+Ôö£ ãÆ /api/auth/update-password              238 B         102 kB
+Ôö£ ãÆ /api/commands                          238 B         102 kB
+Ôö£ ãÆ /api/commands/confirm                  238 B         102 kB
+Ôö£ ãÆ /api/dashboard/statistics              238 B         102 kB
+Ôö£ ãÆ /api/drivers                           238 B         102 kB
+Ôö£ ãÆ /api/drivers/assign                    238 B         102 kB
+Ôö£ ãÆ /api/geofences                         238 B         102 kB
+Ôö£ ãÆ /api/geofences/check                   238 B         102 kB
+Ôö£ ãÆ /api/health                            238 B         102 kB
+Ôö£ ãÆ /api/mfa                               238 B         102 kB
+Ôö£ ãÆ /api/monitoring/events                 238 B         102 kB
+Ôö£ ãÆ /api/monitoring/export                 238 B         102 kB
+Ôö£ ãÆ /api/notifications                     238 B         102 kB
+Ôö£ ãÆ /api/profile                           238 B         102 kB
+Ôö£ ãÆ /api/reports                           238 B         102 kB
+Ôö£ ãÆ /api/reports/[id]/download             238 B         102 kB
+Ôö£ ãÆ /api/reports/custom                    238 B         102 kB
+Ôö£ ãÆ /api/reports/generate                  238 B         102 kB
+Ôö£ ãÆ /api/roles                             238 B         102 kB
+Ôö£ ãÆ /api/settings                          238 B         102 kB
+Ôö£ ãÆ /api/settings/notifications            238 B         102 kB
+Ôö£ ãÆ /api/settings/preferences              238 B         102 kB
+Ôö£ ãÆ /api/users                             238 B         102 kB
+Ôö£ ãÆ /api/users/[id]/role                   238 B         102 kB
+Ôö£ ãÆ /api/vehicles                          238 B         102 kB
+Ôö£ ãÆ /api/vehicles/commands                 238 B         102 kB
+Ôö£ ãÆ /api/vehicles/positions                238 B         102 kB
+Ôö£ ãÆ /api/vehicles/status                   238 B         102 kB
+Ôö£ Ôùï /commands                            6.75 kB         116 kB
+Ôö£ Ôùï /dashboard                           10.4 kB         132 kB
+Ôö£ Ôùï /dashboard/alerts                    7.05 kB         121 kB
+Ôö£ Ôùï /dashboard/analytics                 34.5 kB         298 kB
+Ôö£ Ôùï /dashboard/drivers                    6.5 kB         122 kB
+Ôö£ Ôùï /dashboard/geofences                 8.29 kB         133 kB
+Ôö£ Ôùï /dashboard/map                         42 kB         167 kB
+Ôö£ Ôùï /dashboard/profile                   11.6 kB         133 kB
+Ôö£ Ôùï /dashboard/reports                     13 kB         242 kB
+Ôö£ Ôùï /dashboard/settings                  6.75 kB         115 kB
+Ôö£ Ôùï /dashboard/users                     1.49 kB         110 kB
+Ôö£ Ôùï /dashboard/vehicles                  34.7 kB         196 kB
+Ôö£ ãÆ /dashboard/vehicles/[id]             6.68 kB         201 kB
+Ôö£ Ôùï /forgot-password                     4.22 kB         117 kB
+Ôö£ Ôùï /login                               1.45 kB         125 kB
+Ôö£ Ôùï /profile                             5.36 kB         121 kB
+Ôö£ Ôùï /register                            1.36 kB         125 kB
+Ôöö Ôùï /tracking                            10.2 kB         131 kB
++ First Load JS shared by all             102 kB
+  Ôö£ chunks/1255-f04e7a26e145c577.js      45.4 kB
+  Ôö£ chunks/4bd1b696-100b9d70ed4e49c1.js  54.2 kB
+  Ôöö other shared chunks (total)          2.41 kB
+
+
+Ôùï  (Static)   prerendered as static content
+ãÆ  (Dynamic)  server-rendered on demand
+
