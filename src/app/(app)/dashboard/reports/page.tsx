@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent, useCallback } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
@@ -101,12 +101,7 @@ export default function ReportsPage() {
   
   const limit = 10;
   
-  useEffect(() => {
-    fetchVehicles();
-    fetchReports();
-  }, [currentPage, token]);
-  
-  const fetchVehicles = async () => {
+  const fetchVehicles = useCallback(async () => {
     if (!token) return;
     
     try {
@@ -125,9 +120,9 @@ export default function ReportsPage() {
     } catch (error) {
       console.error('Erro ao buscar veículos:', error);
     }
-  };
+  }, [token]);
   
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     if (!token) return;
     
     setLoading(true);
@@ -152,8 +147,13 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, currentPage, limit]);
   
+  useEffect(() => {
+    fetchVehicles();
+    fetchReports();
+  }, [fetchVehicles, fetchReports]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);

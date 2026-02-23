@@ -131,4 +131,6 @@ export function useRequiredTables() {
   return { verifyTables };
 }
 
-export default { initializeDatabase, checkTableExists, useRequiredTables };
+const dbSetup = { initializeDatabase, checkTableExists, useRequiredTables };
+
+export default dbSetup;

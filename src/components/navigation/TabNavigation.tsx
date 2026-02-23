@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, useCallback, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -47,6 +47,21 @@ export function TabNavigation({
     }
   }, [pathname, tabs, preserveState]);
 
+  const handleTabChange = useCallback((tabId: string) => {
+    setActiveTabId(tabId);
+    
+    // Notificar o componente pai sobre a mudança
+    if (onChange) {
+      onChange(tabId);
+    }
+    
+    // Navegar para o caminho da aba, se disponível
+    const selectedTab = tabs.find(tab => tab.id === tabId);
+    if (selectedTab?.path) {
+      router.push(selectedTab.path);
+    }
+  }, [onChange, router, tabs]);
+
   // Configurar atalhos de teclado para as abas (Alt + tecla)
   useEffect(() => {
     const shortcutMap = new Map<string, string>();
@@ -69,21 +84,10 @@ export function TabNavigation({
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [tabs]);
+  }, [tabs, handleTabChange]);
 
-  const handleTabChange = (tabId: string) => {
-    setActiveTabId(tabId);
-    
-    // Notificar o componente pai sobre a mudança
-    if (onChange) {
-      onChange(tabId);
-    }
-    
-    // Navegar para o caminho da aba, se disponível
-    const selectedTab = tabs.find(tab => tab.id === tabId);
-    if (selectedTab?.path) {
-      router.push(selectedTab.path);
-    }
+  const handleTabClick = (tabId: string) => {
+    handleTabChange(tabId);
   };
 
   return (
@@ -106,7 +110,7 @@ export function TabNavigation({
                   ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               )}
-              onClick={() => handleTabChange(tab.id)}
+              onClick={() => handleTabClick(tab.id)}
               whileHover={{ y: -2 }}
               whileTap={{ y: 0 }}
             >

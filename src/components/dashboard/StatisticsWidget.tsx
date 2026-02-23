@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/Card';
 import { useDashboard, DashboardStatistics } from '@/lib/dashboard';
 import { Car, Activity, AlertTriangle, Droplet, MapPin } from 'lucide-react';
@@ -16,9 +16,13 @@ export default function StatisticsWidget({ type, title, size = 'medium' }: Stati
   const { statistics, isLoading, error, fetchStatistics } = useDashboard();
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
 
-  useEffect(() => {
+  const loadStatistics = useCallback(() => {
     fetchStatistics(period);
-  }, [period]);
+  }, [fetchStatistics, period]);
+
+  useEffect(() => {
+    loadStatistics();
+  }, [loadStatistics]);
 
   const handlePeriodChange = (value: string) => {
     setPeriod(value as 'today' | 'week' | 'month');

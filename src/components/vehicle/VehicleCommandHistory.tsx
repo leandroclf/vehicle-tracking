@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useVehicles } from '@/lib/vehicles-client';
 import { DataTable, DataTableColumn } from '@/components/ui/data-table';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -53,7 +53,7 @@ export default function VehicleCommandHistory({
   });
 
   // Carregar histórico de comandos
-  const loadCommandHistory = async () => {
+  const loadCommandHistory = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -72,12 +72,12 @@ export default function VehicleCommandHistory({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [fetchCommandHistory, vehicleId, pagination.limit, pagination.offset]);
 
   // Carregar histórico ao montar o componente e quando mudar a paginação
   useEffect(() => {
     loadCommandHistory();
-  }, [vehicleId, pagination.limit, pagination.offset]);
+  }, [loadCommandHistory]);
 
   // Função para obter a próxima página
   const nextPage = () => {

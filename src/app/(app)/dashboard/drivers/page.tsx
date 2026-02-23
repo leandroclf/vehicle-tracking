@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -83,10 +83,10 @@ export default function DriversPage() {
     if (isAuthenticated && token) {
       fetchDrivers();
     }
-  }, [isAuthenticated, token, pagination.offset, pagination.limit]);
+  }, [isAuthenticated, token, fetchDrivers]);
 
   // Function to fetch drivers
-  const fetchDrivers = async () => {
+  const fetchDrivers = useCallback(async () => {
     setIsLoadingData(true);
     setError(null);
     
@@ -110,7 +110,7 @@ export default function DriversPage() {
     } finally {
       setIsLoadingData(false);
     }
-  };
+  }, [pagination.limit, pagination.offset, token]);
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

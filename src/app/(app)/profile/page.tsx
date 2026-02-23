@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/Button';
@@ -84,16 +84,7 @@ function ProfileForm() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    
-    loadLinkedAccounts();
-  }, [user, router]);
-
-  const loadLinkedAccounts = async () => {
+  const loadLinkedAccounts = useCallback(async () => {
     setIsLoading(true);
     try {
       const accounts = await getLinkedAccounts();
@@ -104,7 +95,16 @@ function ProfileForm() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [getLinkedAccounts]);
+
+  useEffect(() => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    loadLinkedAccounts();
+  }, [user, router, loadLinkedAccounts]);
 
   const handleLinkAccount = async (provider: string) => {
     setError(null);
