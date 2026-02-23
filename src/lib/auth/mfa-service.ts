@@ -2,6 +2,7 @@ import { getConnection } from '@/lib/database';
 import { MFASetupRequest, MFASetupResponse, MFAVerifyRequest, MFAVerifyResponse, MFAStatus } from '@/types/mfa';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
+import jwt from 'jsonwebtoken';
 
 /**
  * Serviço para autenticação multifatorial (MFA)
@@ -212,7 +213,6 @@ export const mfaService = {
       client.release();
 
       // Gerar token de acesso JWT
-      const jwt = require('jsonwebtoken');
       const accessToken = jwt.sign(
         { userId: session.user_id },
         process.env.JWT_SECRET,

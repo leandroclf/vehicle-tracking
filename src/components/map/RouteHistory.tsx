@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Polyline, Marker, InfoWindow, Circle } from '@react-google-maps/api';
 

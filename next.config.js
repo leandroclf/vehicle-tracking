@@ -1,3 +1,5 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -37,7 +39,10 @@ const nextConfig = {
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
-  }
+  },
+  // Evita root incorreto quando há lockfile fora deste projeto
+  outputFileTracingRoot: path.join(__dirname)
 }
+
 
 module.exports = nextConfig
