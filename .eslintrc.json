@@ -11,5 +11,13 @@
     "@typescript-eslint/ban-ts-comment": "off",
     "@typescript-eslint/no-empty-object-type": "off",
     "react/display-name": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**/*.ts", "**/__tests__/**/*.tsx"],
+      "rules": {
+        "@typescript-eslint/no-require-imports": "off"
+      }
+    }
+  ]
 }

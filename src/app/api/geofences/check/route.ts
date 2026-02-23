@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
       SELECT * FROM geofences 
       WHERE user_id = $1
     `;
-    let params = [userId];
+    const params = [userId];
     
     // Se um ID de geocerca for especificado, filtrar apenas por essa geocerca
     if (geofenceId) {

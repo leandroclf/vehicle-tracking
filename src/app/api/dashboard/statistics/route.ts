@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const { period } = queryResult.data;
     
     // Obter data de início com base no período
-    let startDate = new Date();
+    const startDate = new Date();
     if (period === 'today') {
       startDate.setHours(0, 0, 0, 0);
     } else if (period === 'week') {

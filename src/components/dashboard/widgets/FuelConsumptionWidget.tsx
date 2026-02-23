@@ -143,7 +143,7 @@ export default function FuelConsumptionWidget() {
     if (!selectedVehicleData) return [];
     
     const today = new Date();
-    let startDate = new Date(today);
+    const startDate = new Date(today);
     
     switch (timeRange) {
       case 'week':

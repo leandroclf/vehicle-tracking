@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       WHERE vs.user_id = $1
     `;
     
-    let queryParams = [userId];
+    const queryParams = [userId];
     
     // Aplicar filtro de IDs se fornecido
     if (ids && ids.length > 0) {

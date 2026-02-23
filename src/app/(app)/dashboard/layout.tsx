@@ -131,7 +131,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     <VehicleProvider>
       <AlertProvider>
         <ReportProvider>
-          <DashboardLayoutContent children={children} />
+          <DashboardLayoutContent>{children}</DashboardLayoutContent>
         </ReportProvider>
       </AlertProvider>
     </VehicleProvider>

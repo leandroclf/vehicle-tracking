@@ -251,7 +251,7 @@ export default function Layout({ children }: LayoutProps) {
           <NotificationProvider>
             <KeyboardNavigationProvider>
               <SidebarProvider initialMobile={isMobileDevice}>
-                <LayoutContent children={children} />
+                <LayoutContent>{children}</LayoutContent>
               </SidebarProvider>
             </KeyboardNavigationProvider>
           </NotificationProvider>

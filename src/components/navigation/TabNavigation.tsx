@@ -4,7 +4,6 @@ import { useState, useEffect, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { useKeyboardShortcut } from './ContextualNavigation';
 
 interface Tab {
   id: string;
@@ -48,12 +47,29 @@ export function TabNavigation({
     }
   }, [pathname, tabs, preserveState]);
 
-  // Configurar atalhos de teclado para as abas
-  tabs.forEach(tab => {
-    if (tab.shortcut) {
-      useKeyboardShortcut(tab.shortcut, () => handleTabChange(tab.id), { alt: true });
-    }
-  });
+  // Configurar atalhos de teclado para as abas (Alt + tecla)
+  useEffect(() => {
+    const shortcutMap = new Map<string, string>();
+
+    tabs.forEach((tab) => {
+      if (tab.shortcut) {
+        shortcutMap.set(tab.shortcut.toLowerCase(), tab.id);
+      }
+    });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.altKey) return;
+
+      const targetTabId = shortcutMap.get(event.key.toLowerCase());
+      if (!targetTabId) return;
+
+      event.preventDefault();
+      handleTabChange(targetTabId);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [tabs]);
 
   const handleTabChange = (tabId: string) => {
     setActiveTabId(tabId);

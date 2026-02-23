@@ -111,7 +111,7 @@ export default function ReportDetails({ report, vehicles, onClose }: ReportDetai
   const handleSchedule = async () => {
     try {
       const today = new Date();
-      let nextRunDate = new Date();
+      const nextRunDate = new Date();
       
       switch (scheduleFrequency) {
         case 'daily':

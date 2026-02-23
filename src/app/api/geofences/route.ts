@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     
     // Construir consulta base
     // TODO: Implementar query SQL direta
-    let query = null; // pool.query
+    const query = null; // pool.query
     //   .from('geofences')
     //   .select('*')
     //   .eq('user_id', userId)
