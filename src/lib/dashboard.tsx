@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { getDbPool } from '@/lib/database';
 
 // Definição dos tipos para estatísticas do dashboard
@@ -61,7 +61,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   // Carregar configuração de widgets ao iniciar
   useEffect(() => {
     loadWidgetConfiguration();
-  }, []);
+  }, [loadWidgetConfiguration]);
 
   // Função para buscar estatísticas
   const fetchStatistics = async (period: 'today' | 'week' | 'month' = 'today') => {
@@ -102,7 +102,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   };
 
   // Função para carregar configuração de widgets
-  const loadWidgetConfiguration = async () => {
+  const loadWidgetConfiguration = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -140,7 +140,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Função para salvar configuração de widgets
   const saveWidgetConfiguration = async (updatedWidgets: DashboardWidget[]): Promise<boolean> => {

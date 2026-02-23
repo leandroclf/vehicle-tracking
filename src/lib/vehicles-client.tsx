@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useAuth } from './auth/auth-context';
 import { toast } from 'sonner';
 
@@ -84,18 +84,7 @@ export function VehicleProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
-  // Carregar veículos quando o usuário estiver autenticado
-  useEffect(() => {
-    if (user) {
-      refreshVehicles();
-    } else {
-      setVehicles([]);
-      setSelectedVehicle(null);
-      setLoading(false);
-    }
-  }, [user]);
-
-  const refreshVehicles = async () => {
+  const refreshVehicles = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -121,7 +110,18 @@ export function VehicleProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Carregar veículos quando o usuário estiver autenticado
+  useEffect(() => {
+    if (user) {
+      refreshVehicles();
+    } else {
+      setVehicles([]);
+      setSelectedVehicle(null);
+      setLoading(false);
+    }
+  }, [user, refreshVehicles]);
 
   const getVehicleEvents = async (vehicleId: number): Promise<VehicleEvent[]> => {
     if (!user) throw new Error('Usuário não autenticado');

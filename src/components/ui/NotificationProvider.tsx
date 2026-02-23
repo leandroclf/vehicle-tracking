@@ -47,6 +47,10 @@ const NotificationIcon = ({ type }: { type: NotificationType }) => {
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
+  const dismissNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((notification) => notification.id !== id));
+  }, []);
+
   const showNotification = useCallback((notification: Omit<Notification, 'id'>) => {
     const id = Math.random().toString(36).substring(2, 9);
     const newNotification = { ...notification, id };
@@ -60,11 +64,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       return () => clearTimeout(timer);
     }
-  }, []);
-
-  const dismissNotification = useCallback((id: string) => {
-    setNotifications((prev) => prev.filter((notification) => notification.id !== id));
-  }, []);
+  }, [dismissNotification]);
 
   return (
     <NotificationContext.Provider
