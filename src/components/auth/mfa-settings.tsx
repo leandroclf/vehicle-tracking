@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -327,7 +328,7 @@ export default function MFASettings() {
                     {activeProvider === 'totp' && qrCode && (
                       <div className="space-y-4">
                         <p>Escaneie o QR Code com seu aplicativo authenticator:</p>
-                        <img src={qrCode} alt="QR Code" className="mx-auto" />
+                        <Image src={qrCode} alt="QR Code" width={192} height={192} className="mx-auto" unoptimized />
                       </div>
                     )}
                     {activeProvider !== 'totp' && (

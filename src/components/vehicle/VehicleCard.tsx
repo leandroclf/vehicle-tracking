@@ -1,4 +1,5 @@
 ﻿import * as React from "react"
+import Image from 'next/image'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -154,10 +155,13 @@ export function VehicleCard({
                 compact ? "h-8 w-8" : "h-12 w-12"
               )}>
                 {vehicle.imageUrl ? (
-                  <img
+                  <Image
                     src={vehicle.imageUrl}
                     alt={vehicle.name}
+                    width={compact ? 32 : 48}
+                    height={compact ? 32 : 48}
                     className="h-full w-full object-cover"
+                    unoptimized
                   />
                 ) : (
                   <VehicleIcon className={cn(compact ? "h-4 w-4" : "h-6 w-6", "text-primary")} />

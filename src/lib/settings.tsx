@@ -107,7 +107,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Função para buscar configurações
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     if (!token || !isAuthenticated) return;
     
     setIsLoading(true);
@@ -147,14 +147,14 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, isAuthenticated]);
   
   // Buscar configurações quando o token estiver disponível
   useEffect(() => {
     if (token && isAuthenticated) {
       fetchSettings();
     }
-  }, [token, isAuthenticated]);
+  }, [token, isAuthenticated, fetchSettings]);
 
   // Atualizar todas as configurações
   const updateSettings = async (newSettings: Partial<Settings>): Promise<void> => {

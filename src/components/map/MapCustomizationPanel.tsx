@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Settings, Map, Layers, AlertOctagon, Anchor } from 'lucide-react';
 
 type MapInfoDisplay = 
@@ -417,10 +418,13 @@ export default function MapCustomizationPanel({
             Relevo
           </button>
           <div className="w-36 h-24 rounded-md overflow-hidden">
-            <img
+            <Image
               src="https://developers.google.com/maps/documentation/javascript/examples/full/images/terrain.png"
               alt="Mapa de relevo"
+              width={144}
+              height={96}
               className="w-full h-full object-cover"
+              unoptimized
             />
           </div>
         </div>
