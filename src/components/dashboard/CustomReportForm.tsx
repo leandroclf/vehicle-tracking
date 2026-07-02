@@ -159,7 +159,7 @@ export default function CustomReportForm({ vehicles, onSubmit, isSubmitting }: C
   return (
     <Card className="p-4">
       <h2 className="text-lg font-semibold mb-4">Criar Relatório Customizado</h2>
-      {error && <Alert className="mb-4" variant="error">{error}</Alert>}
+      {error && <Alert className="mb-4" variant="destructive">{error}</Alert>}
       
       <form onSubmit={handleSubmit}>
         <div className="mb-4">

@@ -78,13 +78,6 @@ export default function DriversPage() {
   const [assignedVehicles, setAssignedVehicles] = useState<VehicleAssignment[]>([]);
   const [isLoadingVehicles, setIsLoadingVehicles] = useState<boolean>(false);
 
-  // Fetch drivers on component mount
-  useEffect(() => {
-    if (isAuthenticated && token) {
-      fetchDrivers();
-    }
-  }, [isAuthenticated, token, fetchDrivers]);
-
   // Function to fetch drivers
   const fetchDrivers = useCallback(async () => {
     setIsLoadingData(true);
@@ -111,6 +104,13 @@ export default function DriversPage() {
       setIsLoadingData(false);
     }
   }, [pagination.limit, pagination.offset, token]);
+
+  // Fetch drivers on component mount
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetchDrivers();
+    }
+  }, [isAuthenticated, token, fetchDrivers]);
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -373,7 +373,7 @@ export default function DriversPage() {
       {/* Messages */}
       {message && (
         <Alert 
-          variant={message.type as 'success' | 'error' | 'warning' | 'info'} 
+          variant={message.type === 'error' ? 'destructive' : (message.type as 'success' | 'warning' | 'info')} 
           className="mb-4"
           onClose={() => setMessage(null)}
         >
@@ -384,7 +384,7 @@ export default function DriversPage() {
       {/* Error message */}
       {error && (
         <Alert 
-          variant="error"
+          variant="destructive"
           className="mb-4"
           onClose={() => setError(null)}
         >
@@ -759,7 +759,7 @@ export default function DriversPage() {
                 Cancelar
               </Button>
               <Button 
-                variant="danger"
+                variant="destructive"
                 onClick={() => deleteDriver(selectedDriver)}
                 isLoading={isSubmitting}
               >

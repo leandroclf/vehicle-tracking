@@ -4,8 +4,7 @@ import React, { useState, useEffect, FormEvent, useCallback } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/Alert';
-import { Table } from '@/components/ui/Table';
-import { Pagination } from '@/components/ui/Pagination';
+import { DataTable, DataTableColumn } from '@/components/ui/data-table';
 import { Eye, Download, RefreshCw, Plus, Calendar, ListFilter } from 'lucide-react';
 import { useReports } from '@/lib/reports';
 import ReportDetails from '@/components/dashboard/ReportDetails';
@@ -280,20 +279,23 @@ export default function ReportsPage() {
   };
 
   // Colunas para a tabela de relatórios
-  const columns = [
+  const columns: DataTableColumn<Report>[] = [
     {
-      header: 'Tipo',
-      accessor: (report: Report) => getReportTypeName(report.report_type)
+      key: 'report_type',
+      title: 'Tipo',
+      render: (_value, report) => getReportTypeName(report.report_type)
     },
     {
-      header: 'Período',
-      accessor: (report: Report) => (
+      key: 'period',
+      title: 'Período',
+      render: (_value, report) => (
         `${formatDate(report.start_date)} - ${formatDate(report.end_date)}`
       )
     },
     {
-      header: 'Status',
-      accessor: (report: Report) => (
+      key: 'status',
+      title: 'Status',
+      render: (_value, report) => (
         <span className={
           report.status === 'processing' ? 'text-yellow-500' :
           report.status === 'completed' ? 'text-green-500' :
@@ -306,8 +308,9 @@ export default function ReportsPage() {
       )
     },
     {
-      header: 'Agendamento',
-      accessor: (report: Report) => (
+      key: 'schedule',
+      title: 'Agendamento',
+      render: (_value, report) => (
         <span>
           {report.schedule ? (
             <Calendar size={16} className="text-blue-500" />
@@ -316,8 +319,9 @@ export default function ReportsPage() {
       )
     },
     {
-      header: 'Ações',
-      accessor: (report: Report) => (
+      key: 'actions',
+      title: 'Ações',
+      render: (_value, report) => (
         <div className="flex gap-2">
           <Button 
             variant="secondary" 
@@ -390,7 +394,7 @@ export default function ReportsPage() {
           ) : (
             <Card className="p-4">
               <h2 className="text-lg font-semibold mb-4">Gerar Relatório</h2>
-              {error && <Alert className="mb-4" variant="error">{error}</Alert>}
+              {error && <Alert className="mb-4" variant="destructive">{error}</Alert>}
               
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
@@ -533,20 +537,39 @@ export default function ReportsPage() {
               <div className="py-4 text-center">Carregando...</div>
             ) : (
               <div>
-                <Table
+                <DataTable
                   data={reports}
                   columns={columns}
-                  isLoading={loading}
+                  loading={loading}
+                  searchable={false}
+                  filterable={false}
+                  pagination={false}
                   emptyMessage="Nenhum relatório encontrado"
                 />
                 
                 {totalReports > limit && (
-                  <div className="mt-4">
-                    <Pagination 
-                      currentPage={currentPage} 
-                      totalPages={calculateTotalPages(totalReports, limit)}
-                      onPageChange={setCurrentPage}
-                    />
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-sm text-gray-500">
+                      Página {currentPage} de {calculateTotalPages(totalReports, limit)}
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage >= calculateTotalPages(totalReports, limit)}
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                      >
+                        Próxima
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

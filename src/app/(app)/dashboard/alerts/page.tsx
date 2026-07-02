@@ -52,11 +52,8 @@ export default function AlertsPage() {
         </div>
       </div>
       
-      <Card 
-        title="Lista de Alertas" 
-        elevated="true"
-        className="mb-6"
-      >
+      <Card className="mb-6 p-4">
+        <h2 className="text-lg font-semibold mb-4">Lista de Alertas</h2>
         <div className="space-y-4">
           {alerts.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
@@ -67,17 +64,16 @@ export default function AlertsPage() {
               <Alert
                 key={alert.id}
                 variant={
-                  alert.type === 'panic' ? 'error' :
-                  alert.type === 'speed' ? 'warning' :
+                  alert.severity === 'critical' ? 'destructive' :
+                  alert.severity === 'warning' ? 'warning' :
                   'info'
                 }
                 title={
-                  alert.type === 'movement' ? 'Movimento Detectado' :
                   alert.type === 'speed' ? 'Velocidade Excedida' :
-                  alert.type === 'ignition' ? 'Ignição Alterada' :
-                  alert.type === 'panic' ? 'Botão de Pânico' :
+                  alert.type === 'geofence' ? 'Violação de Cerca Virtual' :
                   alert.type === 'battery' ? 'Bateria Baixa' :
-                  'Desconexão'
+                  alert.type === 'engine' ? 'Alerta do Motor' :
+                  'Alerta'
                 }
                 className="flex justify-between items-start"
               >
@@ -90,15 +86,15 @@ export default function AlertsPage() {
                 <div className="flex space-x-2 items-center">
                   <Badge 
                     variant={
-                      alert.type === 'panic' ? 'danger' :
-                      alert.type === 'speed' ? 'warning' :
+                      alert.severity === 'critical' ? 'destructive' :
+                      alert.severity === 'warning' ? 'warning' :
                       'info'
                     } 
                     className="ml-4"
                   >
                     {
-                      alert.type === 'panic' ? 'Crítico' :
-                      alert.type === 'speed' ? 'Médio' :
+                      alert.severity === 'critical' ? 'Crítico' :
+                      alert.severity === 'warning' ? 'Médio' :
                       'Informativo'
                     }
                   </Badge>
@@ -114,7 +110,7 @@ export default function AlertsPage() {
                     Ver Detalhes
                   </button>
                   
-                  {!alert.read && (
+                  {!alert.acknowledged && (
                     <button
                       className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
                       onClick={() => markAsRead(alert.id)}

@@ -3,8 +3,6 @@ import * as TabsPrimitive from "@radix-ui/react-tabs"
 
 import { cn } from "@/lib/utils"
 
-const Tabs = TabsPrimitive.Root
-
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
@@ -49,6 +47,56 @@ const TabsContent = React.forwardRef<
   />
 ))
 TabsContent.displayName = TabsPrimitive.Content.displayName
+
+// Item declarativo para a API de conveniência `items`
+export interface TabItem {
+  id: string;
+  label: string;
+  icon?: React.ReactNode;
+  content: React.ReactNode;
+}
+
+interface TabsProps
+  extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root> {
+  /** Modo declarativo: renderiza lista e conteúdos a partir dos itens */
+  items?: TabItem[];
+}
+
+const Tabs = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Root>,
+  TabsProps
+>(({ items, children, defaultValue, ...props }, ref) => {
+  if (!items || items.length === 0) {
+    return (
+      <TabsPrimitive.Root ref={ref} defaultValue={defaultValue} {...props}>
+        {children}
+      </TabsPrimitive.Root>
+    )
+  }
+
+  return (
+    <TabsPrimitive.Root
+      ref={ref}
+      defaultValue={defaultValue ?? items[0].id}
+      {...props}
+    >
+      <TabsList>
+        {items.map((item) => (
+          <TabsTrigger key={item.id} value={item.id}>
+            {item.icon && <span className="mr-2">{item.icon}</span>}
+            {item.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {items.map((item) => (
+        <TabsContent key={item.id} value={item.id}>
+          {item.content}
+        </TabsContent>
+      ))}
+    </TabsPrimitive.Root>
+  )
+})
+Tabs.displayName = "Tabs"
 
 export { Tabs, TabsList, TabsTrigger, TabsContent }
 export default Tabs

@@ -16,7 +16,7 @@ export default function MapPreview() {
   useEffect(() => {
     if (vehicles && vehicles.length) {
       // Calcular veículos em movimento (simulação)
-      const inMovement = vehicles.filter(v => v.speed > 0).length;
+      const inMovement = vehicles.filter(v => (v.speed ?? 0) > 0).length;
       setVehiclesInView(inMovement);
     }
   }, [vehicles]);
@@ -49,7 +49,7 @@ export default function MapPreview() {
               zIndex: 2
             }}
           >
-            <div className={`flex flex-col items-center ${vehicle.speed > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+            <div className={`flex flex-col items-center ${(vehicle.speed ?? 0) > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
               <Truck className="h-6 w-6" />
               <span className="text-xs font-semibold mt-1 bg-white dark:bg-gray-800 px-2 py-0.5 rounded shadow-sm">
                 {vehicle.plate}

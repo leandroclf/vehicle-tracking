@@ -5,10 +5,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/auth-middleware';
-import { db } from '@/lib/database';
-import { vehicles, gpsPositions, alerts } from '@/lib/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
-import { cookies } from 'next/headers';
 import { analyticsService } from '@/lib/analytics/analytics-service';
 import { z } from 'zod';
 
@@ -34,11 +30,13 @@ const exportSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    // TODO: Implementar autenticação JWT
-    const user = null;
-    const authError = null;
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
 
-    if (authError || !user) {
+    const user = authResult.user;
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Não autorizado' },
         { status: 401 }
@@ -48,17 +46,16 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const exportRequest = exportSchema.parse(body);
 
-    // Iniciar processo de exportação
+    // Gerar exportação de forma síncrona (não há tabela de exports no schema)
     const result = await analyticsService.exportData(
       user.id,
       exportRequest.type,
-      exportRequest.format,
-      exportRequest.filters
+      exportRequest.format
     );
 
-    if (!result.success) {
+    if (!result.success || !result.data) {
       return NextResponse.json(
-        { success: false, error: result.error },
+        { success: false, error: result.error || 'Erro ao exportar dados' },
         { status: 500 }
       );
     }
@@ -70,7 +67,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Erro ao exportar dados:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { success: false, error: 'Dados inválidos', details: error.errors },
@@ -78,73 +75,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(
-      { success: false, error: 'Erro interno do servidor' },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * GET /api/analytics/export/[exportId]
- * Download do arquivo exportado
- */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ exportId: string }> }
-) {
-  try {
-    // TODO: Implementar autenticação JWT
-    const user = null;
-    const authError = null;
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Não autorizado' },
-        { status: 401 }
-      );
-    }
-
-    const { exportId } = await params;
-
-    // Verificar se o export existe e pertence ao usuário
-    // TODO: Implementar query SQL direta
-    const exportRecord = null;
-    const error = null;
-    // await pool.query(...)
-    // .from('data_exports')
-    // .select('*')
-    // .eq('id', exportId)
-    // .eq('user_id', user.id)
-    // .single();
-
-    if (error || !exportRecord) {
-      return NextResponse.json(
-        { success: false, error: 'Export não encontrado' },
-        { status: 404 }
-      );
-    }
-
-    // Verificar se o arquivo ainda está disponível
-    if (exportRecord.status !== 'completed') {
-      return NextResponse.json(
-        { success: false, error: 'Export ainda em processamento' },
-        { status: 202 }
-      );
-    }
-
-    // Retornar URL de download ou stream do arquivo
-    // Por enquanto, simular resposta
-    return NextResponse.json({
-      success: true,
-      data: {
-        downloadUrl: exportRecord.file_url,
-        expiresAt: exportRecord.expires_at
-      }
-    });
-
-  } catch (error) {
-    console.error('Erro ao fazer download do export:', error);
     return NextResponse.json(
       { success: false, error: 'Erro interno do servidor' },
       { status: 500 }

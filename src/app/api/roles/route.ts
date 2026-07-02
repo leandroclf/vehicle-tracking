@@ -7,26 +7,29 @@ export async function GET(request: NextRequest) {
   const auth = await verifyAuth(request);
   if (!auth.user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
 
-  // Checagem de permissão: apenas administradores
-  // TODO: Implementar query SQL direta
-  const profile = null;
-  const profileError = null;
-  // await pool.query(...)
-  // .from('profiles')
-  // .select('role_id, roles(name)')
-  // .eq('id', auth.user.id)
-  // .single();
-  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
-  const roleName = Array.isArray(profile.roles) ? (profile.roles[0] as any)?.name : (profile.roles as any)?.name;
-  if (!profile || roleName !== 'Administrador') {
-    return NextResponse.json({ error: 'Acesso restrito a administradores' }, { status: 403 });
+  try {
+    // Checagem de permissão: apenas administradores
+    const pool = getDbPool();
+    const profileQuery = `
+      SELECT p.role_id, r.name as role_name
+      FROM profiles p
+      JOIN roles r ON p.role_id = r.id
+      WHERE p.id = $1
+    `;
+    const profileResult = await pool.query(profileQuery, [auth.user.id]);
+    const profile = profileResult.rows[0] as { role_id: string; role_name: string } | undefined;
+    if (!profile || profile.role_name !== 'Administrador') {
+      return NextResponse.json({ error: 'Acesso restrito a administradores' }, { status: 403 });
+    }
+
+    const rolesResult = await pool.query('SELECT id, name FROM roles ORDER BY name');
+
+    return NextResponse.json(rolesResult.rows);
+  } catch (error) {
+    console.error('Erro ao listar perfis de acesso:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Erro interno do servidor' },
+      { status: 500 }
+    );
   }
-
-  // TODO: Implementar query SQL direta
-  const data = null;
-  const error = null;
-  // await pool.query(...).from('roles').select('id, name').order('name');
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json(data);
 }

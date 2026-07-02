@@ -8,12 +8,12 @@ import { RealtimeEvent } from '../realtime/websocket-client';
 export type RealtimeEntity = 'vehicles' | 'drivers' | 'geofences' | 'alerts' | 'reports' | 'notifications';
 
 // Tipos de eventos que podem ser monitorados
-export type RealtimeEvent = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
+export type RealtimeEventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
 // Interface para configuração de assinatura
 export interface SubscriptionConfig {
   entity: RealtimeEntity;
-  event?: RealtimeEvent;
+  event?: RealtimeEventType;
   filter?: string;
   filterValue?: any;
   schema?: string;

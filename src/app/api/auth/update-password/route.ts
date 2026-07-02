@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/auth-middleware';
-// Usando auth-service mock temporariamente até resolver problema do PostgreSQL
-import { AuthService } from '@/lib/auth/auth-service-mock';
+import { AuthService } from '@/lib/auth/auth-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +11,18 @@ export async function POST(request: NextRequest) {
     }
 
     const { user } = authResult;
-    const { currentPassword, newPassword } = await request.json();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
+
+    const body = (await request.json()) as {
+      currentPassword?: string;
+      newPassword?: string;
+    };
+    const { currentPassword, newPassword } = body;
 
     if (!currentPassword || !newPassword) {
       return NextResponse.json(
@@ -21,23 +31,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar senha atual
+    // Atualizar senha (valida a senha atual internamente)
     try {
-      await AuthService.signIn(user.email, currentPassword);
+      await AuthService.updatePassword(user.id, currentPassword, newPassword);
     } catch (error) {
-      return NextResponse.json(
-        { error: 'Senha atual incorreta' },
-        { status: 401 }
-      );
+      const message = error instanceof Error ? error.message : 'Erro interno do servidor';
+      if (message === 'Senha atual incorreta') {
+        return NextResponse.json(
+          { error: 'Senha atual incorreta' },
+          { status: 401 }
+        );
+      }
+      if (message === 'Nova senha deve ter pelo menos 6 caracteres') {
+        return NextResponse.json(
+          { error: message },
+          { status: 400 }
+        );
+      }
+      throw error;
     }
 
-    // Atualizar senha
-    await AuthService.updatePassword(user.email, newPassword);
-
     return NextResponse.json({
+      success: true,
       message: 'Senha atualizada com sucesso',
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro ao atualizar senha:', error);
     return NextResponse.json(
       { error: 'Erro interno do servidor' },

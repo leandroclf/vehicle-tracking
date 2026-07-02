@@ -61,13 +61,7 @@ export async function GET(request: NextRequest) {
     `;
     const settingsResult = await pool.query(settingsQuery, [userId]);
     const userSettings = settingsResult.rows[0];
-    const error = null;
-    
-    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows returned
-      console.error('Erro ao buscar preferências:', error);
-      return errorResponse('Erro ao buscar preferências', undefined, 500);
-    }
-    
+
     // Se não existirem preferências, retornar valores padrão
     const defaultPreferences = {
       theme: 'system',

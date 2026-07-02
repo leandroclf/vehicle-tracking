@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Usando auth-service mock temporariamente até resolver problema do PostgreSQL
 import { AuthService } from '@/lib/auth/auth-service';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as { email?: string; password?: string };
     const { email, password } = body;
 
     if (!email || !password) {
@@ -21,38 +20,34 @@ export async function POST(request: NextRequest) {
       token,
       message: 'Login realizado com sucesso',
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro no login:', error);
+    const message = error instanceof Error ? error.message : 'Erro interno do servidor';
     return NextResponse.json(
-      { error: error.message || 'Erro interno do servidor' },
-      { status: error.message === 'Credenciais inválidas' ? 401 : 500 }
+      { error: message || 'Erro interno do servidor' },
+      { status: message === 'Credenciais inválidas' ? 401 : 500 }
     );
   }
 }
 
 // Bloquear outros métodos
-export async function GET(request: NextRequest) {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+export async function GET() {
+  return methodNotAllowed();
 }
 
-export async function PUT(request: NextRequest) {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+export async function PUT() {
+  return methodNotAllowed();
 }
 
-export async function DELETE(request: NextRequest) {
-  return NextResponse.json(
-    { error: 'Method not allowed' },
-    { status: 405 }
-  );
+export async function DELETE() {
+  return methodNotAllowed();
 }
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH() {
+  return methodNotAllowed();
+}
+
+function methodNotAllowed() {
   return NextResponse.json(
     { error: 'Method not allowed' },
     { status: 405 }

@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
     const userId = authResult.user.id;
     
     // Buscar configurações de notificação existentes
-    // TODO: Implementar query SQL direta
     const pool = getDbPool();
     const settingsQuery = `
       SELECT notification_settings
@@ -35,13 +34,7 @@ export async function GET(request: NextRequest) {
     `;
     const settingsResult = await pool.query(settingsQuery, [userId]);
     const settings = settingsResult.rows[0];
-    const error = null;
-      
-    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows returned
-      console.error('Erro ao buscar configurações de notificação:', error);
-      return NextResponse.json({ error: 'Erro ao buscar configurações' }, { status: 500 });
-    }
-    
+
     // Se não encontrar configurações, retornar padrões
     const notificationSettings = settings?.notification_settings || {
       email_notifications: true,
@@ -81,7 +74,6 @@ export async function PUT(request: NextRequest) {
     const notificationSettings = validationResult.data;
     
     // Verificar se o usuário já tem configurações
-    // TODO: Implementar query SQL direta
     const pool = getDbPool();
     const checkQuery = `
       SELECT id
@@ -90,13 +82,7 @@ export async function PUT(request: NextRequest) {
     `;
     const checkResult = await pool.query(checkQuery, [userId]);
     const existingSettings = checkResult.rows[0];
-    const checkError = null;
-      
-    if (checkError) {
-      console.error('Erro ao verificar configurações existentes:', checkError);
-      return NextResponse.json({ error: 'Erro ao verificar configurações existentes' }, { status: 500 });
-    }
-    
+
     let result;
     
     // Se já existir, atualizar; caso contrário, inserir

@@ -1,4 +1,4 @@
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocketServer, WebSocket, RawData } from 'ws';
 import { IncomingMessage } from 'http';
 import { AuthService } from '../auth/auth-service';
 import { redis } from '../database';
@@ -29,7 +29,7 @@ export class RealtimeServer {
   private wss: WebSocketServer;
   private subscriber: Redis;
   private clients: Map<string, Set<AuthenticatedWebSocket>> = new Map();
-  private heartbeatInterval: NodeJS.Timeout;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor(port: number) {
     this.wss = new WebSocketServer({ port });
@@ -125,7 +125,7 @@ export class RealtimeServer {
     }, 30000); // 30 segundos
   }
 
-  private handleMessage(ws: AuthenticatedWebSocket, data: Buffer) {
+  private handleMessage(ws: AuthenticatedWebSocket, data: RawData) {
     try {
       const message: WebSocketMessage = JSON.parse(data.toString());
       
@@ -271,7 +271,10 @@ export class RealtimeServer {
   }
 
   public close() {
-    clearInterval(this.heartbeatInterval);
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
     this.subscriber.quit();
     this.wss.close();
     console.log('Servidor WebSocket fechado');

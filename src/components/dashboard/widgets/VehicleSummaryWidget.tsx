@@ -28,10 +28,10 @@ export default function VehicleSummaryWidget() {
   
   useEffect(() => {
     if (vehicles) {
-      const activeVehicles = vehicles.filter(v => v.status === 'online');
-      const movingVehicles = vehicles.filter(v => v.status === 'online' && v.isMoving);
-      const stoppedVehicles = vehicles.filter(v => v.status === 'online' && !v.isMoving);
-      const inactiveVehicles = vehicles.filter(v => v.status === 'offline');
+      const activeVehicles = vehicles.filter(v => v.connection_status === 'online');
+      const movingVehicles = vehicles.filter(v => v.connection_status === 'online' && v.is_moving);
+      const stoppedVehicles = vehicles.filter(v => v.connection_status === 'online' && !v.is_moving);
+      const inactiveVehicles = vehicles.filter(v => v.connection_status !== 'online');
       
       setStats({
         total: vehicles.length,

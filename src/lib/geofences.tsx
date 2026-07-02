@@ -21,6 +21,20 @@ export interface Geofence {
   updatedAt?: string;
 }
 
+// Shape da geocerca retornada pela API (/api/geofences)
+interface ApiGeofence {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'polygon' | 'circle';
+  radius?: number;
+  coordinates: string;
+  color?: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export function useGeofences() {
   const [geofences, setGeofences] = useState<Geofence[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,11 +59,11 @@ export function useGeofences() {
         throw new Error('Falha ao buscar geocercas');
       }
       
-      const data = await response.json();
-      
+      const data = await response.json() as { geofences?: ApiGeofence[] };
+
       if (data.geofences && data.geofences.length > 0) {
         // Transformar dados da API para o formato esperado
-        const formattedGeofences = data.geofences.map((geofence: any) => {
+        const formattedGeofences: Geofence[] = data.geofences.map((geofence) => {
           // Definir cores com base no ID
           const color = getGeofenceColor(geofence.id);
           const fillColor = color + '66'; // Adicionar transparência
@@ -244,7 +258,7 @@ export function useGeofences() {
         throw new Error('Falha ao verificar geocerca');
       }
       
-      const data = await response.json();
+      const data = await response.json() as { inside?: boolean };
       return data.inside === true;
     } catch (err) {
       console.error('Erro ao verificar geocerca:', err);

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Toast } from '@/components/ui/Toast';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
 
@@ -92,10 +92,10 @@ export const RealtimeNotifications: React.FC = () => {
           return;
         }
         
-        const data = await response.json();
+        const data = (await response.json()) as Notification[];
         
-        if (data && data.length > 0) {
-          setNotifications(data as Notification[]);
+        if (Array.isArray(data) && data.length > 0) {
+          setNotifications(data);
         }
       } catch (error) {
         console.error('Erro ao carregar notificações:', error);
@@ -142,22 +142,29 @@ export const RealtimeNotifications: React.FC = () => {
     }
   }, [router, markAsRead]);
   
-  // Renderizar toast de notificação
-  return (
-    <>
-      {showToast && currentNotification && (
-        <Toast
-          title={currentNotification.title}
-          message={currentNotification.message}
-          type={currentNotification.type === 'alert' ? 'error' : 
-                currentNotification.type === 'system' ? 'info' : 'info'}
-          onClose={() => setShowToast(false)}
-          onClick={() => handleNotificationClick(currentNotification)}
-          duration={5000}
-        />
-      )}
-    </>
-  );
+  // Exibir toast quando uma nova notificação chega
+  useEffect(() => {
+    if (!showToast || !currentNotification) return;
+
+    const notification = currentNotification;
+    const show = notification.type === 'alert' ? toast.error : toast.info;
+
+    show(notification.title, {
+      description: notification.message,
+      duration: 5000,
+      onDismiss: () => setShowToast(false),
+      action: {
+        label: 'Ver',
+        onClick: () => handleNotificationClick(notification),
+      },
+    });
+    setShowToast(false);
+  }, [showToast, currentNotification, handleNotificationClick]);
+
+  // As notificações carregadas ficam disponíveis para o sino de notificações
+  void notifications;
+
+  return null;
 };
 
 export default RealtimeNotifications;

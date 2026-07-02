@@ -7,8 +7,8 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role_id: string;
-  roles: { name: string }[] | { name: string };
+  role_id?: string;
+  roles?: { name: string }[] | { name: string };
 }
 
 interface Role {
@@ -30,14 +30,19 @@ const UsersAdminPage = () => {
       setLoading(true);
       setError(null);
       try {
+        const token = localStorage.getItem('auth_token');
+        const headers: Record<string, string> = token
+          ? { Authorization: `Bearer ${token}` }
+          : {};
         const [usersRes, rolesRes] = await Promise.all([
-          fetch('/api/users').then(r => r.json()),
-          fetch('/api/roles').then(r => r.json()),
+          fetch('/api/users', { headers }).then(r => r.json()),
+          fetch('/api/roles', { headers }).then(r => r.json()),
         ]);
-        if ((usersRes as any).error) throw new Error((usersRes as any).error);
-        if ((rolesRes as any).error) throw new Error((rolesRes as any).error);
-        setUsers(usersRes as User[]);
-        setRoles(rolesRes as Role[]);
+        if ((usersRes as { error?: string }).error) throw new Error((usersRes as { error: string }).error);
+        if ((rolesRes as { error?: string }).error) throw new Error((rolesRes as { error: string }).error);
+        const usersPayload = usersRes as { data?: User[] } | User[];
+        setUsers(Array.isArray(usersPayload) ? usersPayload : usersPayload.data ?? []);
+        setRoles(Array.isArray(rolesRes) ? (rolesRes as Role[]) : []);
       } catch (err: any) {
         setError(err.message || 'Erro ao carregar dados');
       } finally {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthService } from '@/lib/auth/auth-service-mock';
+import { AuthService } from '@/lib/auth/auth-service';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta

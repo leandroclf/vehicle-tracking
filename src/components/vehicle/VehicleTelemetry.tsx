@@ -15,11 +15,14 @@ export default function VehicleTelemetry({ vehicleId }: { vehicleId: number }) {
     );
   }
   
+  const batteryLevel = vehicle.battery_level ?? 0;
+  const satellites = vehicle.satellites ?? 0;
+
   // Definir ícones e cores para cada métrica
   const telemetryItems = [
     {
       title: 'Velocidade',
-      value: `${vehicle.speed} km/h`,
+      value: `${vehicle.speed ?? 0} km/h`,
       icon: '🏁',
       color: 'bg-blue-100 text-blue-700'
     },
@@ -31,41 +34,43 @@ export default function VehicleTelemetry({ vehicleId }: { vehicleId: number }) {
     },
     {
       title: 'Direção',
-      value: vehicle.direction || 'N/A',
+      value: vehicle.heading != null ? `${Math.round(vehicle.heading)}°` : 'N/A',
       icon: '🧭',
       color: 'bg-purple-100 text-purple-700'
     },
     {
       title: 'Bateria',
-      value: `${vehicle.battery}%`,
+      value: `${batteryLevel}%`,
       icon: '🔋',
-      color: vehicle.battery > 70 ? 'bg-green-100 text-green-700' : 
-             vehicle.battery > 30 ? 'bg-yellow-100 text-yellow-700' : 
+      color: batteryLevel > 70 ? 'bg-green-100 text-green-700' : 
+             batteryLevel > 30 ? 'bg-yellow-100 text-yellow-700' : 
              'bg-red-100 text-red-700'
     },
     {
       title: 'Satélites GPS',
-      value: `${vehicle.satellites}`,
+      value: `${satellites}`,
       icon: '📡',
-      color: vehicle.satellites > 6 ? 'bg-green-100 text-green-700' : 
-             vehicle.satellites > 3 ? 'bg-yellow-100 text-yellow-700' : 
+      color: satellites > 6 ? 'bg-green-100 text-green-700' : 
+             satellites > 3 ? 'bg-yellow-100 text-yellow-700' : 
              'bg-red-100 text-red-700'
     },
     {
       title: 'Última Atualização',
-      value: vehicle.lastUpdate,
+      value: vehicle.last_update ?? 'N/A',
       icon: '🕒',
       color: 'bg-gray-100 text-gray-700'
     },
     {
       title: 'Status',
-      value: vehicle.isMoving ? 'Em movimento' : 'Parado',
+      value: vehicle.is_moving ? 'Em movimento' : 'Parado',
       icon: '📊',
-      color: vehicle.isMoving ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+      color: vehicle.is_moving ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
     },
     {
       title: 'Coordenadas',
-      value: `${vehicle.location.lat.toFixed(6)}, ${vehicle.location.lng.toFixed(6)}`,
+      value: vehicle.last_position
+        ? `${vehicle.last_position.lat.toFixed(6)}, ${vehicle.last_position.lng.toFixed(6)}`
+        : 'N/A',
       icon: '📍',
       color: 'bg-indigo-100 text-indigo-700'
     }

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import Tabs, { TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs-fixed';
 import { Progress } from '@/components/ui/Progress';
-import { StatusBadge } from '@/components/ui/status-badge';
+import { Badge } from '@/components/ui/Badge';
 import { Calendar, AlertTriangle, CheckCircle, Clock, ArrowRight, Wrench } from 'lucide-react';
 
 interface MaintenanceItem {
@@ -200,7 +200,7 @@ export default function MaintenanceWidget() {
   };
 
   // Obter ícone e cor para status de manutenção
-  const getStatusInfo = (status: 'pending' | 'scheduled' | 'completed' | 'overdue') => {
+  const getStatusInfo = (status: 'pending' | 'scheduled' | 'completed' | 'overdue'): { icon: React.ReactNode; color: 'success' | 'info' | 'warning' | 'destructive' | 'default'; text: string } => {
     switch (status) {
       case 'completed':
         return { icon: <CheckCircle size={16} />, color: 'success', text: 'Concluído' };
@@ -209,7 +209,7 @@ export default function MaintenanceWidget() {
       case 'pending':
         return { icon: <Clock size={16} />, color: 'warning', text: 'Pendente' };
       case 'overdue':
-        return { icon: <AlertTriangle size={16} />, color: 'error', text: 'Atrasado' };
+        return { icon: <AlertTriangle size={16} />, color: 'destructive', text: 'Atrasado' };
       default:
         return { icon: <Clock size={16} />, color: 'default', text: 'Desconhecido' };
     }
@@ -323,12 +323,12 @@ export default function MaintenanceWidget() {
                               <div className="ml-3">
                                 <h5 className="font-medium text-gray-800 dark:text-gray-200">{item.description}</h5>
                                 <div className="flex items-center mt-1">
-                                  <StatusBadge variant={statusInfo.color as any}>
+                                  <Badge variant={statusInfo.color}>
                                     <span className="flex items-center">
                                       {statusInfo.icon}
                                       <span className="ml-1">{statusInfo.text}</span>
                                     </span>
-                                  </StatusBadge>
+                                  </Badge>
                                 </div>
                               </div>
                             </div>
@@ -358,12 +358,12 @@ export default function MaintenanceWidget() {
                           {getMaintenanceTypeIcon(item.type)}
                           <span className="ml-2">{item.description}</span>
                         </h5>
-                        <StatusBadge variant={statusInfo.color as any}>
+                        <Badge variant={statusInfo.color}>
                           <span className="flex items-center">
                             {statusInfo.icon}
                             <span className="ml-1">{statusInfo.text}</span>
                           </span>
-                        </StatusBadge>
+                        </Badge>
                       </div>
                       
                       <div className="mb-3">

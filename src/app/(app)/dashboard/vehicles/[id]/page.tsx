@@ -106,11 +106,13 @@ export default function VehicleDetailsPage() {
         </div>
         
         <div className="flex items-center space-x-2">
-          <Badge variant={vehicle.status === 'online' ? 'success' : 'default'}>
-            {vehicle.status === 'online' ? 'Online' : 'Offline'}
+          <Badge variant={vehicle.connection_status === 'online' ? 'success' : 'default'}>
+            {vehicle.connection_status === 'online' ? 'Online' : 'Offline'}
           </Badge>
           <span className="text-sm text-gray-500">
-            Última atualização: {vehicle.lastUpdate}
+            Última atualização: {vehicle.last_update
+              ? new Date(vehicle.last_update).toLocaleString('pt-BR')
+              : 'Sem dados'}
           </span>
         </div>
       </div>
@@ -127,21 +129,21 @@ export default function VehicleDetailsPage() {
         <Card>
           <div className="p-4">
             <div className="text-sm font-medium text-gray-500 mb-1">Modelo</div>
-            <div className="text-lg font-semibold">{vehicle.details?.model || 'N/A'}</div>
+            <div className="text-lg font-semibold">{vehicle.model || 'N/A'}</div>
           </div>
         </Card>
         
         <Card>
           <div className="p-4">
-            <div className="text-sm font-medium text-gray-500 mb-1">Fabricante</div>
-            <div className="text-lg font-semibold">{vehicle.details?.manufacturer || 'N/A'}</div>
+            <div className="text-sm font-medium text-gray-500 mb-1">Cor</div>
+            <div className="text-lg font-semibold">{vehicle.color || 'N/A'}</div>
           </div>
         </Card>
         
         <Card>
           <div className="p-4">
             <div className="text-sm font-medium text-gray-500 mb-1">Ano</div>
-            <div className="text-lg font-semibold">{vehicle.details?.year || 'N/A'}</div>
+            <div className="text-lg font-semibold">{vehicle.year || 'N/A'}</div>
           </div>
         </Card>
       </div>
@@ -211,8 +213,8 @@ export default function VehicleDetailsPage() {
                     <tr className="border-b">
                       <td className="py-2 text-sm font-medium text-gray-500">Status</td>
                       <td className="py-2 text-sm">
-                        <Badge variant={vehicle.status === 'online' ? 'success' : 'default'}>
-                          {vehicle.status === 'online' ? 'Online' : 'Offline'}
+                        <Badge variant={vehicle.connection_status === 'online' ? 'success' : 'default'}>
+                          {vehicle.connection_status === 'online' ? 'Online' : 'Offline'}
                         </Badge>
                       </td>
                     </tr>
@@ -227,8 +229,8 @@ export default function VehicleDetailsPage() {
                     <tr className="border-b">
                       <td className="py-2 text-sm font-medium text-gray-500">Movimento</td>
                       <td className="py-2 text-sm">
-                        <Badge variant={vehicle.isMoving ? 'success' : 'default'}>
-                          {vehicle.isMoving ? 'Em movimento' : 'Parado'}
+                        <Badge variant={vehicle.is_moving ? 'success' : 'default'}>
+                          {vehicle.is_moving ? 'Em movimento' : 'Parado'}
                         </Badge>
                       </td>
                     </tr>
@@ -241,28 +243,26 @@ export default function VehicleDetailsPage() {
                 <table className="w-full">
                   <tbody>
                     <tr className="border-b">
-                      <td className="py-2 text-sm font-medium text-gray-500">Fabricante</td>
-                      <td className="py-2 text-sm">{vehicle.details?.manufacturer || 'N/A'}</td>
-                    </tr>
-                    <tr className="border-b">
                       <td className="py-2 text-sm font-medium text-gray-500">Modelo</td>
-                      <td className="py-2 text-sm">{vehicle.details?.model || 'N/A'}</td>
+                      <td className="py-2 text-sm">{vehicle.model || 'N/A'}</td>
                     </tr>
                     <tr className="border-b">
                       <td className="py-2 text-sm font-medium text-gray-500">Ano</td>
-                      <td className="py-2 text-sm">{vehicle.details?.year || 'N/A'}</td>
+                      <td className="py-2 text-sm">{vehicle.year || 'N/A'}</td>
                     </tr>
                     <tr className="border-b">
                       <td className="py-2 text-sm font-medium text-gray-500">Cor</td>
-                      <td className="py-2 text-sm">{vehicle.details?.color || 'N/A'}</td>
+                      <td className="py-2 text-sm">{vehicle.color || 'N/A'}</td>
                     </tr>
                     <tr className="border-b">
-                      <td className="py-2 text-sm font-medium text-gray-500">VIN/IMEI</td>
-                      <td className="py-2 text-sm">{vehicle.details?.vin || 'N/A'}</td>
+                      <td className="py-2 text-sm font-medium text-gray-500">IMEI do dispositivo</td>
+                      <td className="py-2 text-sm">{vehicle.device_imei || 'N/A'}</td>
                     </tr>
                     <tr className="border-b">
                       <td className="py-2 text-sm font-medium text-gray-500">Última Manutenção</td>
-                      <td className="py-2 text-sm">{vehicle.details?.lastMaintenance || 'N/A'}</td>
+                      <td className="py-2 text-sm">{vehicle.device_last_maintenance
+                        ? new Date(vehicle.device_last_maintenance).toLocaleDateString('pt-BR')
+                        : 'N/A'}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -283,8 +283,8 @@ export default function VehicleDetailsPage() {
           <div className="p-6">
             <VehicleHistory 
               vehicleName={vehicle.name || vehicle.plate}
-              vehicleDetails={`${vehicle.details?.manufacturer || ''} ${vehicle.details?.model || ''} (${vehicle.plate})`}
-              vehicleImei={vehicle.details?.vin || 'N/A'}
+              vehicleDetails={`${vehicle.model || ''} (${vehicle.plate})`}
+              vehicleImei={vehicle.device_imei || 'N/A'}
             />
           </div>
         )}

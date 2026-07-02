@@ -42,11 +42,11 @@ export function useVehicleCommands(): UseVehicleCommandsReturn {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = (await response.json()) as { error?: string };
         throw new Error(errorData.error || 'Erro ao buscar comandos');
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { data?: VehicleCommand[] };
       setCommands(data.data || []);
 
     } catch (err) {
@@ -77,11 +77,11 @@ export function useVehicleCommands(): UseVehicleCommandsReturn {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = (await response.json()) as { error?: string };
         throw new Error(errorData.error || 'Erro ao criar comando');
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as { data: VehicleCommand };
       
       // Mostrar toast baseado no tipo de comando
       const commandLabels: Record<CommandType, string> = {
@@ -138,11 +138,11 @@ export function useVehicleCommands(): UseVehicleCommandsReturn {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = (await response.json()) as { error?: string };
         throw new Error(errorData.error || 'Erro ao confirmar comando');
       }
 
-      const data = await response.json();
+      await response.json();
       
       toast.success('Comando confirmado', {
         description: 'O comando foi confirmado e enviado para o dispositivo.'

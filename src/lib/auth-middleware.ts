@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthService, AuthUser } from '@/lib/auth/auth-service-mock';
+import { AuthService, AuthUser } from '@/lib/auth/auth-service';
 
 interface AuthResult {
   user: { id: string; email: string; name: string } | null;

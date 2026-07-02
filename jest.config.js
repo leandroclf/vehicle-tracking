@@ -9,8 +9,7 @@ module.exports = {
     transform: {
         '^.+\\.tsx?$': ['ts-jest', {
             tsconfig: 'tsconfig.jest.json',
-            diagnostics: false,
-            isolatedModules: true
+            diagnostics: false
         }],
     },
 };

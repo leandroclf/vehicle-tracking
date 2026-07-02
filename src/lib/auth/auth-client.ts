@@ -17,6 +17,20 @@ export interface AuthResponse {
   token: string;
 }
 
+interface ApiErrorBody {
+  error?: string;
+  message?: string;
+}
+
+async function extractErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = (await response.json()) as ApiErrorBody;
+    return body.error || body.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /**
  * Serviço de autenticação para o lado cliente
  * Faz chamadas para as APIs de autenticação
@@ -37,11 +51,10 @@ export class AuthClientService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Erro ao fazer login');
+      throw new Error(await extractErrorMessage(response, 'Erro ao fazer login'));
     }
 
-    return response.json();
+    return (await response.json()) as AuthResponse;
   }
 
   /**
@@ -57,11 +70,10 @@ export class AuthClientService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Erro ao criar conta');
+      throw new Error(await extractErrorMessage(response, 'Erro ao criar conta'));
     }
 
-    return response.json();
+    return (await response.json()) as AuthResponse;
   }
 
   /**
@@ -78,7 +90,7 @@ export class AuthClientService {
       throw new Error('Token inválido');
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as { user: AuthUser };
     return data.user;
   }
 
@@ -95,8 +107,7 @@ export class AuthClientService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Erro ao solicitar reset de senha');
+      throw new Error(await extractErrorMessage(response, 'Erro ao solicitar reset de senha'));
     }
   }
 
@@ -114,8 +125,7 @@ export class AuthClientService {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Erro ao atualizar senha');
+      throw new Error(await extractErrorMessage(response, 'Erro ao atualizar senha'));
     }
   }
 }

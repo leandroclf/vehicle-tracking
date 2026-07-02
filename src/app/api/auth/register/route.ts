@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-// Usando auth-service mock temporariamente até resolver problema do PostgreSQL
 import { AuthService } from '@/lib/auth/auth-service';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as {
+      email?: string;
+      password?: string;
+      name?: string;
+      phone?: string;
+    };
     const { email, password, name, phone } = body;
     console.log('Register attempt:', { email, name, phone }); // Debug log
 
@@ -27,11 +31,12 @@ export async function POST(request: NextRequest) {
       token,
       user,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Erro durante o registro:', error);
+    const message = error instanceof Error ? error.message : 'Erro interno do servidor';
     return NextResponse.json(
-      { error: error.message || 'Erro interno do servidor' },
-      { status: error.message.includes('já existe') ? 409 : 500 }
+      { error: message || 'Erro interno do servidor' },
+      { status: message.includes('já existe') ? 409 : 500 }
     );
   }
 }

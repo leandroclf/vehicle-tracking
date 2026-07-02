@@ -1,8 +1,20 @@
-import { useState } from 'react';
+import { useState, ReactNode } from 'react';
 import { useVehicles } from '@/lib/vehicles-client';
 import { motion } from 'framer-motion';
-import { Tooltip } from '@/components/ui/Tooltip';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/Tooltip';
 import { AlertTriangle, Power, VolumeX, Lightbulb } from 'lucide-react';
+
+// Wrapper local com a API declarativa usada pelos botões de comando
+function CommandTooltip({ content, children }: { content: string; children: ReactNode }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent>{content}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 // Componente para enviar comandos para veículos
 export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
@@ -28,7 +40,7 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
     
     try {
       // Determinar qual comando enviar com base no estado atual
-      const command = vehicle.ignition ? 'block' : 'unblock';
+      const command = vehicle.ignition ? 'block_engine' : 'unblock_engine';
       const commandName = vehicle.ignition ? 'bloqueio' : 'desbloqueio';
       
       // Enviar comando
@@ -133,7 +145,7 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
       
       {/* Lista de comandos disponíveis */}
       <div className="grid grid-cols-3 gap-4">
-        <Tooltip content={vehicle.ignition ? "Bloquear motor do veículo" : "Desbloquear motor do veículo"}>
+        <CommandTooltip content={vehicle.ignition ? "Bloquear motor do veículo" : "Desbloquear motor do veículo"}>
           <motion.button
             className={`flex flex-col items-center p-4 rounded-md transition-all duration-200 ${
               vehicle.ignition 
@@ -148,9 +160,9 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
             <Power className="w-6 h-6 mb-2" />
             <span className="text-sm font-medium">{vehicle.ignition ? 'Bloquear' : 'Desbloquear'}</span>
           </motion.button>
-        </Tooltip>
+        </CommandTooltip>
         
-        <Tooltip content="Ativar sirene do veículo por 30 segundos">
+        <CommandTooltip content="Ativar sirene do veículo por 30 segundos">
           <motion.button
             className={`flex flex-col items-center p-4 rounded-md bg-yellow-50 hover:bg-yellow-100 text-yellow-700 transition-all duration-200 border border-yellow-200 ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
             onClick={handleSirenCommand}
@@ -161,9 +173,9 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
             <VolumeX className="w-6 h-6 mb-2" />
             <span className="text-sm font-medium">Sirene</span>
           </motion.button>
-        </Tooltip>
+        </CommandTooltip>
         
-        <Tooltip content="Piscar faróis do veículo por 30 segundos">
+        <CommandTooltip content="Piscar faróis do veículo por 30 segundos">
           <motion.button
             className={`flex flex-col items-center p-4 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all duration-200 border border-blue-200 ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
             onClick={handleLightsCommand}
@@ -174,7 +186,7 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
             <Lightbulb className="w-6 h-6 mb-2" />
             <span className="text-sm font-medium">Faróis</span>
           </motion.button>
-        </Tooltip>
+        </CommandTooltip>
       </div>
       
       {/* Indicador de processamento */}

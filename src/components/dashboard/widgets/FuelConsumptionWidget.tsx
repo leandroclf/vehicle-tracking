@@ -8,6 +8,13 @@ import { Button } from '@/components/ui/Button';
 import { DataTable, DataTableColumn } from '@/components/ui/data-table';
 import { Droplet, TrendingDown, TrendingUp, BarChart3, Calendar, Fuel } from 'lucide-react';
 
+interface FuelHistoryRow {
+  date: string;
+  consumption: number;
+  distance: number;
+  fuelAmount: number;
+}
+
 interface FuelConsumptionData {
   vehicleId: string;
   vehicleName: string;
@@ -17,12 +24,7 @@ interface FuelConsumptionData {
   totalFuel: number; // litros
   efficiency: number; // percentual de eficiência (0-100)
   trend: 'up' | 'down' | 'stable';
-  history: {
-    date: string;
-    consumption: number;
-    distance: number;
-    fuelAmount: number;
-  }[];
+  history: FuelHistoryRow[];
   fuelCost: number; // custo por litro
   totalCost: number; // custo total
   estimatedSavings: number; // economia estimada
@@ -424,9 +426,9 @@ export default function FuelConsumptionWidget() {
                     data={getFilteredHistory()}
                     columns={[
                       {
-                        header: 'Data',
-                        accessorKey: 'date',
-                        cell: (row) => (
+                        key: 'date',
+                        title: 'Data',
+                        render: (_value, row: FuelHistoryRow) => (
                           <div className="flex items-center">
                             <Calendar className="h-3 w-3 text-muted-foreground mr-1" />
                             {formatDate(row.date)}
@@ -434,26 +436,26 @@ export default function FuelConsumptionWidget() {
                         ),
                       },
                       {
-                        header: 'Distância',
-                        accessorKey: 'distance',
-                        cell: (row) => `${row.distance.toFixed(1)} km`,
+                        key: 'distance',
+                        title: 'Distância',
+                        render: (_value, row: FuelHistoryRow) => `${row.distance.toFixed(1)} km`,
                       },
                       {
-                        header: 'Combustível',
-                        accessorKey: 'fuelAmount',
-                        cell: (row) => `${row.fuelAmount.toFixed(2)} L`,
+                        key: 'fuelAmount',
+                        title: 'Combustível',
+                        render: (_value, row: FuelHistoryRow) => `${row.fuelAmount.toFixed(2)} L`,
                       },
                       {
-                        header: 'Consumo',
-                        accessorKey: 'consumption',
-                        cell: (row) => (
+                        key: 'consumption',
+                        title: 'Consumo',
+                        render: (_value, row: FuelHistoryRow) => (
                           <span className={row.consumption > selectedVehicleData.averageConsumption ? 'text-green-600 dark:text-green-400 font-medium' : 'text-red-600 dark:text-red-400 font-medium'}>
                             {row.consumption.toFixed(1)} km/l
                           </span>
                         ),
                       },
-                    ] as DataTableColumn<any>[]}
-                    emptyState="Nenhum dado de histórico encontrado para o período selecionado"
+                    ] satisfies DataTableColumn<FuelHistoryRow>[]}
+                    emptyMessage="Nenhum dado de histórico encontrado para o período selecionado"
                     data-testid="fuel-consumption-history-table"
                   />
                 </div>

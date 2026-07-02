@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Tooltip } from '@/components/ui/Tooltip';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/Tooltip';
 import { useSidebar } from '@/lib/sidebar-context';
 import { useAuth } from '@/lib/auth';
 import { 
@@ -129,7 +129,7 @@ export default function Sidebar({ className = '' }: SidebarProps) {
       emoji: '👤'
     },
     // Adicionar item de administração de usuários apenas para administradores
-    ...(user?.role === 'Administrador' ? [{
+    ...(user?.role === 'admin' ? [{
       name: 'Usuários',
       href: '/dashboard/users',
       icon: <PanelTop className="w-6 h-6" />,
@@ -270,7 +270,9 @@ export default function Sidebar({ className = '' }: SidebarProps) {
               {navItems.map((item) => (
                 <li key={item.name} className={isMobile ? 'text-center' : ''}>
                   {isSidebarCollapsed && !isMobile ? (
-                    <Tooltip content={item.name}>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                       <Link
                         href={item.href}
                         className={cn(
@@ -291,7 +293,10 @@ export default function Sidebar({ className = '' }: SidebarProps) {
                           )}
                         </div>
                       </Link>
-                    </Tooltip>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">{item.name}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   ) : (
                     <Link
                       href={item.href}

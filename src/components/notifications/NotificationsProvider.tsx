@@ -173,7 +173,9 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
 
         // Buscar alertas não lidos da API
         const alertsResponse = await fetch(`/api/alerts?userId=${user.id}&read=false`);
-        const alertsData = alertsResponse.ok ? await alertsResponse.json() : [];
+        const alertsData = alertsResponse.ok
+          ? ((await alertsResponse.json()) as Array<Record<string, unknown>>)
+          : [];
 
         // Converter alertas para o formato de notificação
         const alertNotifications = alertsData?.map((alert: any) => ({

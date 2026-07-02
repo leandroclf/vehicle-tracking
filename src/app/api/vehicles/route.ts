@@ -33,6 +33,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { user } = authResult;
+    if (!user) {
+      throw new ApiError(401, 'Token de autenticação necessário');
+    }
 
     // Extrair e validar parâmetros de consulta
     const url = new URL(request.url);
@@ -52,8 +55,12 @@ export async function GET(request: NextRequest) {
       sort
     });
 
-    // Retornar resultados
-    return NextResponse.json(result);
+    // Retornar resultados no shape consumido pelos clientes reais
+    // (vehicles-client e a tela de relatórios leem `vehicles`)
+    return NextResponse.json({
+      vehicles: result.data,
+      pagination: result.pagination
+    });
   } catch (error) {
     return handleApiError(error);
   }
@@ -68,6 +75,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { user } = authResult;
+    if (!user) {
+      throw new ApiError(401, 'Token de autenticação necessário');
+    }
 
     // Extrair e validar dados do corpo da requisição
     const body = await request.json();
@@ -96,6 +106,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const { user } = authResult;
+    if (!user) {
+      throw new ApiError(401, 'Token de autenticação necessário');
+    }
 
     // Extrair e validar corpo da requisição
     const body = await request.json() as { id: string;[key: string]: unknown };
@@ -128,6 +141,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { user } = authResult;
+    if (!user) {
+      throw new ApiError(401, 'Token de autenticação necessário');
+    }
 
     const url = new URL(request.url);
     const id = url.searchParams.get('id');

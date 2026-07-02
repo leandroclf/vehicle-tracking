@@ -128,7 +128,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
         const query = searchQuery.toLowerCase();
 
         // Resultados simulados
-        const vehicleResults: SearchResult[] = [
+        const vehicleResults: SearchResult[] = ([
           {
             id: 'v1',
             type: 'vehicle',
@@ -147,12 +147,12 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
             icon: <Truck className="h-4 w-4" />,
             lastUpdated: 'Atualizado há 10 minutos'
           }
-        ].filter(item => 
+        ] as SearchResult[]).filter(item => 
           item.title.toLowerCase().includes(query) || 
           (item.description?.toLowerCase().includes(query) ?? false)
         );
 
-        const geofenceResults: SearchResult[] = [
+        const geofenceResults: SearchResult[] = ([
           {
             id: 'g1',
             type: 'geofence',
@@ -169,12 +169,12 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
             path: '/dashboard/geofences/g2',
             icon: <MapPin className="h-4 w-4" />
           }
-        ].filter(item => 
+        ] as SearchResult[]).filter(item => 
           item.title.toLowerCase().includes(query) || 
           (item.description?.toLowerCase().includes(query) ?? false)
         );
 
-        const alertResults: SearchResult[] = [
+        const alertResults: SearchResult[] = ([
           {
             id: 'a1',
             type: 'alert',
@@ -184,12 +184,12 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
             icon: <Bell className="h-4 w-4" />,
             lastUpdated: 'Criado há 2 horas'
           }
-        ].filter(item => 
+        ] as SearchResult[]).filter(item => 
           item.title.toLowerCase().includes(query) || 
           (item.description?.toLowerCase().includes(query) ?? false)
         );
 
-        const reportResults: SearchResult[] = [
+        const reportResults: SearchResult[] = ([
           {
             id: 'r1',
             type: 'report',
@@ -199,7 +199,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
             icon: <Clock className="h-4 w-4" />,
             lastUpdated: 'Gerado há 5 dias'
           }
-        ].filter(item => 
+        ] as SearchResult[]).filter(item => 
           item.title.toLowerCase().includes(query) || 
           (item.description?.toLowerCase().includes(query) ?? false)
         );

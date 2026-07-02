@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { getDbPool } from '@/lib/database';
+import { db } from '@/lib/database';
+import { vehicles, trips, alerts } from '@/lib/schema';
+import { and, eq, gte, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
@@ -15,19 +17,19 @@ export async function GET(request: NextRequest) {
     if (!authResult.user) {
       return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
     }
-    
+
     const userId = authResult.user.id;
-    
+
     // Extrair e validar parâmetros de consulta
     const url = new URL(request.url);
     const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
-    
+
     if (!queryResult.success) {
       return NextResponse.json({ error: 'Parâmetros de consulta inválidos', details: queryResult.error.format() }, { status: 400 });
     }
-    
+
     const { period } = queryResult.data;
-    
+
     // Obter data de início com base no período
     const startDate = new Date();
     if (period === 'today') {
@@ -37,85 +39,46 @@ export async function GET(request: NextRequest) {
     } else if (period === 'month') {
       startDate.setMonth(startDate.getMonth() - 1);
     }
-    
-    const startDateISO = startDate.toISOString();
-    
-    // Consultar contagem total de veículos
-    // TODO: Implementar query SQL direta
-    const vehicles = null;
-    const vehiclesError = null;
-    const vehicleCount = 0;
-    // const { data: vehicles, error: vehiclesError, count: vehicleCount } = await pool.query
-    //   .from('vehicles')
-    //   .select('*', { count: 'exact' })
-    //   .eq('user_id', userId);
-      
-    if (vehiclesError) {
-      console.error('Erro ao buscar veículos:', vehiclesError);
-      return NextResponse.json({ error: 'Erro ao buscar estatísticas de veículos' }, { status: 500 });
-    }
-    
-    // Consultar veículos ativos (com posição atualizada recentemente)
-    // TODO: Implementar query SQL direta
-    const activeVehicles = null;
-    const activeError = null;
-    const activeCount = 0;
-    // const { data: activeVehicles, error: activeError, count: activeCount } = await pool.query
-    //   .from('vehicles')
-    //   .select('*', { count: 'exact' })
-    //   .eq('user_id', userId)
-    //   .eq('status', 'active')
-    //   .gt('updated_at', startDateISO);
-      
-    if (activeError) {
-      console.error('Erro ao buscar veículos ativos:', activeError);
-      return NextResponse.json({ error: 'Erro ao buscar estatísticas de veículos ativos' }, { status: 500 });
-    }
-    
-    // Consultar alertas no período
-    // TODO: Implementar query SQL direta
-    const alerts = null;
-    const alertsError = null;
-    const alertsCount = 0;
-    // const { data: alerts, error: alertsError, count: alertsCount } = await pool.query
-    //   .from('alerts')
-    //   .select('*', { count: 'exact' })
-    //   .eq('user_id', userId)
-    //   .gt('created_at', startDateISO);
-      
-    if (alertsError) {
-      console.error('Erro ao buscar alertas:', alertsError);
-      return NextResponse.json({ error: 'Erro ao buscar estatísticas de alertas' }, { status: 500 });
-    }
-    
-    // Calcular estatísticas de distância percorrida
-    // Primeiro, obter os IDs de todos os veículos
-    const vehicleIds = vehicles?.map(v => v.id) || [];
-    
-    // Inicializar distância total
+
+    // Consultar veículos do usuário
+    const userVehicles = await db
+      .select({ id: vehicles.id, status: vehicles.status })
+      .from(vehicles)
+      .where(eq(vehicles.userId, userId));
+
+    const vehicleCount = userVehicles.length;
+    const activeCount = userVehicles.filter(v => v.status === 'active').length;
+    const vehicleIds = userVehicles.map(v => v.id);
+
+    // Inicializar estatísticas agregadas
     let totalDistance = 0;
     let fuelConsumption = 0;
-    
-    // Se houver veículos, buscar estatísticas de viagens
+    let alertsCount = 0;
+
+    // Se houver veículos, buscar estatísticas de alertas e viagens
     if (vehicleIds.length > 0) {
-      // TODO: Implementar query SQL direta
-      const trips = null;
-      const tripsError = null;
-      // await pool.query(...)
-      //   .from('trips')
-      //   .select('distance, fuel_used')
-      //   .in('vehicle_id', vehicleIds)
-      //   .gt('end_time', startDateISO);
-        
-      if (tripsError) {
-        console.error('Erro ao buscar viagens:', tripsError);
-      } else if (trips) {
-        // Somar distâncias e consumo de combustível
-        totalDistance = trips.reduce((sum, trip) => sum + (trip.distance || 0), 0);
-        fuelConsumption = trips.reduce((sum, trip) => sum + (trip.fuel_used || 0), 0);
-      }
+      const periodAlerts = await db
+        .select({ id: alerts.id })
+        .from(alerts)
+        .where(and(
+          inArray(alerts.vehicleId, vehicleIds),
+          gte(alerts.createdAt, startDate)
+        ));
+      alertsCount = periodAlerts.length;
+
+      const periodTrips = await db
+        .select({ distance: trips.distance, fuelConsumed: trips.fuelConsumed })
+        .from(trips)
+        .where(and(
+          inArray(trips.vehicleId, vehicleIds),
+          gte(trips.endTime, startDate)
+        ));
+
+      // Somar distâncias e consumo de combustível
+      totalDistance = periodTrips.reduce((sum, trip) => sum + (trip.distance || 0), 0);
+      fuelConsumption = periodTrips.reduce((sum, trip) => sum + (trip.fuelConsumed || 0), 0);
     }
-    
+
     // Retornar estatísticas combinadas
     return NextResponse.json({
       vehicle_count: vehicleCount || 0,
@@ -125,7 +88,7 @@ export async function GET(request: NextRequest) {
       fuel_consumption: parseFloat(fuelConsumption.toFixed(2)),
       period
     });
-    
+
   } catch (error) {
     console.error('Erro ao buscar estatísticas do dashboard:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });

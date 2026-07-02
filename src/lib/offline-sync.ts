@@ -75,6 +75,8 @@ export class OfflineSyncManager {
   private syncQueue: SyncQueueItem[] = [];
   private db: IDBDatabase | null = null;
   private isOnline: boolean = navigator.onLine;
+  private syncInProgress: boolean = false;
+  private lastSyncError: string | null = null;
   private syncIntervals: Record<SyncableEntity, NodeJS.Timeout | null> = {
     vehicles: null,
     drivers: null,
@@ -269,11 +271,11 @@ export class OfflineSyncManager {
         throw new Error(`Erro HTTP: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await response.json() as Array<Record<string, unknown>> | null;
 
       // Atualizar cache local
       await this.updateLocalCache(entity, data || []);
-      
+
       console.log(`Sincronização de ${entity} concluída: ${data?.length || 0} registros`);
     } catch (error) {
       console.error(`Erro ao sincronizar ${entity}:`, error);
@@ -321,45 +323,53 @@ export class OfflineSyncManager {
   private async processSyncQueue(): Promise<void> {
     if (!this.isOnline || this.syncQueue.length === 0) return;
 
+    this.syncInProgress = true;
+    this.lastSyncError = null;
+
     // Ordenar fila por timestamp (mais antigos primeiro)
     this.syncQueue.sort((a, b) => {
       return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
     });
 
-    // Processar cada item da fila
-    for (const item of this.syncQueue) {
-      if (item.status === 'processing') continue;
+    try {
+      // Processar cada item da fila
+      for (const item of this.syncQueue) {
+        if (item.status === 'processing') continue;
 
-      item.status = 'processing';
-      await this.saveSyncQueue();
-
-      try {
-        await this.processSyncItem(item);
-        
-        // Remover item da fila após processamento bem-sucedido
-        this.syncQueue = this.syncQueue.filter(i => i.id !== item.id);
+        item.status = 'processing';
         await this.saveSyncQueue();
-      } catch (error) {
-        console.error(`Erro ao processar item de sincronização:`, error);
-        
-        item.status = 'failed';
-        item.error = error instanceof Error 
-          ? error.message 
-          : typeof error === 'string' 
-            ? error 
-            : 'Erro desconhecido';
-        item.retryCount += 1;
-        
-        const config = entityConfigs[item.entity];
-        if (item.retryCount >= config.maxRetries) {
-          // Remover item após exceder número máximo de tentativas
+
+        try {
+          await this.processSyncItem(item);
+
+          // Remover item da fila após processamento bem-sucedido
           this.syncQueue = this.syncQueue.filter(i => i.id !== item.id);
-        } else {
-          item.status = 'pending';
+          await this.saveSyncQueue();
+        } catch (error) {
+          console.error(`Erro ao processar item de sincronização:`, error);
+
+          item.status = 'failed';
+          item.error = error instanceof Error
+            ? error.message
+            : typeof error === 'string'
+              ? error
+              : 'Erro desconhecido';
+          item.retryCount += 1;
+          this.lastSyncError = item.error;
+
+          const config = entityConfigs[item.entity];
+          if (item.retryCount >= config.maxRetries) {
+            // Remover item após exceder número máximo de tentativas
+            this.syncQueue = this.syncQueue.filter(i => i.id !== item.id);
+          } else {
+            item.status = 'pending';
+          }
+
+          await this.saveSyncQueue();
         }
-        
-        await this.saveSyncQueue();
       }
+    } finally {
+      this.syncInProgress = false;
     }
   }
 
@@ -466,6 +476,27 @@ export class OfflineSyncManager {
   }
 
   /**
+   * Retorna a quantidade de itens pendentes na fila de sincronização
+   */
+  public getPendingCount(): number {
+    return this.syncQueue.length;
+  }
+
+  /**
+   * Indica se há uma sincronização em andamento
+   */
+  public isSyncInProgress(): boolean {
+    return this.syncInProgress;
+  }
+
+  /**
+   * Retorna o último erro de sincronização (ou null)
+   */
+  public getLastSyncError(): string | null {
+    return this.lastSyncError;
+  }
+
+  /**
    * Força a sincronização de todas as entidades
    */
   public async forceSyncAll(): Promise<void> {
@@ -492,7 +523,10 @@ export function useOfflineSync() {
         addToSyncQueue: async () => '',
         getLocalData: async () => [],
         hasPendingSyncItems: () => false,
-        forceSyncAll: async () => {}
+        forceSyncAll: async () => {},
+        getPendingCount: () => 0,
+        isSyncInProgress: () => false,
+        getLastSyncError: () => null
       };
     }
     
@@ -532,6 +566,21 @@ export function useOfflineSync() {
      */
     forceSyncAll: () => {
       return manager.forceSyncAll();
-    }
+    },
+
+    /**
+     * Indica se há uma sincronização em andamento
+     */
+    isSyncing: manager.isSyncInProgress(),
+
+    /**
+     * Quantidade de alterações pendentes na fila de sincronização
+     */
+    pendingChanges: manager.getPendingCount(),
+
+    /**
+     * Último erro de sincronização registrado (ou null)
+     */
+    syncError: manager.getLastSyncError()
   };
 }

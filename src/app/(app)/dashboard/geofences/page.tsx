@@ -196,7 +196,7 @@ export default function GeofencesPage() {
                                 Editar
                               </Button>
                               <Button 
-                                variant="danger" 
+                                variant="destructive" 
                                 size="sm" 
                                 leftIcon={<Trash2 size={16} />}
                                 onClick={() => handleDeleteGeofence(geofence.id)}

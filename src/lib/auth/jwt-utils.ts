@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { User } from '@/types/auth';
 import { getJwtExpiresIn, getJwtSecret } from '@/lib/env';
 
@@ -17,7 +17,7 @@ export function createJWT(user: Omit<User, 'password'>): string {
   };
 
   return jwt.sign(payload, getJwtSecret(), {
-    expiresIn: getJwtExpiresIn(),
+    expiresIn: getJwtExpiresIn() as SignOptions['expiresIn'],
     issuer: 'yukz-vehicle-tracking',
     audience: 'yukz-users',
   });
@@ -33,7 +33,7 @@ export function verifyToken(token: string): Omit<User, 'password'> | null {
     const decoded = jwt.verify(token, getJwtSecret(), {
       issuer: 'yukz-vehicle-tracking',
       audience: 'yukz-users',
-    }) as any;
+    }) as { id: string; email: string; name: string; phone?: string; role?: string };
 
     return {
       id: decoded.id,
@@ -67,7 +67,7 @@ export function extractTokenFromHeader(authHeader: string | null): string | null
  */
 export function isTokenExpired(token: string): boolean {
   try {
-    const decoded = jwt.decode(token) as any;
+    const decoded = jwt.decode(token) as { exp?: number } | null;
     if (!decoded || !decoded.exp) {
       return true;
     }
@@ -87,7 +87,7 @@ export function isTokenExpired(token: string): boolean {
  */
 export function refreshTokenIfNeeded(token: string, user: Omit<User, 'password'>): string {
   try {
-    const decoded = jwt.decode(token) as any;
+    const decoded = jwt.decode(token) as { exp?: number } | null;
     if (!decoded || !decoded.exp) {
       return createJWT(user);
     }
