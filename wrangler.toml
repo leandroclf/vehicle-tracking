@@ -26,6 +26,6 @@ database_id = "YOUR_PRODUCTION_DATABASE_ID_HERE" # <-- IMPORTANT: Replace this p
 
 # Production Environment Variables
 [env.production.vars]
-JWT_SECRET = "b410e2870e669fe6fe77062b6bcbb6b41ba94fe9987e0fe239277a730cd5be90"
+# Configure secrets with: wrangler secret put JWT_SECRET --env production
 ENVIRONMENT = "production"
 
