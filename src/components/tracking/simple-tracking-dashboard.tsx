@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
-import { ScrollArea } from '@/components/ui/ScrollArea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Car,
   MapPin,

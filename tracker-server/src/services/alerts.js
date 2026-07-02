@@ -57,6 +57,19 @@ class AlertsService {
 
             const result = await db.query(query, values);
             console.log(`Alerta criado: ${alertData.title} para veículo ${vehicleId}`);
+
+            // Alimentar notificações do dono do veículo (post-baseline-hardening 4.2)
+            try {
+                await db.query(
+                    `INSERT INTO notifications (user_id, type, title, message, link)
+                     SELECT v.user_id, $2, $3, $4, '/dashboard/alerts'
+                     FROM vehicles v WHERE v.id = $1`,
+                    [vehicleId, alertData.severity === 'critical' ? 'alert' : 'warning', alertData.title, alertData.message]
+                );
+            } catch (notifyError) {
+                console.error('Erro ao criar notificação do alerta:', notifyError);
+            }
+
             return result.rows[0];
 
         } catch (error) {

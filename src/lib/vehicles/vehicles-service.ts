@@ -1,4 +1,5 @@
 import { db } from '../database';
+import { ApiError } from '../api-error';
 import { vehicles, vehicleStatus } from '../schema';
 import { eq, and, count, ilike, or, inArray, SQL } from 'drizzle-orm';
 
@@ -109,7 +110,7 @@ export class VehiclesService {
         });
 
         if (!vehicle) {
-            throw new Error('Veículo não encontrado');
+            throw new ApiError(404, 'Veículo não encontrado');
         }
 
         return vehicle;
@@ -122,7 +123,7 @@ export class VehiclesService {
         });
 
         if (existingPlate) {
-            throw new Error('Já existe um veículo com esta placa');
+            throw new ApiError(409, 'Já existe um veículo com esta placa');
         }
 
         // Verificar se IMEI já existe (se fornecido)
@@ -132,7 +133,7 @@ export class VehiclesService {
             });
 
             if (existingImei) {
-                throw new Error('Já existe um veículo com este IMEI');
+                throw new ApiError(409, 'Já existe um veículo com este IMEI');
             }
         }
 
@@ -172,7 +173,7 @@ export class VehiclesService {
         });
 
         if (!vehicle) {
-            throw new Error('Veículo não encontrado');
+            throw new ApiError(404, 'Veículo não encontrado');
         }
 
         // Atualizar dados
@@ -204,7 +205,7 @@ export class VehiclesService {
         });
 
         if (!vehicle) {
-            throw new Error('Veículo não encontrado');
+            throw new ApiError(404, 'Veículo não encontrado');
         }
 
         // Deletar veículo (cascade vai deletar status, trips, etc)

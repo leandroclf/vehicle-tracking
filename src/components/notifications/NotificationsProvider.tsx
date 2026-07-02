@@ -62,7 +62,7 @@ interface NotificationsProviderProps {
 
 export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const userIdRef = useRef<string | null>(null);
   
   // Atualizar ref quando o user mudar
@@ -167,12 +167,14 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
 
     const fetchNotifications = async () => {
       try {
+        const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
         // Buscar notificações da API
-        const notificationsResponse = await fetch(`/api/notifications?userId=${user.id}`);
+        const notificationsResponse = await fetch('/api/notifications', { headers: authHeaders });
         const notificationsData = notificationsResponse.ok ? await notificationsResponse.json() : [];
 
         // Buscar alertas não lidos da API
-        const alertsResponse = await fetch(`/api/alerts?userId=${user.id}&read=false`);
+        const alertsResponse = await fetch(`/api/alerts?read=false`, { headers: authHeaders });
         const alertsData = alertsResponse.ok
           ? ((await alertsResponse.json()) as Array<Record<string, unknown>>)
           : [];
@@ -201,7 +203,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     };
 
     fetchNotifications();
-  }, [user]);
+  }, [user, token]);
 
   // Marcar uma notificação como lida
   const markAsRead = useCallback(async (id: string) => {
@@ -218,6 +220,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ id, read: true }),
       });
@@ -233,29 +236,30 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     } catch (error) {
       console.error('Erro ao marcar notificação como lida:', error);
     }
-  }, [notifications]);
+  }, [notifications, token]);
 
   // Marcar todas as notificações como lidas
   const markAllAsRead = useCallback(async () => {
     try {
       if (!userIdRef.current) return;
 
+      const authHeaders: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+
       // Marcar todos os alertas como lidos
       const alertsResponse = await fetch('/api/alerts/read-all', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
         body: JSON.stringify({ userId: userIdRef.current }),
       });
 
-      // Marcar todas as notificações como lidas
-      const notificationsResponse = await fetch('/api/notifications/read-all', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId: userIdRef.current }),
+      // Marcar todas as notificações como lidas (PATCH sem ids = todas)
+      const notificationsResponse = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: authHeaders,
+        body: JSON.stringify({ read: true }),
       });
 
       if (!alertsResponse.ok || !notificationsResponse.ok) {
@@ -269,7 +273,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
     } catch (error) {
       console.error('Erro ao marcar todas notificações como lidas:', error);
     }
-  }, []);
+  }, [token]);
 
   // Adicionar uma nova notificação manualmente
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {

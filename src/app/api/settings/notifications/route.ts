@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     // Buscar configurações de notificação existentes
     const pool = getDbPool();
     const settingsQuery = `
-      SELECT notification_settings
+      SELECT notifications
       FROM user_settings
       WHERE user_id = $1
     `;
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const settings = settingsResult.rows[0];
 
     // Se não encontrar configurações, retornar padrões
-    const notificationSettings = settings?.notification_settings || {
+    const notificationSettings = settings?.notifications || {
       email_notifications: true,
       push_notifications: true,
       sms_notifications: false,
@@ -76,7 +76,7 @@ export async function PUT(request: NextRequest) {
     // Verificar se o usuário já tem configurações
     const pool = getDbPool();
     const checkQuery = `
-      SELECT id
+      SELECT user_id
       FROM user_settings
       WHERE user_id = $1
     `;
@@ -90,9 +90,9 @@ export async function PUT(request: NextRequest) {
       // Atualizar configurações existentes
       const updateQuery = `
         UPDATE user_settings
-        SET notification_settings = $1, updated_at = $2
+        SET notifications = $1, updated_at = $2
         WHERE user_id = $3
-        RETURNING notification_settings
+        RETURNING notifications
       `;
       const updateResult = await pool.query(updateQuery, [
         JSON.stringify(notificationSettings),
@@ -104,14 +104,13 @@ export async function PUT(request: NextRequest) {
       // Inserir novas configurações
       const insertQuery = `
         INSERT INTO user_settings (
-          user_id, notification_settings, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4)
-        RETURNING notification_settings
+          user_id, notifications, updated_at
+        ) VALUES ($1, $2, $3)
+        RETURNING notifications
       `;
       const insertResult = await pool.query(insertQuery, [
         userId,
         JSON.stringify(notificationSettings),
-        new Date().toISOString(),
         new Date().toISOString()
       ]);
       result = { data: insertResult.rows[0], error: null };
@@ -126,7 +125,7 @@ export async function PUT(request: NextRequest) {
     // Retornar configurações atualizadas
     return NextResponse.json({ 
       settings: { 
-        notifications: result.data.notification_settings 
+        notifications: result.data.notifications 
       },
       message: 'Configurações de notificação atualizadas com sucesso'
     });

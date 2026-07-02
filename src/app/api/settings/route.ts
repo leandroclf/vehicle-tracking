@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { getDbPool } from '@/lib/database';
+import { db } from '@/lib/database';
+import { userSettings } from '@/lib/schema';
+import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
-// Esquema para validar dados de configurações
+// Esquema para validar dados de configurações gerais (persistidas em
+// user_settings.preferences, mescladas às existentes)
 const settingsSchema = z.object({
   company_name: z.string().optional().nullable(),
   notification_email: z.string().email('Email inválido').optional().nullable(),
@@ -23,151 +26,83 @@ const settingsSchema = z.object({
   auto_refresh: z.number().int().min(0).optional()
 });
 
-// Handler para obter configurações do usuário (GET)
+/**
+ * GET /api/settings
+ * Agregador das configurações persistidas do usuário
+ * (preferences + notifications de user_settings).
+ */
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
+      return NextResponse.json(
+        { error: authResult.error || 'Não autorizado' },
+        { status: authResult.status || 401 }
+      );
     }
-    
-    const userId = authResult.user.id;
-    
-    // Buscar configurações do usuário
-    // TODO: Implementar query SQL direta
-    const pool = getDbPool();
-    const settingsQuery = `
-      SELECT *
-      FROM settings
-      WHERE user_id = $1
-    `;
-    const settingsResult = await pool.query(settingsQuery, [userId]);
-    const settings = settingsResult.rows[0];
-    const error = null;
-    
-    if (error) {
-      console.error('Erro ao buscar configurações:', error);
-      return NextResponse.json({ error: 'Erro ao buscar configurações' }, { status: 500 });
-    }
-    
-    // Se não existirem configurações, retornar valores padrão
-    if (!settings) {
-      const defaultSettings = {
-        company_name: 'Minha Empresa',
-        notification_email: null,
-        notification_sms: false,
-        notification_push: true,
-        language: 'pt-BR',
-        timezone: 'America/Sao_Paulo',
-        distance_unit: 'km',
-        speed_unit: 'kmh',
-        fuel_unit: 'liter',
-        temperature_unit: 'C',
-        map_type: 'roadmap',
-        default_view: 'map',
-        show_traffic: true,
-        alert_sound: true,
-        dark_mode: false,
-        auto_refresh: 30
-      };
-      
-      return NextResponse.json(defaultSettings);
-    }
-    
-    // Retornar configurações encontradas
-    return NextResponse.json(settings);
+
+    const [row] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, authResult.user.id))
+      .limit(1);
+
+    return NextResponse.json({
+      preferences: row?.preferences ?? {},
+      notifications: row?.notifications ?? {},
+      updated_at: row?.updatedAt ?? null,
+    });
   } catch (error) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }
 
-// Handler para atualizar configurações (PUT)
+/**
+ * PUT /api/settings
+ * Mescla configurações gerais em user_settings.preferences (upsert).
+ */
 export async function PUT(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
+      return NextResponse.json(
+        { error: authResult.error || 'Não autorizado' },
+        { status: authResult.status || 401 }
+      );
     }
-    
-    const userId = authResult.user.id;
-    
-    // Extrair e validar corpo da requisição
+
     const body = await request.json();
     const settingsResult = settingsSchema.safeParse(body);
-    
+
     if (!settingsResult.success) {
-      return NextResponse.json({ error: 'Dados inválidos', details: settingsResult.error.format() }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Dados inválidos', details: settingsResult.error.format() },
+        { status: 400 }
+      );
     }
-    
-    const settingsData = settingsResult.data;
-    
-    // Verificar se já existem configurações para o usuário
-    // TODO: Implementar query SQL direta
-    const pool = getDbPool();
-    const checkQuery = `
-      SELECT id
-      FROM settings
-      WHERE user_id = $1
-    `;
-    const checkResult = await pool.query(checkQuery, [userId]);
-    const existingSettings = checkResult.rows[0];
-    const checkError = null;
-    
-    if (checkError) {
-      console.error('Erro ao verificar configurações existentes:', checkError);
-      return NextResponse.json({ error: 'Erro ao verificar configurações existentes' }, { status: 500 });
-    }
-    
-    let result;
-    
-    if (existingSettings) {
-      // Atualizar configurações existentes
-      // TODO: Implementar query SQL direta
-      const updateQuery = `
-        UPDATE settings
-        SET ${Object.keys(settingsData).map((key, index) => `${key} = $${index + 2}`).join(', ')}
-        WHERE id = $1
-        RETURNING *
-      `;
-      const updateResult = await pool.query(updateQuery, [
-        existingSettings.id,
-        ...Object.values(settingsData)
-      ]);
-      const updatedSettings = updateResult.rows[0];
-      const updateError = null;
-      
-      if (updateError) {
-        console.error('Erro ao atualizar configurações:', updateError);
-        return NextResponse.json({ error: 'Erro ao atualizar configurações' }, { status: 500 });
-      }
-      
-      result = updatedSettings;
-    } else {
-      // Criar novas configurações
-      // TODO: Implementar query SQL direta
-      const insertData = { ...settingsData, user_id: userId };
-      const insertQuery = `
-        INSERT INTO settings (${Object.keys(insertData).join(', ')})
-        VALUES (${Object.keys(insertData).map((_, index) => `$${index + 1}`).join(', ')})
-        RETURNING *
-      `;
-      const insertResult = await pool.query(insertQuery, Object.values(insertData));
-      const newSettings = insertResult.rows[0];
-      const insertError = null;
-      
-      if (insertError) {
-        console.error('Erro ao criar configurações:', insertError);
-        return NextResponse.json({ error: 'Erro ao criar configurações' }, { status: 500 });
-      }
-      
-      result = newSettings;
-    }
-    
-    // Retornar configurações atualizadas/criadas
-    return NextResponse.json(result);
+
+    const [row] = await db
+      .insert(userSettings)
+      .values({
+        userId: authResult.user.id,
+        preferences: settingsResult.data,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: userSettings.userId,
+        set: {
+          // Mescla jsonb: preferências existentes + novas
+          preferences: sql`${userSettings.preferences} || ${JSON.stringify(settingsResult.data)}::jsonb`,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return NextResponse.json({
+      preferences: row.preferences,
+      message: 'Configurações atualizadas com sucesso',
+    });
   } catch (error) {
     console.error('Erro ao processar requisição:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });

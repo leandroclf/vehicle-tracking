@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/Tooltip';
+import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { useSidebar } from '@/lib/sidebar-context';
 import { useAuth } from '@/lib/auth';
 import { 
@@ -270,9 +270,7 @@ export default function Sidebar({ className = '' }: SidebarProps) {
               {navItems.map((item) => (
                 <li key={item.name} className={isMobile ? 'text-center' : ''}>
                   {isSidebarCollapsed && !isMobile ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
+                    <SimpleTooltip content={item.name} side="right">
                       <Link
                         href={item.href}
                         className={cn(
@@ -293,10 +291,7 @@ export default function Sidebar({ className = '' }: SidebarProps) {
                           )}
                         </div>
                       </Link>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">{item.name}</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    </SimpleTooltip>
                   ) : (
                     <Link
                       href={item.href}

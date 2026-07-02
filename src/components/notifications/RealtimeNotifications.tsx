@@ -23,7 +23,7 @@ export const RealtimeNotifications: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [currentNotification, setCurrentNotification] = useState<Notification | null>(null);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const notificationsTableExistsRef = useRef(false);
   
   // Verificar se a tabela de notificações existe
@@ -85,7 +85,9 @@ export const RealtimeNotifications: React.FC = () => {
     
     const loadNotifications = async () => {
       try {
-        const response = await fetch(`/api/notifications?userId=${user.id}&read=false&limit=5`);
+        const response = await fetch('/api/notifications?read=false&limit=5', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         
         if (!response.ok) {
           console.error('Erro ao carregar notificações:', response.statusText);
@@ -103,7 +105,7 @@ export const RealtimeNotifications: React.FC = () => {
     };
     
     loadNotifications();
-  }, [user]);
+  }, [user, token]);
   
   // Função para marcar notificação como lida
   const markAsRead = useCallback(async (id: string) => {
@@ -114,6 +116,7 @@ export const RealtimeNotifications: React.FC = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ id, read: true }),
       });
@@ -129,7 +132,7 @@ export const RealtimeNotifications: React.FC = () => {
     } catch (error) {
       console.error('Erro ao marcar notificação como lida:', error);
     }
-  }, []);
+  }, [token]);
   
   // Função para navegar para a página relacionada à notificação
   const handleNotificationClick = useCallback((notification: Notification) => {

@@ -4,6 +4,7 @@ const net = require("net");
 const winston = require('winston');
 const DatabaseService = require('./src/services/database');
 const AlertsService = require('./src/services/alerts');
+const { CommandDispatcher } = require('./src/services/commands');
 const { decodeTeltonikaCodec8, createTeltonikaResponse } = require("./teltonika-decoder");
 const { decodeQueclinkData, createQueclinkResponse } = require("./queclink-decoder");
 const { decodeConcoxData, createConcoxResponse } = require("./concox-decoder");
@@ -33,6 +34,20 @@ const db = DatabaseService.getInstance();
 
 // Armazenar conexões
 const tcpConnections = new Map(); // socket -> { imei: string | null, protocol: string | null }
+
+// Despachante de comandos remotos (feature flag; ver src/services/commands.js)
+const commandDispatcher = new CommandDispatcher(
+  { db, tcpConnections, logger },
+  {
+    pollIntervalMs: parseInt(process.env.COMMANDS_POLL_INTERVAL_MS || '5000', 10),
+    timeoutMs: parseInt(process.env.COMMANDS_TIMEOUT_MS || '60000', 10),
+  }
+);
+if (process.env.COMMANDS_DISPATCH_ENABLED === 'true') {
+  commandDispatcher.start();
+} else {
+  logger.info('Despachante de comandos desativado (COMMANDS_DISPATCH_ENABLED != true)');
+}
 
 // Função para atualizar o status do veículo no banco
 async function updateVehicleStatusInDatabase(imei, record) {
@@ -169,7 +184,14 @@ async function processData(data, connectionInfo, sendResponse) {
       sendResponse(response);
     }
   }
-  // ... outros tipos de pacotes (heartbeat, command_response) podem ser adicionados aqui
+  else if (decodedData.type === "command_response") {
+    const imei = connectionInfo?.imei;
+    logger.info(`Resposta de comando recebida de ${imei || 'IMEI desconhecido'}`);
+    if (imei) {
+      await commandDispatcher.handleDeviceResponse(imei, decodedData);
+    }
+  }
+  // ... outros tipos de pacotes (heartbeat) podem ser adicionados aqui
 }
 
 // Função auxiliar para criar servidores TCP

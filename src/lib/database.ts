@@ -4,12 +4,24 @@ import * as schema from './schema';
 import Redis from 'ioredis';
 
 // Pool de conexões PostgreSQL
+// TLS: em produção a conexão verifica o certificado do servidor.
+// Forneça a CA via DATABASE_CA_CERT (conteúdo PEM) ou desative TLS
+// explicitamente com DATABASE_SSL=disable (ex.: rede privada).
+function resolveSsl(): false | { rejectUnauthorized: true; ca?: string } {
+  if (process.env.DATABASE_SSL === 'disable') return false;
+  if (process.env.NODE_ENV !== 'production') return false;
+  return {
+    rejectUnauthorized: true,
+    ca: process.env.DATABASE_CA_CERT || undefined,
+  };
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: resolveSsl(),
 });
 
 // Exportar o pool para compatibilidade
