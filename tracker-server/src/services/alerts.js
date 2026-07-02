@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const DatabaseService = require('./database');
 
 class AlertsService {

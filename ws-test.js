@@ -1,4 +1,5 @@
-﻿const WebSocket = require("ws");
+﻿/* eslint-disable @typescript-eslint/no-require-imports */
+const WebSocket = require("ws");
 const ws = new WebSocket("ws://localhost:3002/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9");
 
 ws.on("open", function open() {

@@ -3,7 +3,7 @@ import { getDbPool } from '@/lib/database';
 import { verifyAuth } from '@/lib/auth-middleware';
 
 // PUT /api/users/[id]/role
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await verifyAuth(request);
   if (!auth.user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
 
@@ -46,7 +46,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     WHERE id = $2
     RETURNING id, role_id
   `;
-  const updateResult = await pool.query(updateQuery, [role_id, params.id]);
+  const { id } = await params;
+  const updateResult = await pool.query(updateQuery, [role_id, id]);
   const data = updateResult.rows[0];
   const error = null;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

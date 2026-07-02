@@ -149,6 +149,12 @@ module.exports = {
         "@typescript-eslint/no-explicit-any": "error",
         "prefer-const": "error"
       }
+    },
+    {
+      files: ["**/*.js", "server.js", "websocket-standalone.js", "ws-test.js", "scripts/**/*.js", "tracker-server/**/*.js"],
+      rules: {
+        "@typescript-eslint/no-require-imports": "off"
+      }
     }
   ]
 };

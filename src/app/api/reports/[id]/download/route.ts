@@ -37,7 +37,7 @@ function generateCsvContent(data: any[], fields: string[]): string {
 // Handler para fazer download de relatório
 export async function GET(
   request: NextRequest,
-  { params }: { params: Params }
+  { params }: { params: Promise<Params> }
 ) {
   try {
     // Verificar autenticação do usuário
@@ -47,7 +47,7 @@ export async function GET(
     }
     
     const userId = authResult.user.id;
-    const reportId = params.id;
+    const { id: reportId } = await params;
     
     // Extrair formato de download dos parâmetros da consulta
     const url = new URL(request.url);

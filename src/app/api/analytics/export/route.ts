@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { exportId: string } }
+  { params }: { params: Promise<{ exportId: string }> }
 ) {
   try {
     // TODO: Implementar autenticação JWT
@@ -105,7 +105,7 @@ export async function GET(
       );
     }
 
-    const { exportId } = params;
+    const { exportId } = await params;
 
     // Verificar se o export existe e pertence ao usuário
     // TODO: Implementar query SQL direta

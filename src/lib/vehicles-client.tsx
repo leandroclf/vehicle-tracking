@@ -69,6 +69,8 @@ export interface VehicleTrip {
 interface VehicleContextType {
   vehicles: Vehicle[];
   loading: boolean;
+  isLoading: boolean;
+  error: string | null;
   selectedVehicle: Vehicle | null;
   setSelectedVehicle: (vehicle: Vehicle | null) => void;
   refreshVehicles: () => Promise<void>;
@@ -82,6 +84,7 @@ export function VehicleProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
   const refreshVehicles = useCallback(async () => {
@@ -104,8 +107,10 @@ export function VehicleProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
       setVehicles(data.vehicles || []);
+      setError(null);
     } catch (error: any) {
       console.error('Erro ao carregar veículos:', error);
+      setError(error.message || 'Erro ao carregar veículos');
       toast.error(error.message || 'Erro ao carregar veículos');
     } finally {
       setLoading(false);
@@ -178,6 +183,8 @@ export function VehicleProvider({ children }: { children: ReactNode }) {
   const value: VehicleContextType = {
     vehicles,
     loading,
+    isLoading: loading,
+    error,
     selectedVehicle,
     setSelectedVehicle,
     refreshVehicles,

@@ -22,6 +22,7 @@ export function applyRadixComposeRefsPatch() {
       composeRefs: composeRefs,
       useComposedRefs: function useComposedRefs<T>(...refs: (React.Ref<T> | undefined)[]) {
         // eslint-disable-next-line react-hooks/rules-of-hooks
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         return React.useCallback(composeRefs(...refs), refs);
       }
     };

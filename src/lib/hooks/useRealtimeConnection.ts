@@ -109,7 +109,7 @@ export function useRealtimeConnection<T>(
         managerRef.current = null;
       }
     };
-  }, [wsUrl]);
+  }, [wsUrl]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // Função para assinar um canal
   const subscribe = useCallback(async (
@@ -244,7 +244,7 @@ export function useRealtimeSubscription<T>(
         });
       }
     };
-  }, [subscribe, unsubscribe, config.entity, config.event, config.filter, config.filterValue, stableCallback]);
+  }, [subscribe, unsubscribe, config.entity, config.event, config.filter, config.filterValue, stableCallback]); // eslint-disable-line react-hooks/exhaustive-deps
   
   return {
     connectionState,
