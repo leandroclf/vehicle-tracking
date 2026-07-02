@@ -4,6 +4,9 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { AuthUser, AuthClientService } from './auth-client';
 import { socialAuthService } from './social-auth-service';
 import { toast } from 'sonner';
+import type { LinkedSocialAccount } from '@/types/social-auth';
+
+type SocialProviderId = 'google' | 'facebook' | 'apple';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -15,9 +18,21 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => void;
   socialLogin: (provider: string, accessToken: string, idToken?: string) => Promise<void>;
+  getLinkedAccounts: () => Promise<LinkedSocialAccount[]>;
+  linkSocialAccount: (provider: string, accessToken: string, idToken?: string) => Promise<void>;
+  unlinkSocialAccount: (provider: string) => Promise<void>;
   updateProfile: (updates: { name?: string; phone?: string }) => Promise<void>;
   updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   refreshUser: () => Promise<void>;
+}
+
+async function extractErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: string; message?: string };
+    return body.error || body.message || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -131,6 +146,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const getLinkedAccounts = async (): Promise<LinkedSocialAccount[]> => {
+    if (!user) return [];
+    return socialAuthService.getLinkedAccounts(user.id);
+  };
+
+  const linkSocialAccount = async (provider: string, accessToken: string, idToken?: string) => {
+    if (!user) throw new Error('Usuário não autenticado');
+    await socialAuthService.linkAccount(user.id, {
+      provider: provider as SocialProviderId,
+      accessToken,
+      idToken,
+    });
+  };
+
+  const unlinkSocialAccount = async (provider: string) => {
+    if (!user) throw new Error('Usuário não autenticado');
+    await socialAuthService.unlinkAccount(user.id, provider);
+  };
+
   const updateProfile = async (updates: { name?: string; phone?: string }) => {
     if (!user) throw new Error('Usuário não autenticado');
 
@@ -148,8 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao atualizar perfil');
+        throw new Error(await extractErrorMessage(response, 'Erro ao atualizar perfil'));
       }
 
       // Atualizar estado local
@@ -178,8 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao atualizar senha');
+        throw new Error(await extractErrorMessage(response, 'Erro ao atualizar senha'));
       }
 
       toast.success('Senha atualizada com sucesso!');
@@ -214,6 +246,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     socialLogin,
+    getLinkedAccounts,
+    linkSocialAccount,
+    unlinkSocialAccount,
     updateProfile,
     updatePassword,
     refreshUser,

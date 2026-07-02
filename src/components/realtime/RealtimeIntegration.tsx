@@ -9,7 +9,8 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useRealtimeContext, ConnectionState } from '@/lib/providers/RealtimeProvider';
+import { useRealtimeContext } from '@/lib/providers/RealtimeProvider';
+import type { ConnectionState } from '@/lib/realtime-connection-manager';
 import { useOfflineSync } from '@/lib/offline-sync';
 import { Alert } from '../ui/Alert';
 import { Skeleton } from '../ui/skeleton';
@@ -55,8 +56,7 @@ export default function RealtimeIntegration({ children }: { children: React.Reac
           if (!offlineSyncError && !realtimeContextError) errorMessage = 'Conectando ao sistema em tempo real...';
           break;
         case 'DISCONNECTED':
-        case 'SUSPENDED':
-        case 'ERROR':
+        case 'FAILED':
           newStatus = 'offline';
           if (!errorMessage) errorMessage = 'Conexão em tempo real perdida. Verifique sua conexão.';
           break;
@@ -89,7 +89,7 @@ export default function RealtimeIntegration({ children }: { children: React.Reac
   return (
     <>
       {currentError && syncStatus !== 'online' && (
-        <Alert variant={syncStatus === 'offline' || realtimeContextError || offlineSyncError ? "error" : "warning"} title="Status da Conexão" className="mb-4">
+        <Alert variant={syncStatus === 'offline' || realtimeContextError || offlineSyncError ? "destructive" : "warning"} title="Status da Conexão" className="mb-4">
           {currentError}
         </Alert>
       )}

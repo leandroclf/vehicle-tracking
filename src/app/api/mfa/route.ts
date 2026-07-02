@@ -22,7 +22,8 @@ const verifyMFASchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyAuth(request);
+    const authResult = await verifyAuth(request);
+    const user = authResult.user;
     if (!user) {
       return NextResponse.json(
         { error: 'Não autorizado' },
@@ -50,7 +51,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyAuth(request);
+    const authResult = await verifyAuth(request);
+    const user = authResult.user;
     if (!user) {
       return NextResponse.json(
         { error: 'Não autorizado' },
@@ -135,7 +137,8 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await verifyAuth(request);
+    const authResult = await verifyAuth(request);
+    const user = authResult.user;
     if (!user) {
       return NextResponse.json(
         { error: 'Não autorizado' },
@@ -156,7 +159,7 @@ export async function DELETE(request: NextRequest) {
       throw new Error('Erro ao buscar perfil do usuário');
     }
 
-    const profile = await profileResponse.json();
+    const profile = (await profileResponse.json()) as { role?: string } | null;
 
     if (profile?.role === 'admin') {
       return NextResponse.json(

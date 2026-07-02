@@ -3,14 +3,21 @@ import { z } from 'zod';
 import { requireAuth } from '@/lib/auth/auth-middleware';
 import { db } from '@/lib/database';
 import { alerts, vehicles } from '@/lib/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 
 // Esquema para marcar alertas como lidos
 const markReadSchema = z.object({
   alertIds: z.array(z.number().int().positive()).min(1, "Pelo menos um ID de alerta é necessário"),
 });
 
-
+// Subconsulta com os veículos do usuário (alerts não tem userId; o escopo é
+// feito via join com vehicles.userId)
+function userVehicleIdsSubquery(userId: string) {
+  return db
+    .select({ id: vehicles.id })
+    .from(vehicles)
+    .where(eq(vehicles.userId, userId));
+}
 
 // Handler para listar alertas (GET)
 export async function GET(request: NextRequest) {
@@ -20,7 +27,10 @@ export async function GET(request: NextRequest) {
     if (authResult instanceof NextResponse) {
       return authResult;
     }
-    const { user } = authResult;
+    const user = authResult.user;
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
 
     // Buscar alertas do usuário com join para obter nome do veículo
     const alertsData = await db
@@ -29,16 +39,16 @@ export async function GET(request: NextRequest) {
         type: alerts.type,
         message: alerts.message,
         severity: alerts.severity,
-        timestamp: alerts.timestamp,
-        read: alerts.read,
+        timestamp: alerts.createdAt,
+        read: alerts.isRead,
         vehicleId: alerts.vehicleId,
-        userId: alerts.userId,
+        userId: vehicles.userId,
         vehicleName: vehicles.name,
       })
       .from(alerts)
-      .leftJoin(vehicles, eq(alerts.vehicleId, vehicles.id))
-      .where(eq(alerts.userId, user.id))
-      .orderBy(desc(alerts.timestamp));
+      .innerJoin(vehicles, eq(alerts.vehicleId, vehicles.id))
+      .where(eq(vehicles.userId, user.id))
+      .orderBy(desc(alerts.createdAt));
 
     return NextResponse.json(alertsData, { status: 200 });
 
@@ -56,7 +66,10 @@ export async function PATCH(request: NextRequest) {
     if (authResult instanceof NextResponse) {
       return authResult;
     }
-    const { user } = authResult;
+    const user = authResult.user;
+    if (!user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
 
     // Obter e validar os IDs dos alertas a serem marcados como lidos
     const body = await request.json();
@@ -69,10 +82,10 @@ export async function PATCH(request: NextRequest) {
     // Atualizar o status 'read' dos alertas especificados para o usuário
     await db
       .update(alerts)
-      .set({ read: true })
+      .set({ isRead: true })
       .where(
         and(
-          eq(alerts.userId, user.id),
+          inArray(alerts.vehicleId, userVehicleIdsSubquery(user.id)),
           // Usar inArray para múltiplos IDs
           eq(alerts.id, alertIds[0]) // Simplificado para um ID por vez
         )
@@ -94,24 +107,26 @@ export async function PUT(request: NextRequest) {
       if (authResult instanceof NextResponse) {
         return authResult;
       }
-      const { user } = authResult;
-      
+      const user = authResult.user;
+      if (!user) {
+        return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+      }
+
       // Atualizar o status 'read' de TODOS os alertas do usuário
       await db
         .update(alerts)
-        .set({ read: true })
+        .set({ isRead: true })
         .where(
           and(
-            eq(alerts.userId, user.id),
-            eq(alerts.read, false)
+            inArray(alerts.vehicleId, userVehicleIdsSubquery(user.id)),
+            eq(alerts.isRead, false)
           )
         );
-  
+
       return NextResponse.json({ message: `Todos os alertas foram marcados como lidos` }, { status: 200 });
-  
+
     } catch (error) {
       console.error('Erro ao marcar todos os alertas como lidos:', error);
       return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
     }
   }
-

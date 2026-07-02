@@ -7,13 +7,13 @@ import { z } from 'zod';
 
 // Esquema para validação do comando
 const commandSchema = z.object({
-  vehicleId: z.string().uuid(),
+  vehicleId: z.coerce.number().int().positive(),
   type: z.enum(['block_engine', 'unblock_engine', 'siren', 'lights']),
 });
 
 // Esquema para validação de parâmetros de histórico
 const historyQuerySchema = z.object({
-  vehicleId: z.string().uuid(),
+  vehicleId: z.coerce.number().int().positive(),
   limit: z.string().transform(Number).optional().default('10'),
   offset: z.string().transform(Number).optional().default('0'),
 });
@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
       return authResult;
     }
     const { user } = authResult;
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Token de autenticação necessário' },
+        { status: 401 }
+      );
+    }
     
     // Obter e validar dados do corpo da requisição
     const body = await request.json();
@@ -65,6 +71,7 @@ export async function POST(request: NextRequest) {
       .insert(commands)
       .values({
         vehicleId,
+        userId: user.id,
         type,
         status: 'pending',
         sentAt: new Date(),
@@ -122,6 +129,12 @@ export async function GET(request: NextRequest) {
       return authResult;
     }
     const { user } = authResult;
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Token de autenticação necessário' },
+        { status: 401 }
+      );
+    }
     
     // Obter parâmetros da URL
     const { searchParams } = new URL(request.url);

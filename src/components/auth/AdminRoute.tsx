@@ -8,7 +8,7 @@ export default function AdminRoute({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || user?.role !== 'Administrador')) {
+    if (!isLoading && (!isAuthenticated || user?.role !== 'admin')) {
       // Redireciona para dashboard ou exibe mensagem
       router.replace('/dashboard');
     }
@@ -22,7 +22,7 @@ export default function AdminRoute({ children }: { children: React.ReactNode }) 
     );
   }
 
-  if (!isAuthenticated || user?.role !== 'Administrador') {
+  if (!isAuthenticated || user?.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="bg-red-700 text-white p-4 rounded shadow">

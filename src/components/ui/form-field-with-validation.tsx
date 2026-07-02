@@ -1,5 +1,4 @@
-﻿import { forwardRef } from "react";
-import {
+﻿import {
   FormControl,
   FormDescription,
   FormField,
@@ -59,10 +58,10 @@ export interface FormFieldWithValidationProps<
   "data-testid"?: string;
 }
 
-const FormFieldWithValidation = forwardRef<
-  HTMLInputElement,
-  FormFieldWithValidationProps
->((
+function FormFieldWithValidation<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+>(
   {
     control,
     name,
@@ -78,9 +77,8 @@ const FormFieldWithValidation = forwardRef<
     className,
     inputClassName,
     "data-testid": testId,
-  },
-  ref
-) => {
+  }: FormFieldWithValidationProps<TFieldValues, TName>
+) {
   const config = validationConfig[validationState];
   const Icon = config.icon;
   
@@ -130,7 +128,6 @@ const FormFieldWithValidation = forwardRef<
                   />
                 ) : (
                   <Input
-                    ref={ref}
                     type={type}
                     placeholder={placeholder}
                     disabled={disabled}
@@ -201,8 +198,6 @@ const FormFieldWithValidation = forwardRef<
       }}
     />
   );
-});
-
-FormFieldWithValidation.displayName = "FormFieldWithValidation";
+}
 
 export { FormFieldWithValidation };

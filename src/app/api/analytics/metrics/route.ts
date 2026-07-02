@@ -5,41 +5,33 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth/auth-middleware';
-import { db } from '@/lib/database';
-import { vehicles, gpsPositions, alerts } from '@/lib/schema';
-import { eq, and, gte, lte, count } from 'drizzle-orm';
-import { cookies } from 'next/headers';
 import { analyticsService } from '@/lib/analytics/analytics-service';
 import { z } from 'zod';
+import type {
+  FleetMetrics,
+  UsageMetrics,
+  SecurityMetrics,
+  AnalyticsInsight
+} from '@/types/analytics';
 
-// Schema de validação para filtros
+// Schema de validação para filtros (alinhado a DashboardConfig['filters'])
 const filtersSchema = z.object({
   dateRange: z.object({
-    start: z.string().optional(),
-    end: z.string().optional()
-  }).optional(),
-  vehicleIds: z.array(z.string()).optional(),
-  driverIds: z.array(z.string()).optional(),
-  regions: z.array(z.string()).optional()
+    start: z.string(),
+    end: z.string(),
+    preset: z.enum(['today', 'week', 'month', 'quarter', 'year']).optional()
+  }),
+  vehicles: z.array(z.string()).default([]),
+  drivers: z.array(z.string()).default([]),
+  routes: z.array(z.string()).default([])
 });
 
-// Schema para configuração de dashboard
-const dashboardConfigSchema = z.object({
-  layout: z.array(z.object({
-    id: z.string(),
-    type: z.string(),
-    position: z.object({
-      x: z.number(),
-      y: z.number(),
-      w: z.number(),
-      h: z.number()
-    }),
-    config: z.record(z.any()).optional()
-  })),
-  filters: filtersSchema.optional(),
-  refreshInterval: z.number().optional(),
-  theme: z.enum(['light', 'dark']).optional()
-});
+interface MetricsPayload {
+  fleet?: FleetMetrics;
+  usage?: UsageMetrics;
+  security?: SecurityMetrics;
+  insights?: AnalyticsInsight[];
+}
 
 /**
  * GET /api/analytics/metrics
@@ -52,18 +44,24 @@ export async function GET(request: NextRequest) {
       return authResult;
     }
 
-    const { user } = authResult;
+    const user = authResult.user;
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'all';
 
     // Parse filters se fornecidos
-    let filters;
+    let filters: z.infer<typeof filtersSchema> | undefined;
     const filtersParam = searchParams.get('filters');
     if (filtersParam) {
       try {
         filters = filtersSchema.parse(JSON.parse(filtersParam));
-      } catch (error) {
+      } catch {
         return NextResponse.json(
           { success: false, error: 'Filtros inválidos' },
           { status: 400 }
@@ -71,7 +69,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const metrics: any = {};
+    const metrics: MetricsPayload = {};
 
     // Buscar métricas baseadas no tipo solicitado
     if (type === 'all' || type === 'fleet') {
@@ -117,9 +115,15 @@ export async function POST(request: NextRequest) {
       return authResult;
     }
 
-    const { user } = authResult;
+    const user = authResult.user;
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Não autorizado' },
+        { status: 401 }
+      );
+    }
 
-    const body = await request.json();
+    const body = await request.json() as { thresholds?: unknown };
     const thresholdsSchema = z.record(z.number());
 
     const thresholds = thresholdsSchema.parse(body.thresholds || {});

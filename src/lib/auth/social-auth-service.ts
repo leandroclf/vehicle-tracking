@@ -1,5 +1,35 @@
-import { getDbPool } from '@/lib/database';
-import { SocialLoginRequest, SocialSignupRequest, SocialAuthResponse, SocialAuthError } from '@/types/social-auth';
+import {
+  SocialLoginRequest,
+  SocialSignupRequest,
+  SocialAuthResponse,
+  SocialAuthError,
+  LinkedSocialAccount,
+} from '@/types/social-auth';
+
+// Formato da resposta simulada do provedor (legado Supabase)
+interface ProviderAuthResponse {
+  data: {
+    user: {
+      id: string;
+      email?: string;
+      user_metadata?: {
+        name?: string;
+        full_name?: string;
+        avatar_url?: string;
+      };
+      identities?: Array<{
+        identity_data?: {
+          sub?: string;
+        };
+      }>;
+    } | null;
+    session: {
+      access_token: string;
+      refresh_token?: string;
+    } | null;
+  };
+  error: { message: string } | null;
+}
 
 /**
  * Serviço para autenticação social
@@ -10,8 +40,8 @@ export const socialAuthService = {
    */
   async login(request: SocialLoginRequest): Promise<SocialAuthResponse> {
     try {
-      let authResponse;
-      
+      let authResponse: ProviderAuthResponse;
+
       switch (request.provider) {
         case 'google':
           // TODO: Implementar autenticação JWT
@@ -249,7 +279,7 @@ export const socialAuthService = {
       // Registrar a desvinculação na tabela de logs
       await this.logAuthAction({
         userId,
-        provider: provider as any,
+        provider: provider as 'google' | 'facebook' | 'apple',
         action: 'unlink',
         success: true,
       });
@@ -261,7 +291,7 @@ export const socialAuthService = {
       // Registrar falha no log
       await this.logAuthAction({
         userId,
-        provider: provider as any,
+        provider: provider as 'google' | 'facebook' | 'apple',
         action: 'unlink',
         success: false,
         errorMessage: error instanceof Error ? error.message : JSON.stringify(error),
@@ -279,17 +309,13 @@ export const socialAuthService = {
   /**
    * Obtém as contas sociais vinculadas a um usuário
    */
-  async getLinkedAccounts(userId: string) {
+  async getLinkedAccounts(userId: string): Promise<LinkedSocialAccount[]> {
     try {
       // TODO: Implementar query SQL direta
-      const data = null;
-      const error = null;
-      // await pool.query(...)
-      //   .from('social_accounts')
-      //   .select('*')
-      //   .eq('user_id', userId);
-
-      if (error) throw error;
+      // Não há persistência de contas sociais no schema atual (tabela
+      // social_accounts inexistente); retorna lista vazia.
+      const data: LinkedSocialAccount[] | null = null;
+      console.log(`Buscando contas vinculadas do usuário ${userId} (não persistido)`);
 
       return data || [];
     } catch (error) {

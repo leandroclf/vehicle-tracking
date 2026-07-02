@@ -13,6 +13,19 @@ import { Shield, Smartphone, Mail, Key, Copy, Check } from 'lucide-react';
 import { useAuth } from '@/lib/auth/auth-context';
 import { MFAStatus } from '@/types/mfa';
 
+// Shape das respostas de /api/mfa
+interface MFAApiResponse<T> {
+  success: boolean;
+  data: T;
+  error?: string;
+}
+
+interface MFASetupData {
+  message: string;
+  qrCode?: string;
+  backupCodes?: string[];
+}
+
 export default function MFASettings() {
   const { user } = useAuth();
   const [mfaStatus, setMfaStatus] = useState<MFAStatus | null>(null);
@@ -41,7 +54,7 @@ export default function MFASettings() {
   const loadMFAStatus = async () => {
     try {
       const response = await fetch('/api/mfa');
-      const data = await response.json();
+      const data = (await response.json()) as MFAApiResponse<MFAStatus>;
       
       if (data.success) {
         setMfaStatus(data.data);
@@ -72,7 +85,7 @@ export default function MFASettings() {
         body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as MFAApiResponse<MFASetupData>;
       
       if (data.success) {
         setMessage(data.data.message);
@@ -86,7 +99,7 @@ export default function MFASettings() {
           setBackupCodes(data.data.backupCodes);
         }
       } else {
-        setError(data.error);
+        setError(data.error ?? 'Erro ao configurar MFA');
       }
     } catch (error) {
       setError('Erro ao configurar MFA');
@@ -110,7 +123,7 @@ export default function MFASettings() {
         })
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as MFAApiResponse<unknown>;
       
       if (data.success) {
         setMessage('MFA configurado com sucesso!');
@@ -119,7 +132,7 @@ export default function MFASettings() {
         setQrCode('');
         loadMFAStatus(); // Recarregar status
       } else {
-        setError(data.error);
+        setError(data.error ?? 'Erro ao verificar código');
       }
     } catch (error) {
       setError('Erro ao verificar código');
@@ -138,13 +151,13 @@ export default function MFASettings() {
         method: 'DELETE'
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as MFAApiResponse<unknown>;
       
       if (data.success) {
         setMessage('MFA desabilitado com sucesso');
         loadMFAStatus();
       } else {
-        setError(data.error);
+        setError(data.error ?? 'Erro ao desabilitar MFA');
       }
     } catch (error) {
       setError('Erro ao desabilitar MFA');

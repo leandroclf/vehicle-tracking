@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withApiAuth, validateBody, validateQuery, respondWithError, buildPaginatedQuery } from '@/lib/api-utils';
+import { withApiAuth, validateBody, validateQuery, respondWithError } from '@/lib/api-utils';
 
 // Interface para a estrutura de alerta vinda do banco
 interface Alert {

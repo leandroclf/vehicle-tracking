@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDbPool } from '@/lib/database';
+import { db } from '@/lib/database';
+import { commands, vehicles } from '@/lib/schema';
 import { verifyAuth } from '@/lib/auth-middleware';
+import { and, count, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 
 // Schema de validação para criação de comando
 const createCommandSchema = z.object({
-  vehicle_id: z.string().uuid('ID do veículo deve ser um UUID válido'),
+  vehicle_id: z.coerce.number().int().positive('ID do veículo inválido'),
   type: z.enum([
     'block_vehicle',
-    'unblock_vehicle', 
+    'unblock_vehicle',
     'activate_siren',
     'deactivate_siren',
     'flash_lights',
@@ -20,11 +22,13 @@ const createCommandSchema = z.object({
   metadata: z.record(z.any()).optional().default({})
 });
 
-// Schema para confirmação de comando
-const confirmCommandSchema = z.object({
-  command_id: z.string().uuid('ID do comando deve ser um UUID válido'),
-  confirmation_token: z.string().min(1, 'Token de confirmação é obrigatório')
-});
+// Parâmetros persistidos no jsonb `parameters` da tabela `commands`
+interface CommandParameters {
+  confirmation_required: boolean;
+  confirmation_token: string | null;
+  confirmation_expires_at: string | null;
+  metadata: Record<string, unknown>;
+}
 
 /**
  * POST /api/commands - Criar novo comando remoto
@@ -33,32 +37,32 @@ export async function POST(request: NextRequest) {
   try {
     // Verificar autenticação
     const authResult = await verifyAuth(request);
-    if (!authResult.success) {
+    if (!authResult.user) {
       return NextResponse.json(
         { error: 'Não autorizado', code: 'UNAUTHORIZED' },
         { status: 401 }
       );
     }
 
-    const { user } = authResult;
-    const pool = getDbPool();
+    const user = authResult.user;
 
     // Validar dados de entrada
     const body = await request.json();
     const validatedData = createCommandSchema.parse(body);
 
     // Verificar se o usuário possui o veículo
-    // TODO: Implementar query SQL direta
-    const vehicle = null;
-    const vehicleError = null;
-    // await pool.query(...)
-    //   .from('vehicles')
-    //   .select('id, name, user_id')
-    //   .eq('id', validatedData.vehicle_id)
-    //   .eq('user_id', user.id)
-    //   .single();
+    const [vehicle] = await db
+      .select({ id: vehicles.id, name: vehicles.name })
+      .from(vehicles)
+      .where(
+        and(
+          eq(vehicles.id, validatedData.vehicle_id),
+          eq(vehicles.userId, user.id)
+        )
+      )
+      .limit(1);
 
-    if (vehicleError || !vehicle) {
+    if (!vehicle) {
       return NextResponse.json(
         { error: 'Veículo não encontrado ou sem permissão', code: 'VEHICLE_NOT_FOUND' },
         { status: 404 }
@@ -66,44 +70,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Gerar token de confirmação se necessário
-    let confirmationToken = null;
-    let confirmationExpiresAt = null;
+    let confirmationToken: string | null = null;
+    let confirmationExpiresAt: Date | null = null;
 
     if (validatedData.confirmation_required) {
       confirmationToken = generateConfirmationToken();
       confirmationExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
     }
 
-    // Criar comando no banco
-    // TODO: Implementar query SQL direta
-    const command = null;
-    const commandError = null;
-    // await pool.query(...)
-    //   .from('vehicle_commands')
-    //   .insert({
-    //     vehicle_id: validatedData.vehicle_id,
-    //     user_id: user.id,
-    //     type: validatedData.type,
-    //     confirmation_required: validatedData.confirmation_required,
-    //     confirmation_token: confirmationToken,
-    //     confirmation_expires_at: confirmationExpiresAt,
-    //     metadata: validatedData.metadata,
-    //     status: validatedData.confirmation_required ? 'pending_confirmation' : 'confirmed'
-    //   })
-    //   .select()
-    //   .single();
+    const parameters: CommandParameters = {
+      confirmation_required: validatedData.confirmation_required,
+      confirmation_token: confirmationToken,
+      confirmation_expires_at: confirmationExpiresAt?.toISOString() ?? null,
+      metadata: validatedData.metadata,
+    };
 
-    if (commandError) {
-      console.error('Erro ao criar comando:', commandError);
-      return NextResponse.json(
-        { error: 'Erro interno do servidor', code: 'INTERNAL_ERROR' },
-        { status: 500 }
-      );
-    }
+    // Criar comando no banco
+    const [command] = await db
+      .insert(commands)
+      .values({
+        vehicleId: validatedData.vehicle_id,
+        userId: user.id,
+        type: validatedData.type,
+        status: validatedData.confirmation_required ? 'pending_confirmation' : 'confirmed',
+        parameters,
+        sentAt: validatedData.confirmation_required ? null : new Date(),
+      })
+      .returning();
 
     // Se não requer confirmação, enviar diretamente para o dispositivo
     if (!validatedData.confirmation_required) {
-      await sendCommandToDevice(command);
+      await sendCommandToDevice(command.id, command.type, command.vehicleId);
     }
 
     // Log de auditoria
@@ -112,14 +109,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        command_id: command.id,
+        command_id: String(command.id),
         type: command.type,
         status: command.status,
-        confirmation_required: command.confirmation_required,
+        confirmation_required: validatedData.confirmation_required,
         confirmation_token: confirmationToken,
         expires_at: confirmationExpiresAt,
         vehicle: {
-          id: vehicle.id,
+          id: String(vehicle.id),
           name: vehicle.name
         }
       }
@@ -128,10 +125,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
-          error: 'Dados inválidos', 
+        {
+          error: 'Dados inválidos',
           code: 'VALIDATION_ERROR',
-          details: error.errors 
+          details: error.errors
         },
         { status: 400 }
       );
@@ -151,65 +148,91 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const authResult = await verifyAuth(request);
-    if (!authResult.success) {
+    if (!authResult.user) {
       return NextResponse.json(
         { error: 'Não autorizado', code: 'UNAUTHORIZED' },
         { status: 401 }
       );
     }
 
-    const { user } = authResult;
-    const pool = getDbPool();
+    const user = authResult.user;
     const { searchParams } = new URL(request.url);
 
     // Parâmetros de consulta
-    const vehicleId = searchParams.get('vehicle_id');
+    const vehicleIdParam = searchParams.get('vehicle_id');
     const status = searchParams.get('status');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10) || 50, 200);
+    const offset = parseInt(searchParams.get('offset') || '0', 10) || 0;
 
-    // Construir query
-    // TODO: Implementar query SQL direta
-    let query = null; // pool.query
-    //   .from('vehicle_commands')
-    //   .select(`
-    //     *,
-    //     vehicles:vehicle_id (id, name, plate),
-    //     command_confirmations (confirmed_at, ip_address),
-    //     command_responses (success, error_message, received_at)
-    //   `)
-    //   .eq('user_id', user.id)
-    //   .order('created_at', { ascending: false })
-    //   .range(offset, offset + limit - 1);
+    const conditions = [eq(commands.userId, user.id)];
 
-    if (vehicleId) {
-      query = query.eq('vehicle_id', vehicleId);
+    if (vehicleIdParam) {
+      const vehicleId = parseInt(vehicleIdParam, 10);
+      if (Number.isNaN(vehicleId)) {
+        return NextResponse.json(
+          { error: 'vehicle_id inválido', code: 'VALIDATION_ERROR' },
+          { status: 400 }
+        );
+      }
+      conditions.push(eq(commands.vehicleId, vehicleId));
     }
 
     if (status) {
-      query = query.eq('status', status);
+      conditions.push(eq(commands.status, status));
     }
 
-    // TODO: Implementar query SQL direta
-    const commands = null;
-    const error = null;
-    // const { data: commands, error } = await query;
+    const [rows, [totalRow]] = await Promise.all([
+      db
+        .select({
+          command: commands,
+          vehicle: {
+            id: vehicles.id,
+            name: vehicles.name,
+            plate: vehicles.plate,
+          },
+        })
+        .from(commands)
+        .innerJoin(vehicles, eq(commands.vehicleId, vehicles.id))
+        .where(and(...conditions))
+        .orderBy(desc(commands.createdAt))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ count: count() })
+        .from(commands)
+        .where(and(...conditions)),
+    ]);
 
-    if (error) {
-      console.error('Erro ao buscar comandos:', error);
-      return NextResponse.json(
-        { error: 'Erro interno do servidor', code: 'INTERNAL_ERROR' },
-        { status: 500 }
-      );
-    }
+    const data = rows.map(({ command, vehicle }) => {
+      const params = (command.parameters ?? {}) as Partial<CommandParameters>;
+      return {
+        id: String(command.id),
+        vehicle_id: String(command.vehicleId),
+        user_id: command.userId,
+        type: command.type,
+        status: command.status,
+        confirmation_required: params.confirmation_required ?? false,
+        confirmation_expires_at: params.confirmation_expires_at ?? null,
+        executed_at: command.executedAt,
+        response_data: command.response,
+        error_message: command.errorMessage,
+        created_at: command.createdAt,
+        updated_at: command.updatedAt,
+        vehicles: {
+          id: String(vehicle.id),
+          name: vehicle.name,
+          plate: vehicle.plate,
+        },
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      data: commands,
+      data,
       pagination: {
         limit,
         offset,
-        total: commands?.length || 0
+        total: totalRow?.count ?? data.length
       }
     });
 
@@ -230,44 +253,17 @@ function generateConfirmationToken(): string {
 }
 
 /**
- * Função auxiliar para enviar comando ao dispositivo
+ * Função auxiliar para enviar comando ao dispositivo.
+ * A integração real com o servidor GPS acontece fora do baseline;
+ * aqui o comando é marcado como enviado para rastreabilidade.
  */
-async function sendCommandToDevice(command: any) {
+async function sendCommandToDevice(commandId: number, type: string, vehicleId: number) {
   try {
-    // Aqui seria a integração com o servidor GPS
-    // Por enquanto, simular o envio
-    console.log(`Enviando comando ${command.type} para dispositivo do veículo ${command.vehicle_id}`);
-    
-    // Atualizar status para "sent_to_device"
-    const pool = getDbPool();
-    // TODO: Implementar query SQL direta
-    // await pool.query
-    //   .from('vehicle_commands')
-    //   .update({ status: 'sent_to_device' })
-    //   .eq('id', command.id);
-
-    // Simular resposta do dispositivo após 2 segundos
-    setTimeout(async () => {
-      // TODO: Implementar query SQL direta
-      // await pool.query
-      //   .from('command_responses')
-      //   .insert({
-      //     command_id: command.id,
-      //     device_response: { status: 'ok', timestamp: new Date().toISOString() },
-      //     execution_time: 1500,
-      //     success: true
-      //   });
-
-      // TODO: Implementar query SQL direta
-      // await pool.query
-      //   .from('vehicle_commands')
-      //   .update({ 
-      //     status: 'executed',
-      //     executed_at: new Date().toISOString()
-      //   })
-      //   .eq('id', command.id);
-    }, 2000);
-
+    console.log(`Enviando comando ${type} para dispositivo do veículo ${vehicleId}`);
+    await db
+      .update(commands)
+      .set({ status: 'sent_to_device', sentAt: new Date(), updatedAt: new Date() })
+      .where(eq(commands.id, commandId));
   } catch (error) {
     console.error('Erro ao enviar comando para dispositivo:', error);
   }

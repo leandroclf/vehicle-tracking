@@ -10,6 +10,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getTrackingService, Position, VehicleStatus, Trip, TrackingEvent } from './tracking-service';
 
+export type { Position, VehicleStatus, Trip, TrackingEvent } from './tracking-service';
+
 export interface UseTrackingOptions {
   vehicleId?: number;
   autoStart?: boolean;

@@ -2,6 +2,13 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+export interface ReportSchedule {
+  frequency: 'daily' | 'weekly' | 'monthly';
+  dayOfWeek?: number;
+  dayOfMonth?: number;
+  nextRunDate?: string;
+}
+
 export interface Report {
   id: string;
   title: string;
@@ -32,6 +39,9 @@ interface ReportContextType {
   downloadReport: (id: string) => Promise<string | null>;
   deleteReport: (id: string) => Promise<boolean>;
   getReportTypes: () => ReportType[];
+  /** Agendamento de relatórios não é suportado no baseline de produção */
+  scheduleReport: (id: number, schedule: ReportSchedule) => Promise<boolean>;
+  cancelSchedule: (id: number) => Promise<boolean>;
 }
 
 // Valor padrão do contexto
@@ -44,7 +54,9 @@ const defaultContextValue: ReportContextType = {
   generateReport: async () => null,
   downloadReport: async () => null,
   deleteReport: async () => false,
-  getReportTypes: () => []
+  getReportTypes: () => [],
+  scheduleReport: async () => false,
+  cancelSchedule: async () => false
 };
 
 // Criar o contexto
@@ -227,6 +239,18 @@ export function ReportProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Agendamento não tem suporte de backend no baseline de produção:
+  // as operações falham de forma explícita em vez de fingir sucesso.
+  const scheduleReport = async (): Promise<boolean> => {
+    setError('Agendamento de relatórios não é suportado nesta versão.');
+    return false;
+  };
+
+  const cancelSchedule = async (): Promise<boolean> => {
+    setError('Agendamento de relatórios não é suportado nesta versão.');
+    return false;
+  };
+
   // Valor do contexto
   const value: ReportContextType = {
     reports,
@@ -237,7 +261,9 @@ export function ReportProvider({ children }: { children: ReactNode }) {
     generateReport,
     downloadReport,
     deleteReport,
-    getReportTypes
+    getReportTypes,
+    scheduleReport,
+    cancelSchedule
   };
 
   return (

@@ -20,16 +20,6 @@ interface Command {
   updated_at: string;
 }
 
-// Tipo para a resposta da API
-interface CommandResponse {
-  commands: Command[];
-  pagination: {
-    total: number;
-    limit: number;
-    offset: number;
-  };
-}
-
 interface VehicleCommandHistoryProps {
   vehicleId: number | string;
   className?: string;
@@ -58,13 +48,25 @@ export default function VehicleCommandHistory({
     setError(null);
 
     try {
-      const response: CommandResponse = await fetchCommandHistory(
-        vehicleId,
+      const numericVehicleId = typeof vehicleId === 'string' ? parseInt(vehicleId, 10) : vehicleId;
+      const response = await fetchCommandHistory(
+        numericVehicleId,
         pagination.limit,
         pagination.offset
       );
 
-      setCommandHistory(response.commands);
+      const mapped: Command[] = response.commands.map(record => ({
+        id: String(record.id),
+        vehicle_id: String(record.vehicleId),
+        type: record.type,
+        status: (record.status ?? 'pending') as Command['status'],
+        sent_at: record.sentAt ?? record.createdAt ?? '',
+        executed_at: record.executedAt ?? undefined,
+        created_at: record.createdAt ?? '',
+        updated_at: record.updatedAt ?? '',
+      }));
+
+      setCommandHistory(mapped);
       setPagination(response.pagination);
     } catch (err) {
       console.error('Erro ao carregar histórico de comandos:', err);
@@ -141,9 +143,9 @@ export default function VehicleCommandHistory({
   const columns: DataTableColumn<Command>[] = [
     {
       key: 'type',
-      label: 'Comando',
+      title: 'Comando',
       sortable: true,
-      render: (command) => (
+      render: (_value, command) => (
         <div className="flex items-center space-x-2">
           <Terminal className="h-4 w-4 text-gray-500" />
           <span className="font-medium">{translateCommandType(command.type)}</span>
@@ -152,8 +154,8 @@ export default function VehicleCommandHistory({
     },
     {
       key: 'status',
-      label: 'Status',
-      render: (command) => (
+      title: 'Status',
+      render: (_value, command) => (
         <Badge variant={getStatusVariant(command.status)}>
           {translateStatus(command.status)}
         </Badge>
@@ -161,9 +163,9 @@ export default function VehicleCommandHistory({
     },
     {
       key: 'sent_at',
-      label: 'Enviado em',
+      title: 'Enviado em',
       sortable: true,
-      render: (command) => (
+      render: (_value, command) => (
         <span className="text-sm text-gray-600">
           {formatDate(command.sent_at)}
         </span>
@@ -171,8 +173,8 @@ export default function VehicleCommandHistory({
     },
     {
       key: 'executed_at',
-      label: 'Executado em',
-      render: (command) => (
+      title: 'Executado em',
+      render: (_value, command) => (
         <span className="text-sm text-gray-600">
           {command.executed_at ? formatDate(command.executed_at) : '-'}
         </span>
@@ -256,9 +258,8 @@ export default function VehicleCommandHistory({
           searchable
           sortable
           pagination
-          isLoading={isLoading}
+          loading={isLoading}
           emptyMessage="Nenhum comando foi enviado para este veículo."
-          loadingMessage="Carregando histórico de comandos..."
           className="border rounded-lg"
           data-testid="commands-table"
         />

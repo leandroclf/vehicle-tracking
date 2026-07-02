@@ -400,22 +400,22 @@ export function AnalyticsDashboard({ className }: AnalyticsDashboardProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Fleet and Usage Metrics */}
         <div className="lg:col-span-2 space-y-6">
-          <FleetMetricsCard 
-            data={data?.fleetMetrics} 
-            loading={loading} 
+          <FleetMetricsCard
+            data={data?.fleet}
+            loading={loading}
           />
-          
-          <UsageChartsCard 
-            data={data?.usageMetrics} 
-            loading={loading} 
+
+          <UsageChartsCard
+            data={data?.usage}
+            loading={loading}
           />
         </div>
-        
+
         {/* Right Column - Security and Insights */}
         <div className="space-y-6">
-          <SecurityMetricsCard 
-            data={data?.securityMetrics} 
-            loading={loading} 
+          <SecurityMetricsCard
+            data={data?.security}
+            loading={loading}
           />
           
           <InsightsAndAlertsCard
@@ -432,7 +432,14 @@ export function AnalyticsDashboard({ className }: AnalyticsDashboardProps) {
        <ExportDialog
          open={showExportDialog}
          onOpenChange={setShowExportDialog}
-         filters={filters}
+         filters={{
+           dateRange: filters.dateRange,
+           vehicles: filters.vehicles,
+           drivers: filters.drivers,
+           routes: filters.regions,
+           regions: filters.regions,
+           period: filters.period,
+         }}
          onExport={handleExport}
        />
     </div>

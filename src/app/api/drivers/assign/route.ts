@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquema para atribuição múltipla de veículos a um motorista
@@ -35,88 +34,23 @@ const assignmentSchema = z.object({
   path: ['end_date']
 });
 
-// Esquema para remover atribuição
-const removeAssignmentSchema = z.object({
-  assignment_id: z.string().min(1, 'ID da atribuição é obrigatório')
-});
-
-// Interfaces para tipagem
-interface Driver {
-  id: string;
-  name: string;
-  license_number: string;
-  user_id?: string;
-}
-
-interface Vehicle {
-  id: string;
-  name: string;
-  license_plate: string;
-  user_id?: string;
-}
-
-interface Assignment {
-  id: string;
-  driver_id: string;
-  vehicle_id: string;
-  start_date?: string;
-  end_date?: string;
-  is_primary: boolean;
-  created_at: string;
-  drivers?: Driver;
-  vehicles?: Vehicle;
-}
-
-// TODO: Migrado do Supabase para PostgreSQL direto
-type SupabaseAssignment = {
-  id: string;
-  driver_id: string;
-  vehicle_id: string;
-  start_date?: string;
-  end_date?: string;
-  is_primary: boolean;
-  created_at: string;
-  drivers?: {
-    id: string;
-    name: string;
-    license_number: string;
-  };
-  vehicles?: {
-    id: string;
-    name: string;
-    license_plate: string;
-  };
-};
-
-// Type para a verificação de atribuição
-type AssignmentCheck = {
-  id: string;
-  driver_id: string;
-  vehicle_id: string;
-  drivers?: {
-    user_id: string;
-  };
-  vehicles?: {
-    user_id: string;
-  };
-};
-
 // Função para estruturar respostas de erro de forma consistente
-function errorResponse(message: string, details?: any, status: number = 400) {
-  return NextResponse.json({ 
+function errorResponse(message: string, details?: unknown, status: number = 400) {
+  return NextResponse.json({
     success: false,
     error: message,
     details: details || undefined
   }, { status });
 }
 
-// Função para estruturar respostas de sucesso de forma consistente
-function successResponse(data: any, message?: string, status: number = 200) {
-  return NextResponse.json({ 
-    success: true,
-    message,
-    data
-  }, { status });
+// A atribuição motorista-veículo depende das tabelas `drivers` e
+// `driver_vehicle_assignments`, que não existem no schema canônico
+// (src/lib/schema.ts). Conforme o baseline OpenSpec de production-readiness,
+// caminhos não suportados devem ser explícitos (501) em vez de simular sucesso.
+const NOT_SUPPORTED_MESSAGE = 'Atribuição de veículos a motoristas não é suportada nesta versão';
+
+function notSupportedResponse() {
+  return errorResponse(NOT_SUPPORTED_MESSAGE, undefined, 501);
 }
 
 // Handler para listar atribuições de veículos (GET)
@@ -131,114 +65,17 @@ export async function GET(request: NextRequest) {
         authResult.status || 401
       );
     }
-    
-    const userId = authResult.user.id;
-    
+
     // Extrair parâmetros de consulta
     const url = new URL(request.url);
     const driverId = url.searchParams.get('driver_id');
     const vehicleId = url.searchParams.get('vehicle_id');
-    
+
     if (!driverId && !vehicleId) {
       return errorResponse('É necessário fornecer driver_id ou vehicle_id');
     }
-    
-    // Construir consulta base
-    // TODO: Implementar query SQL direta
-    let query = null; // pool.query
-    //   .from('driver_vehicle_assignments')
-    //   .select(`
-    //     id,
-    //     driver_id,
-    //     vehicle_id,
-    //     start_date,
-    //     end_date,
-    //     is_primary,
-    //     created_at,
-    //     drivers:driver_id (id, name, license_number),
-    //     vehicles:vehicle_id (id, name, license_plate)
-    //   `);
-    
-    // Aplicar filtros
-    if (driverId) {
-      query = query.eq('driver_id', driverId);
-    }
-    
-    if (vehicleId) {
-      query = query.eq('vehicle_id', vehicleId);
-    }
-    
-    // Verificar se os veículos e motoristas pertencem ao usuário
-    if (driverId) {
-      // TODO: Implementar query SQL direta
-      const driverCheck = null;
-      const driverError = null;
-      // await pool.query(...)
-      //   .from('drivers')
-      //   .select('id')
-      //   .eq('id', driverId)
-      //   .eq('user_id', userId)
-      //   .maybeSingle();
-        
-      if (driverError || !driverCheck) {
-        return errorResponse('Motorista não encontrado ou não pertence ao usuário', undefined, 404);
-      }
-    }
-    
-    if (vehicleId) {
-      // TODO: Implementar query SQL direta
-      const vehicleCheck = null;
-      const vehicleError = null;
-      // await pool.query(...)
-      //   .from('vehicles')
-      //   .select('id')
-      //   .eq('id', vehicleId)
-      //   .eq('user_id', userId)
-      //   .maybeSingle();
-        
-      if (vehicleError || !vehicleCheck) {
-        return errorResponse('Veículo não encontrado ou não pertence ao usuário', undefined, 404);
-      }
-    }
-    
-    // Executar consulta
-    const { data: assignments, error } = await query;
-    
-    if (error) {
-      console.error('Erro ao buscar atribuições:', error);
-      return errorResponse('Erro ao buscar atribuições de veículos', undefined, 500);
-    }
-    
-    // Formatar resposta com conversão segura de tipo
-    const formattedAssignments = assignments?.map(assignment => {
-      // Converte para tipo intermediário para garantir segurança
-      const typedAssignment = assignment as unknown as SupabaseAssignment;
-      
-      return {
-        id: typedAssignment.id,
-        driver_id: typedAssignment.driver_id,
-        vehicle_id: typedAssignment.vehicle_id,
-        start_date: typedAssignment.start_date,
-        end_date: typedAssignment.end_date,
-        is_primary: typedAssignment.is_primary,
-        created_at: typedAssignment.created_at,
-        driver: typedAssignment.drivers ? {
-          id: typedAssignment.drivers.id,
-          name: typedAssignment.drivers.name,
-          license_number: typedAssignment.drivers.license_number
-        } : null,
-        vehicle: typedAssignment.vehicles ? {
-          id: typedAssignment.vehicles.id,
-          name: typedAssignment.vehicles.name,
-          license_plate: typedAssignment.vehicles.license_plate
-        } : null
-      };
-    }) || [];
-    
-    return successResponse({
-      assignments: formattedAssignments
-    });
-    
+
+    return notSupportedResponse();
   } catch (error) {
     console.error('Erro ao processar requisição de atribuições:', error);
     return errorResponse('Erro interno do servidor', undefined, 500);
@@ -257,215 +94,34 @@ export async function POST(request: NextRequest) {
         authResult.status || 401
       );
     }
-    
-    const userId = authResult.user.id;
-    
+
     // Extrair corpo da requisição
     const body = await request.json() as Record<string, unknown>;
-    
+
     // Verificar se é uma atribuição múltipla ou individual
     if (body.vehicle_ids && Array.isArray(body.vehicle_ids)) {
       // Validar esquema de atribuição múltipla
       const bulkResult = bulkAssignmentSchema.safeParse(body);
-      
+
       if (!bulkResult.success) {
         return errorResponse(
-          'Dados inválidos para atribuição múltipla', 
+          'Dados inválidos para atribuição múltipla',
           bulkResult.error.format()
         );
       }
-      
-      const { driver_id, vehicle_ids } = bulkResult.data;
-      
-      // Verificar se o motorista pertence ao usuário
-      // TODO: Implementar query SQL direta
-      const driverCheck = null;
-      const driverError = null;
-      // await pool.query(...)
-      //   .from('drivers')
-      //   .select('id')
-      //   .eq('id', driver_id)
-      //   .eq('user_id', userId)
-      //   .maybeSingle();
-      
-      if (driverError || !driverCheck) {
-        return errorResponse('Motorista não encontrado ou não pertence ao usuário', undefined, 404);
-      }
-      
-      // Verificar se todos os veículos pertencem ao usuário
-      // TODO: Implementar query SQL direta
-      const vehiclesCheck = null;
-      const vehiclesError = null;
-      // await pool.query(...)
-      //   .from('vehicles')
-      //   .select('id')
-      //   .in('id', vehicle_ids)
-      //   .eq('user_id', userId);
-      
-      if (vehiclesError) {
-        console.error('Erro ao verificar veículos:', vehiclesError);
-        return errorResponse('Erro ao verificar veículos', undefined, 500);
-      }
-      
-      const foundVehicleIds = vehiclesCheck?.map(v => v.id) || [];
-      if (foundVehicleIds.length !== vehicle_ids.length) {
-        return errorResponse(
-          'Um ou mais veículos não foram encontrados ou não pertencem ao usuário', 
-          {
-            requested: vehicle_ids.length,
-            found: foundVehicleIds.length
-          },
-          404
-        );
-      }
-      
-      // Primeiro, remover todas as atribuições existentes deste motorista
-      // TODO: Implementar query SQL direta
-      const deleteError = null;
-      // const { error: deleteError } = await pool.query
-      //   .from('driver_vehicle_assignments')
-      //   .delete()
-      //   .eq('driver_id', driver_id);
-      
-      if (deleteError) {
-        console.error('Erro ao remover atribuições existentes:', deleteError);
-        return errorResponse('Erro ao gerenciar atribuições de veículos', undefined, 500);
-      }
-      
-      // Criar novas atribuições para cada veículo
-      const assignmentsToInsert = vehicle_ids.map(vehicle_id => ({
-        driver_id,
-        vehicle_id,
-        created_at: new Date().toISOString(),
-        is_primary: false // Por padrão, nenhum é primário
-      }));
-      
-      // TODO: Implementar query SQL direta
-      const newAssignments = null;
-      const insertError = null;
-      // await pool.query(...)
-      //   .from('driver_vehicle_assignments')
-      //   .insert(assignmentsToInsert)
-      //   .select();
-      
-      if (insertError) {
-        console.error('Erro ao criar atribuições em massa:', insertError);
-        return errorResponse('Erro ao criar atribuições de veículos', undefined, 500);
-      }
-      
-      return successResponse(
-        { assignments: newAssignments },
-        'Veículos atribuídos com sucesso ao motorista',
-        201
-      );
-      
     } else {
       // Atribuição individual
       const assignmentResult = assignmentSchema.safeParse(body);
-      
+
       if (!assignmentResult.success) {
         return errorResponse(
-          'Dados inválidos', 
+          'Dados inválidos',
           assignmentResult.error.format()
         );
       }
-      
-      const assignmentData = assignmentResult.data;
-      
-      // Verificar se o motorista pertence ao usuário
-      // TODO: Implementar query SQL direta
-      const driverCheck = null;
-      const driverError = null;
-      // await pool.query(...)
-      //   .from('drivers')
-      //   .select('id')
-      //   .eq('id', assignmentData.driver_id)
-      //   .eq('user_id', userId)
-      //   .maybeSingle();
-      
-      if (driverError || !driverCheck) {
-        return errorResponse('Motorista não encontrado ou não pertence ao usuário', undefined, 404);
-      }
-      
-      // Verificar se o veículo pertence ao usuário
-      // TODO: Implementar query SQL direta
-      const vehicleCheck = null;
-      const vehicleError = null;
-      // await pool.query(...)
-      //   .from('vehicles')
-      //   .select('id')
-      //   .eq('id', assignmentData.vehicle_id)
-      //   .eq('user_id', userId)
-      //   .maybeSingle();
-      
-      if (vehicleError || !vehicleCheck) {
-        return errorResponse('Veículo não encontrado ou não pertence ao usuário', undefined, 404);
-      }
-      
-      // Verificar se já existe uma atribuição para este motorista e veículo
-      // TODO: Implementar query SQL direta
-      const existingAssignment = null;
-      const checkError = null;
-      // await pool.query(...)
-      //   .from('driver_vehicle_assignments')
-      //   .select('id')
-      //   .eq('driver_id', assignmentData.driver_id)
-      //   .eq('vehicle_id', assignmentData.vehicle_id)
-      //   .maybeSingle();
-      
-      if (checkError) {
-        console.error('Erro ao verificar atribuição existente:', checkError);
-        return errorResponse('Erro ao verificar atribuição existente', undefined, 500);
-      }
-      
-      if (existingAssignment) {
-        return errorResponse(
-          'Este veículo já está atribuído a este motorista',
-          { assignment_id: existingAssignment.id },
-          409
-        );
-      }
-      
-      // Se for definido como primário, atualizar outras atribuições para não serem primárias
-      if (assignmentData.is_primary) {
-        // TODO: Implementar query SQL direta
-        const updateError = null;
-        // const { error: updateError } = await pool.query
-        //   .from('driver_vehicle_assignments')
-        //   .update({ is_primary: false })
-        //   .eq('driver_id', assignmentData.driver_id);
-        
-        if (updateError) {
-          console.error('Erro ao atualizar atribuições existentes:', updateError);
-          return errorResponse('Erro ao gerenciar atribuições primárias', undefined, 500);
-        }
-      }
-      
-      // Criar nova atribuição
-      // TODO: Implementar query SQL direta
-      const newAssignment = null;
-      const insertError = null;
-      // await pool.query(...)
-      //   .from('driver_vehicle_assignments')
-      //   .insert({
-      //     ...assignmentData,
-      //     created_at: new Date().toISOString()
-      //   })
-      //   .select()
-      //   .single();
-      
-      if (insertError) {
-        console.error('Erro ao criar atribuição:', insertError);
-        return errorResponse('Erro ao criar atribuição de veículo', undefined, 500);
-      }
-      
-      return successResponse(
-        newAssignment, 
-        'Veículo atribuído com sucesso ao motorista',
-        201
-      );
     }
-    
+
+    return notSupportedResponse();
   } catch (error) {
     console.error('Erro ao processar criação de atribuição:', error);
     return errorResponse('Erro interno do servidor', undefined, 500);
@@ -484,74 +140,16 @@ export async function DELETE(request: NextRequest) {
         authResult.status || 401
       );
     }
-    
-    const userId = authResult.user.id;
-    
+
     // Extrair ID da atribuição dos parâmetros
     const url = new URL(request.url);
     const assignmentId = url.searchParams.get('id');
-    
+
     if (!assignmentId) {
       return errorResponse('ID da atribuição é obrigatório');
     }
-    
-    // Verificar se a atribuição existe e pertence ao usuário
-    // TODO: Implementar query SQL direta
-    const assignment = null;
-    const checkError = null;
-    // await pool.query(...)
-    //   .from('driver_vehicle_assignments')
-    //   .select(`
-    //     id,
-    //     driver_id,
-    //     vehicle_id,
-    //     drivers:driver_id (
-    //       user_id
-    //     ),
-    //     vehicles:vehicle_id (
-    //       user_id
-    //     )
-    //   `)
-    //   .eq('id', assignmentId)
-    //   .maybeSingle();
-    
-    if (checkError) {
-      console.error('Erro ao verificar atribuição:', checkError);
-      return errorResponse('Erro ao verificar atribuição', undefined, 500);
-    }
-    
-    if (!assignment) {
-      return errorResponse('Atribuição não encontrada', undefined, 404);
-    }
-    
-    // Confirmar que a atribuição pertence ao usuário
-    const typedAssignment = assignment as unknown as AssignmentCheck;
-    
-    if (
-      (typedAssignment.drivers?.user_id !== userId) || 
-      (typedAssignment.vehicles?.user_id !== userId)
-    ) {
-      return errorResponse('Atribuição não pertence ao usuário', undefined, 403);
-    }
-    
-    // Excluir atribuição
-    // TODO: Implementar query SQL direta
-    const deleteError = null;
-    // const { error: deleteError } = await pool.query
-    //   .from('driver_vehicle_assignments')
-    //   .delete()
-    //   .eq('id', assignmentId);
-    
-    if (deleteError) {
-      console.error('Erro ao excluir atribuição:', deleteError);
-      return errorResponse('Erro ao excluir atribuição', undefined, 500);
-    }
-    
-    return successResponse(
-      null,
-      'Atribuição excluída com sucesso'
-    );
-    
+
+    return notSupportedResponse();
   } catch (error) {
     console.error('Erro ao processar exclusão de atribuição:', error);
     return errorResponse('Erro interno do servidor', undefined, 500);

@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { Tabs } from '@/components/ui/Tabs';
 import { Badge } from '@/components/ui/Badge';
 import { Dropdown } from '@/components/ui/Dropdown';
-import GoogleMapsComponent from '@/components/map/GoogleMapsComponent';
+import GoogleMapsComponent, { TrackedVehicle } from '@/components/map/GoogleMapsComponent';
 import { Geofence } from '@/lib/geofences';
 import { RoutePoint } from '@/components/map/RouteHistory';
 import { MapIcon, AlertTriangle, Clock, Settings, Layers } from 'lucide-react';
@@ -50,12 +50,13 @@ export default function MapPage() {
   } = useGeofences();
 
   // Função para lidar com a seleção de veículo
-  const handleVehicleSelect = (vehicle: Vehicle | null) => {
+  const handleVehicleSelect = (vehicle: TrackedVehicle | null) => {
     setSelectedVehicleId(vehicle?.id || null);
     
     // Centralizar o mapa no veículo selecionado
-    if (vehicle) {
-      setMapCenter({ lat: vehicle.lat, lng: vehicle.lng });
+    const position = vehicle?.last_position;
+    if (position) {
+      setMapCenter({ lat: position.lat, lng: position.lng });
       setMapZoom(15);
     }
   };
@@ -128,11 +129,15 @@ export default function MapPage() {
   // Centralizar o mapa em todos os veículos na primeira renderização
   useEffect(() => {
     if (vehicles.length > 0 && !mapCenter) {
-      const vehicleCoordinates = vehicles.map(vehicle => ({
-        lat: vehicle.lat,
-        lng: vehicle.lng
-      }));
-      
+      const vehicleCoordinates = vehicles
+        .filter(vehicle => vehicle.last_position)
+        .map(vehicle => ({
+          lat: vehicle.last_position!.lat,
+          lng: vehicle.last_position!.lng
+        }));
+
+      if (vehicleCoordinates.length === 0) return;
+
       setMapCenter(calculateCenter(vehicleCoordinates));
       
       // Ajustar zoom com base no número de veículos
@@ -338,7 +343,7 @@ export default function MapPage() {
                         style={{ backgroundColor: geofence.color }}
                       />
                       <span className="flex-1 text-gray-800 dark:text-gray-200">{geofence.name}</span>
-                      <Badge variant="default" outline>
+                      <Badge variant="outline">
                         {geofence.type === 'circle' ? 'Círculo' : 'Polígono'}
                       </Badge>
                     </div>
@@ -374,7 +379,7 @@ export default function MapPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-200">Tipo</label>
                   <Badge
-                    variant="primary"
+                    variant="default"
                     className={`${selectedGeofence.color ? 'bg-opacity-0' : ''}`}
                   >
                     <span style={{color: selectedGeofence.color}} className="font-medium">

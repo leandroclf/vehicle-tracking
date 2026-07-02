@@ -44,6 +44,8 @@ export interface ButtonProps
   asChild?: boolean;
   isLoading?: boolean;
   fullWidth?: boolean;
+  /** Ícone exibido antes do conteúdo do botão */
+  leftIcon?: React.ReactNode;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -54,6 +56,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     asChild = false, 
     isLoading = false,
     fullWidth,
+    leftIcon,
     children,
     disabled,
     ...props 
@@ -72,7 +75,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             {children}
           </>
         ) : (
-          children
+          <>
+            {leftIcon && <span className="mr-2 inline-flex [&>svg]:h-4 [&>svg]:w-4">{leftIcon}</span>}
+            {children}
+          </>
         )}
       </Comp>
     );

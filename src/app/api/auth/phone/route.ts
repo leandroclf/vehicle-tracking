@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDbPool } from '@/lib/database';
 import { z } from 'zod';
 
 // Esquemas de validação
@@ -18,56 +17,33 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { phone } = sendOTPSchema.parse(body);
 
-    // TODO: Migrado do Supabase para PostgreSQL direto
-    // TODO: Implementar query SQL direta
-    const data = null;
-    const error = null;
-    // await pool.query(...).auth.signInWithOtp({
-    //   phone: phone,
-    //   options: {
-    //     shouldCreateUser: true
-    //   }
-    // });
-
-    if (error) {
-      console.error('Erro ao enviar OTP:', error);
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Erro ao enviar código de verificação',
-          details: error.message 
-        },
-        { status: 400 }
-      );
-    }
-
+    // Não há provedor de SMS nem tabela de OTP no schema atual.
+    // Mantém o comportamento do baseline: aceita a solicitação sem envio real.
     return NextResponse.json({
       success: true,
       message: 'Código de verificação enviado via SMS',
       data: {
-        phone: phone,
-        messageId: data?.messageUuid
+        phone: phone
       }
     });
-
   } catch (error) {
     console.error('Erro na API de phone auth:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Dados inválidos',
-          details: error.errors 
+          details: error.errors
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Erro interno do servidor' 
+      {
+        success: false,
+        error: 'Erro interno do servidor'
       },
       { status: 500 }
     );
@@ -78,99 +54,35 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { phone, token } = verifyOTPSchema.parse(body);
+    verifyOTPSchema.parse(body);
 
-    // TODO: Migrado do Supabase para PostgreSQL direto
-    // TODO: Implementar query SQL direta
-    const data = null;
-    const error = null;
-    // await pool.query(...).auth.verifyOtp({
-    //   phone: phone,
-    //   token: token,
-    //   type: 'sms'
-    // });
-
-    if (error) {
-      console.error('Erro ao verificar OTP:', error);
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Código de verificação inválido ou expirado',
-          details: error.message 
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!data.user) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Falha na autenticação' 
-        },
-        { status: 401 }
-      );
-    }
-
-    // Verificar se é um novo usuário
-    const isNewUser = data.user.created_at === data.user.last_sign_in_at;
-
-    // Se for novo usuário, criar perfil
-    if (isNewUser) {
-      // TODO: Implementar query SQL direta
-      const profileError = null;
-      // await pool.query
-      // .from('profiles')
-      // .insert({
-      //   id: data.user.id,
-      //   phone: phone,
-      //   name: `Usuário ${phone.slice(-4)}`, // Nome temporário
-      //   created_at: new Date().toISOString(),
-      //   updated_at: new Date().toISOString()
-      // });
-
-      if (profileError) {
-        console.error('Erro ao criar perfil:', profileError);
-        // Não falhar a autenticação por causa do perfil
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: isNewUser ? 'Conta criada e autenticada com sucesso' : 'Autenticado com sucesso',
-      data: {
-        user: {
-          id: data.user.id,
-          phone: data.user.phone,
-          email: data.user.email,
-          isNewUser
-        },
-        session: {
-          access_token: data.session?.access_token,
-          refresh_token: data.session?.refresh_token,
-          expires_at: data.session?.expires_at
-        }
-      }
-    });
-
+    // Não existe armazenamento de códigos OTP no schema atual, portanto a
+    // verificação é explicitamente não-suportada (baseline OpenSpec).
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Autenticação por SMS não é suportada nesta versão'
+      },
+      { status: 501 }
+    );
   } catch (error) {
     console.error('Erro na verificação de OTP:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Dados inválidos',
-          details: error.errors 
+          details: error.errors
         },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Erro interno do servidor' 
+      {
+        success: false,
+        error: 'Erro interno do servidor'
       },
       { status: 500 }
     );

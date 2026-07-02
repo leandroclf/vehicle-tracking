@@ -23,12 +23,12 @@ import {
   Target,
   BarChart3
 } from 'lucide-react';
-import { Insight, AlertData } from '@/types/analytics';
+import { AnalyticsInsight, AnalyticsAlert } from '@/types/analytics';
 import { cn } from '@/lib/utils';
 
 interface InsightsAndAlertsCardProps {
-  insights?: Insight[];
-  alerts?: AlertData[];
+  insights?: AnalyticsInsight[];
+  alerts?: AnalyticsAlert[];
   loading?: boolean;
   className?: string;
   onDismissAlert?: (alertId: string) => void;
@@ -118,15 +118,13 @@ export function InsightsAndAlertsCard({
     }
   };
 
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'up':
-        return <TrendingUp className="h-4 w-4 text-green-600" />;
-      case 'down':
-        return <TrendingDown className="h-4 w-4 text-red-600" />;
-      default:
-        return null;
-    }
+  const formatImpact = (impact: AnalyticsInsight['impact']) => {
+    const impacts: Record<AnalyticsInsight['impact'], string> = {
+      low: 'Baixo',
+      medium: 'Médio',
+      high: 'Alto'
+    };
+    return impacts[impact] || impact;
   };
 
   const formatInsightType = (type: string) => {
@@ -171,7 +169,7 @@ export function InsightsAndAlertsCard({
                              alert.severity === 'warning' ? 'Aviso' : 'Info'}
                           </Badge>
                           <div className="text-xs text-muted-foreground">
-                            {new Date(alert.timestamp).toLocaleString('pt-BR')}
+                            {new Date(alert.createdAt).toLocaleString('pt-BR')}
                           </div>
                         </div>
                       </div>
@@ -239,9 +237,8 @@ export function InsightsAndAlertsCard({
                           </Badge>
                         </div>
                         <div className="flex items-center space-x-2">
-                          {insight.trend && getTrendIcon(insight.trend)}
                           <div className="text-xs text-muted-foreground">
-                            {new Date(insight.timestamp).toLocaleDateString('pt-BR')}
+                            {new Date(insight.createdAt).toLocaleDateString('pt-BR')}
                           </div>
                         </div>
                       </div>
@@ -257,25 +254,25 @@ export function InsightsAndAlertsCard({
                         <div className="bg-muted/50 p-3 rounded-lg">
                           <div className="text-sm font-medium mb-1">Impacto Estimado:</div>
                           <div className="text-sm text-muted-foreground">
-                            {insight.impact}
+                            {formatImpact(insight.impact)}
                           </div>
                         </div>
                       )}
 
-                      {insight.recommendation && (
+                      {insight.recommendations.length > 0 && (
                         <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                           <div className="text-sm font-medium mb-1 text-blue-800">
                             Recomendação:
                           </div>
                           <div className="text-sm text-blue-700">
-                            {insight.recommendation}
+                            {insight.recommendations.join(' ')}
                           </div>
                         </div>
                       )}
 
                       {insight.confidence && (
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Confiança: {Math.round(insight.confidence * 100)}%</span>
+                          <span>Confiança: {Math.round(insight.confidence)}%</span>
                           {onViewDetails && (
                             <Button
                               variant="ghost"

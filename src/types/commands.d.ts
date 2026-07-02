@@ -7,11 +7,11 @@ export interface VehicleCommand {
   status: CommandStatus;
   confirmation_required: boolean;
   confirmation_token?: string;
-  confirmation_expires_at?: Date;
-  executed_at?: Date;
-  response_data?: any;
-  created_at: Date;
-  updated_at: Date;
+  confirmation_expires_at?: string;
+  executed_at?: string;
+  response_data?: unknown;
+  created_at: string;
+  updated_at: string;
 }
 
 export type CommandType = 

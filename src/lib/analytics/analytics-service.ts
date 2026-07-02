@@ -4,8 +4,8 @@
  */
 
 import { db } from '@/lib/database';
-import { vehicles, vehicleStatus, trips, alerts, maintenanceSchedules } from '@/lib/schema';
-import { eq, and, gte, lte, count, sql, desc } from 'drizzle-orm';
+import { vehicles, trips, alerts } from '@/lib/schema';
+import { eq, and, gte } from 'drizzle-orm';
 import {
   FleetMetrics,
   UsageMetrics,
@@ -192,6 +192,73 @@ export class AnalyticsService {
    */
   async checkAlerts(userId: string, thresholds: Record<string, number>): Promise<AnalyticsAlert[]> {
     return []; // Retornar vazio por enquanto
+  }
+
+  /**
+   * Exporta dados de analytics de forma síncrona.
+   * Não há tabela de exports no schema; o arquivo é gerado em memória e
+   * devolvido como data URI para download imediato.
+   */
+  async exportData(
+    userId: string,
+    type: 'analytics' | 'raw_data' | 'report',
+    format: 'csv' | 'excel' | 'json'
+  ): Promise<{
+    success: boolean;
+    data?: { id: string; status: 'completed'; downloadUrl: string; expiresAt: string };
+    error?: string;
+  }> {
+    try {
+      const [fleet, usage, security] = await Promise.all([
+        this.getFleetMetrics(userId),
+        this.getUsageMetrics(userId),
+        this.getSecurityMetrics(userId)
+      ]);
+
+      const generatedAt = new Date();
+      let content: string;
+      let mimeType: string;
+
+      if (format === 'json') {
+        content = JSON.stringify(
+          { type, generatedAt: generatedAt.toISOString(), metrics: { fleet, usage, security } },
+          null,
+          2
+        );
+        mimeType = 'application/json';
+      } else {
+        // CSV também é usado como fallback para 'excel' (sem dependência de xlsx)
+        const rows: string[] = ['secao,metrica,valor,unidade'];
+        const appendMetrics = (section: string, metrics: FleetMetrics | SecurityMetrics) => {
+          for (const [name, metric] of Object.entries(metrics)) {
+            rows.push(`${section},${name},${metric.value},${metric.unit}`);
+          }
+        };
+        appendMetrics('frota', fleet);
+        appendMetrics('seguranca', security);
+        content = rows.join('\n');
+        mimeType = 'text/csv';
+      }
+
+      const downloadUrl = `data:${mimeType};charset=utf-8;base64,${Buffer.from(content, 'utf-8').toString('base64')}`;
+      const expiresAt = new Date(generatedAt.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+      return {
+        success: true,
+        data: {
+          id: `export_${generatedAt.getTime()}`,
+          status: 'completed',
+          downloadUrl,
+          expiresAt
+        }
+      };
+    } catch (error) {
+      console.error('Erro ao exportar dados de analytics:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
   }
 }
 

@@ -147,7 +147,7 @@ export function useAnalyticsDashboard(
         throw new Error(result.error || 'Erro desconhecido');
       }
 
-      setConfig(result.data);
+      setConfig(result.data ?? null);
 
     } catch (err) {
       console.error('Erro ao buscar configuração do dashboard:', err);
@@ -187,7 +187,7 @@ export function useAnalyticsDashboard(
         throw new Error(result.error || 'Erro desconhecido');
       }
 
-      setConfig(result.data);
+      setConfig(result.data ?? null);
 
     } catch (err) {
       console.error('Erro ao atualizar configuração:', err);
@@ -221,7 +221,7 @@ export function useAnalyticsDashboard(
 
       const result: AnalyticsApiResponse<{ downloadUrl: string }> = await response.json();
 
-      if (!result.success) {
+      if (!result.success || !result.data) {
         throw new Error(result.error || 'Erro desconhecido');
       }
 
@@ -252,7 +252,7 @@ export function useAnalyticsDashboard(
 
       const result: AnalyticsApiResponse<{ alerts: AnalyticsAlert[] }> = await response.json();
 
-      if (!result.success) {
+      if (!result.success || !result.data) {
         throw new Error(result.error || 'Erro desconhecido');
       }
 

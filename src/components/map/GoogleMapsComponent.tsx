@@ -17,6 +17,22 @@ const RouteHistory = lazy(() => import('./RouteHistory'));
 export type { Geofence } from './GeofenceManager';
 export type { RoutePoint } from './RouteHistory';
 
+/**
+ * Veículo com dados de telemetria em tempo real (campos opcionais fornecidos
+ * pelo tracking/realtime em cima do contrato base de `Vehicle`).
+ */
+export type TrackedVehicle = Omit<Vehicle, 'status'> & {
+  status?: Vehicle['status'] | 'online' | 'offline';
+  type?: string;
+  lat?: number;
+  lng?: number;
+  speed?: number;
+  heading?: number;
+  ignition?: boolean;
+  is_moving?: boolean;
+  last_update?: string;
+};
+
 // Estilos para o mapa
 const mapContainerStyle = {
   width: '100%',
@@ -57,11 +73,11 @@ interface GoogleMapsComponentProps {
   routeHistoryStartDate?: Date | null;
   routeHistoryEndDate?: Date | null;
   selectedVehicleId?: number | null;
-  vehicles?: Vehicle[];
+  vehicles?: TrackedVehicle[];
   geofences?: Geofence[];
   center?: google.maps.LatLngLiteral | null;
   zoom?: number;
-  onVehicleSelect?: (vehicle: Vehicle | null) => void;
+  onVehicleSelect?: (vehicle: TrackedVehicle | null) => void;
   onGeofenceSelect?: (geofence: Geofence | null) => void;
   onGeofenceCreate?: (geofence: Partial<Geofence>) => void;
   onGeofenceUpdate?: (geofence: Geofence) => void;
@@ -142,21 +158,30 @@ function GoogleMapsComponent({
   // Atualizar estado de veículos quando as props mudarem
   useEffect(() => {
     if (vehicles && vehicles.length > 0) {
-      // Converter Vehicle para VehiclePosition
-      const vehiclePositions: VehiclePosition[] = vehicles.map(v => ({
-        id: v.id,
-        name: v.name,
-        plate: v.plate,
-        type: (v.type as 'car' | 'motorcycle' | 'truck' | 'boat' | 'jetski') || 'car',
-        lat: v.lat,
-        lng: v.lng,
-        speed: v.speed || 0,
-        heading: v.heading,
-        ignition: v.ignition || false,
-        is_moving: v.is_moving || false,
-        status: v.status as 'online' | 'offline',
-        last_update: v.last_update || new Date().toISOString()
-      }));
+      // Converter TrackedVehicle para VehiclePosition (apenas veículos com posição conhecida)
+      const vehiclePositions: VehiclePosition[] = vehicles.flatMap((v): VehiclePosition[] => {
+        const lat = v.lat ?? v.last_position?.lat;
+        const lng = v.lng ?? v.last_position?.lng;
+
+        if (lat === undefined || lng === undefined) {
+          return [];
+        }
+
+        return [{
+          id: v.id,
+          name: v.name,
+          plate: v.plate,
+          type: (v.type as 'car' | 'motorcycle' | 'truck' | 'boat' | 'jetski') || 'car',
+          lat,
+          lng,
+          speed: v.speed || 0,
+          heading: v.heading,
+          ignition: v.ignition || false,
+          is_moving: v.is_moving || false,
+          status: v.status === 'online' ? 'online' : 'offline',
+          last_update: v.last_update || v.last_position?.timestamp || new Date().toISOString()
+        }];
+      });
       setVehiclesState(vehiclePositions);
     }
   }, [vehicles]);

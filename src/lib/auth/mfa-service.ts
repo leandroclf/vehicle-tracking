@@ -1,8 +1,36 @@
 import { getConnection } from '@/lib/database';
-import { MFASetupRequest, MFASetupResponse, MFAVerifyRequest, MFAVerifyResponse, MFAStatus } from '@/types/mfa';
+import { MFAStatus } from '@/types/mfa';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '@/lib/env';
+
+// Contratos alinhados com os consumidores reais
+// (src/app/api/mfa/route.ts e src/components/auth/mfa-settings.tsx)
+export interface MFASetupRequest {
+  provider: 'sms' | 'totp' | 'email';
+  phone?: string;
+  email?: string;
+}
+
+export interface MFASetupResponse {
+  success: boolean;
+  qrCode?: string; // Para TOTP
+  backupCodes?: string[];
+  message: string;
+}
+
+export interface MFAVerifyRequest {
+  provider: 'sms' | 'totp' | 'email' | 'backup';
+  code: string;
+  sessionToken: string;
+}
+
+export interface MFAVerifyResponse {
+  success: boolean;
+  accessToken?: string;
+  message: string;
+}
 
 /**
  * Serviço para autenticação multifatorial (MFA)
@@ -215,7 +243,7 @@ export const mfaService = {
       // Gerar token de acesso JWT
       const accessToken = jwt.sign(
         { userId: session.user_id },
-        process.env.JWT_SECRET,
+        getJwtSecret(),
         { expiresIn: '1h' }
       );
 

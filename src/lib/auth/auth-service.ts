@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { db } from '../database';
 import { users, profiles } from '../schema';
@@ -100,7 +100,7 @@ export class AuthService {
 
   static async verifyToken(token: string): Promise<AuthUser> {
     try {
-      const decoded = jwt.verify(token, getJwtSecret()) as any;
+      const decoded = jwt.verify(token, getJwtSecret()) as { id: string };
       
       // Buscar usuário atualizado
       const [user] = await db.select().from(users).where(eq(users.id, decoded.id)).limit(1);
@@ -202,16 +202,21 @@ export class AuthService {
     }
   }
 
-  private static generateToken(user: any): string {
+  private static generateToken(user: {
+    id: string;
+    email: string;
+    name: string;
+    emailVerified: boolean | null;
+  }): string {
     return jwt.sign(
-      { 
-        id: user.id, 
-        email: user.email, 
+      {
+        id: user.id,
+        email: user.email,
         name: user.name,
         emailVerified: user.emailVerified || false,
       },
       getJwtSecret(),
-      { expiresIn: getJwtExpiresIn() }
+      { expiresIn: getJwtExpiresIn() as SignOptions['expiresIn'] }
     );
   }
 

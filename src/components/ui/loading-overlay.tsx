@@ -24,7 +24,7 @@ const sizeConfig = {
   },
 };
 
-export interface LoadingOverlayProps extends CardVariants {
+export interface LoadingOverlayProps extends Omit<CardVariants, "variant"> {
   isLoading: boolean;
   children?: React.ReactNode;
   loadingText?: string;

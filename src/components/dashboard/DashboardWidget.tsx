@@ -143,11 +143,8 @@ export default function DashboardWidget({
 
   return (
     <div className={cn(sizeToGridClass[size], className)}>
-      <Card 
-        title={widgetTitle}
-        elevated
-        className="h-full transition-all duration-300 transform"
-      >
+      <Card className="h-full p-4 shadow-md transition-all duration-300 transform">
+        <div className="mb-4">{widgetTitle}</div>
         {isLoading ? (
           <div className="flex justify-center items-center h-32">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>

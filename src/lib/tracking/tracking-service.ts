@@ -6,7 +6,7 @@
  * detecção de eventos e alertas.
  */
 
-import { WebSocketManager, RealtimeEvent } from '../realtime/websocket-client';
+import { WebSocketManager } from '../realtime/websocket-client';
 
 // Tipos para o sistema de rastreamento
 export interface Position {
@@ -79,6 +79,28 @@ export interface TrackingEvent {
   ignition?: boolean;
   battery?: number;
   details?: any;
+}
+
+// Shape mínimo de veículo retornado pela API (usado para resolver o usuário dono)
+interface VehicleApiResponse {
+  user_id?: string;
+}
+
+// Configurações de alerta de velocidade do usuário
+interface UserSpeedSettings {
+  speed_alert_enabled?: boolean;
+  speed_alert_value?: number;
+}
+
+// Geocerca retornada pela API de geocercas do usuário
+interface GeofenceApiResponse {
+  id?: number | string;
+  type?: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+  radius_meters?: number;
 }
 
 /**
@@ -242,20 +264,22 @@ export class TrackingService {
       });
       
       if (!vehicleResponse.ok) return;
-      
-      const vehicle = await vehicleResponse.json();
-      
+
+      const vehicle = await vehicleResponse.json() as VehicleApiResponse;
+
       const settingsResponse = await fetch(`${this.apiBaseUrl}/users/${vehicle.user_id}/settings`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
         },
       });
-      
-      if (!settingsResponse.ok) return;
-      
-      const settings = await settingsResponse.json();
 
-      if (settings?.speed_alert_enabled && position.speed > (settings.speed_alert_value || 120)) {
+      if (!settingsResponse.ok) return;
+
+      const settings = await settingsResponse.json() as UserSpeedSettings | null;
+
+      const speedLimit = settings?.speed_alert_value || 120;
+
+      if (settings?.speed_alert_enabled && position.speed > speedLimit) {
         await this.createEvent({
           vehicle_id: position.vehicle_id,
           type: 'speed_alert',
@@ -264,8 +288,8 @@ export class TrackingService {
           lng: position.longitude,
           speed: position.speed,
           details: {
-            speed_limit: settings.speed_alert_value,
-            exceeded_by: position.speed - settings.speed_alert_value
+            speed_limit: speedLimit,
+            exceeded_by: position.speed - speedLimit
           }
         });
       }
@@ -287,21 +311,21 @@ export class TrackingService {
       });
       
       if (!vehicleResponse.ok) return;
-      
-      const vehicle = await vehicleResponse.json();
-      
+
+      const vehicle = await vehicleResponse.json() as VehicleApiResponse;
+
       const geofencesResponse = await fetch(`${this.apiBaseUrl}/users/${vehicle.user_id}/geofences`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
         },
       });
-      
+
       if (!geofencesResponse.ok) return;
-      
-      const geofences = await geofencesResponse.json();
+
+      const geofences = await geofencesResponse.json() as GeofenceApiResponse[];
 
       for (const geofence of geofences) {
-        const isInside = this.isPointInGeofence(
+        this.isPointInGeofence(
           position.latitude,
           position.longitude,
           geofence
@@ -319,8 +343,8 @@ export class TrackingService {
   /**
    * Verifica se um ponto está dentro de uma geocerca
    */
-  private isPointInGeofence(lat: number, lng: number, geofence: any): boolean {
-    if (geofence.type === 'circle') {
+  private isPointInGeofence(lat: number, lng: number, geofence: GeofenceApiResponse): boolean {
+    if (geofence.type === 'circle' && geofence.coordinates && geofence.radius_meters !== undefined) {
       const center = geofence.coordinates;
       const distance = this.calculateDistance(
         lat, lng,
@@ -364,7 +388,7 @@ export class TrackingService {
         },
       });
       
-      const activeTrip = response.ok ? await response.json() : null;
+      const activeTrip = response.ok ? (await response.json() as Trip | null) : null;
 
       if (position.ignition) {
         if (!activeTrip) {

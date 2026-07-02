@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNotifications } from './NotificationsProvider';
 import { Badge } from '@/components/ui/Badge';
-import { Dropdown } from '@/components/ui/Dropdown';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
@@ -98,12 +97,7 @@ const NotificationsBell: React.FC<NotificationsBellProps> = ({ className }) => {
       </button>
 
       {isOpen && (
-        <Dropdown
-          isOpen={isOpen}
-          onClose={() => setIsOpen(false)}
-          className="w-80 max-h-96 overflow-y-auto"
-          position="right"
-        >
+        <div className="absolute right-0 z-50 mt-2 w-80 max-h-96 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
           <div className="p-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
             <h3 className="font-medium text-gray-800 dark:text-gray-200">
               Notificações ({unreadCount} não lidas)
@@ -152,7 +146,7 @@ const NotificationsBell: React.FC<NotificationsBellProps> = ({ className }) => {
               ))
             )}
           </div>
-        </Dropdown>
+        </div>
       )}
     </div>
   );

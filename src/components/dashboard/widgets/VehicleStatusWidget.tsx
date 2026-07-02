@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Progress } from '@/components/ui/Progress';
-import { StatusBadge } from '@/componen../ui/status-badge';
+import { Badge } from '@/components/ui/Badge';
 import { Truck, Battery, Thermometer, Fuel, MapPin, Clock, AlertTriangle } from 'lucide-react';
 import { ConfigurableWidget } from '@/components/dashboard/ConfigurableWidget';
 import { motion } from 'framer-motion';
@@ -112,13 +112,13 @@ export function VehicleStatusWidget({
   };
 
   // Função para determinar a cor do status
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): 'success' | 'secondary' | 'warning' | 'destructive' => {
     switch (status) {
-      case 'online': return 'green';
-      case 'offline': return 'gray';
-      case 'maintenance': return 'yellow';
-      case 'alert': return 'red';
-      default: return 'gray';
+      case 'online': return 'success';
+      case 'offline': return 'secondary';
+      case 'maintenance': return 'warning';
+      case 'alert': return 'destructive';
+      default: return 'secondary';
     }
   };
 
@@ -185,11 +185,12 @@ export function VehicleStatusWidget({
               <Truck className="h-6 w-6 text-blue-700 dark:text-blue-500 mr-2" aria-hidden="true" />
               <h4 className="font-medium text-gray-900 dark:text-gray-100">{vehicleData.name}</h4>
             </div>
-            <StatusBadge 
-              status={getStatusColor(vehicleData.status)}
-              text={getStatusText(vehicleData.status)}
+            <Badge 
+              variant={getStatusColor(vehicleData.status)}
               aria-label={`Status do veículo: ${getStatusText(vehicleData.status)}`}
-            />
+            >
+              {getStatusText(vehicleData.status)}
+            </Badge>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

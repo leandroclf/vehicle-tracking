@@ -24,7 +24,7 @@ import {
   Clock,
   Gauge
 } from 'lucide-react';
-import { useTracking, Position, VehicleStatus } from '@/lib/tracking/use-tracking';
+import { useMultiVehicleTracking, Position, VehicleStatus } from '@/lib/tracking/use-tracking';
 import { cn } from '@/lib/utils';
 
 interface RealtimeMapProps {
@@ -94,11 +94,7 @@ export function RealtimeMap({
   const trackingRef = useRef<any>(null);
 
   // Hook de rastreamento para múltiplos veículos
-  const { vehicles, loadAllVehicles } = useTracking({
-    vehicleIds,
-    autoStart: true,
-    enableRealtime: true
-  });
+  const { vehicles, loadAllVehicles } = useMultiVehicleTracking(vehicleIds);
 
   /**
    * Cores para diferentes veículos

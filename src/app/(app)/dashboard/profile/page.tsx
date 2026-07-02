@@ -261,7 +261,7 @@ function ProfileContent() {
           {/* Main content */}
           <div className="md:w-2/3 p-6">
             {message.text && (
-              <Alert variant={message.type === 'success' ? 'success' : 'error'}>
+              <Alert variant={message.type === 'success' ? 'success' : 'destructive'}>
                 {message.text}
               </Alert>
             )}
@@ -347,7 +347,7 @@ function ProfileContent() {
                 <h3 className="text-lg font-medium mb-4 text-gray-800 dark:text-gray-200">Alterar Senha</h3>
                 
                 {passwordMessage.text && (
-                  <Alert variant={passwordMessage.type === 'success' ? 'success' : 'error'}>
+                  <Alert variant={passwordMessage.type === 'success' ? 'success' : 'destructive'}>
                     {passwordMessage.text}
                   </Alert>
                 )}

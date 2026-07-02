@@ -1,6 +1,6 @@
 import { db } from '../database';
-import { vehicles, vehicleStatus, NewVehicle } from '../schema';
-import { eq, and, desc, count, ilike, or } from 'drizzle-orm';
+import { vehicles, vehicleStatus } from '../schema';
+import { eq, and, count, ilike, or, inArray, SQL } from 'drizzle-orm';
 
 export interface VehicleFilters {
     limit?: number;
@@ -10,25 +10,39 @@ export interface VehicleFilters {
     search?: string;
 }
 
+export interface VehicleCreateData {
+    name: string;
+    licensePlate: string;
+    model?: string;
+    year?: number | string;
+    color?: string;
+    deviceId?: string;
+    status?: 'active' | 'inactive' | 'maintenance';
+    vin?: string;
+}
+
+export type VehicleUpdateData = Partial<VehicleCreateData>;
+
 export class VehiclesService {
     static async getVehicles(userId: string, filters: VehicleFilters = {}) {
         const { limit = 50, offset = 0, status = 'all', sort = 'asc', search } = filters;
 
         // Construir condições de filtro
-        const conditions = [eq(vehicles.userId, userId)];
+        const conditions: SQL[] = [eq(vehicles.userId, userId)];
 
         if (status !== 'all') {
             conditions.push(eq(vehicles.status, status));
         }
 
         if (search) {
-            conditions.push(
-                or(
-                    ilike(vehicles.name, `%${search}%`),
-                    ilike(vehicles.plate, `%${search}%`),
-                    ilike(vehicles.deviceImei, `%${search}%`)
-                )
+            const searchCondition = or(
+                ilike(vehicles.name, `%${search}%`),
+                ilike(vehicles.plate, `%${search}%`),
+                ilike(vehicles.deviceImei, `%${search}%`)
             );
+            if (searchCondition) {
+                conditions.push(searchCondition);
+            }
         }
 
         const whereClause = and(...conditions);
@@ -41,21 +55,35 @@ export class VehiclesService {
 
         const total = totalResult ? totalResult.count : 0;
 
-        // Buscar veículos
+        // Buscar veículos (dados cadastrais; vehicles.status = 'active' | 'inactive' | 'maintenance')
         const vehiclesList = await db.query.vehicles.findMany({
             where: whereClause,
             limit,
             offset,
-            orderBy: (vehicles, { asc, desc }) => [
-                sort === 'asc' ? asc(vehicles.name) : desc(vehicles.name)
+            orderBy: (vehiclesTable, { asc, desc }) => [
+                sort === 'asc' ? asc(vehiclesTable.name) : desc(vehiclesTable.name)
             ],
-            with: {
-                status: true,
-            }
         });
 
+        // Buscar estado em tempo real (vehicle_status.status = 'online' | 'offline' | ...)
+        // separadamente para não colidir com a coluna cadastral `status`.
+        const vehicleIds = vehiclesList.map((vehicle) => vehicle.id);
+        const statusRows = vehicleIds.length > 0
+            ? await db
+                .select()
+                .from(vehicleStatus)
+                .where(inArray(vehicleStatus.vehicleId, vehicleIds))
+            : [];
+
+        const statusByVehicleId = new Map(statusRows.map((row) => [row.vehicleId, row]));
+
+        const data = vehiclesList.map((vehicle) => ({
+            ...vehicle,
+            currentStatus: statusByVehicleId.get(vehicle.id) ?? null,
+        }));
+
         return {
-            data: vehiclesList,
+            data,
             pagination: {
                 total,
                 limit,
@@ -87,7 +115,7 @@ export class VehiclesService {
         return vehicle;
     }
 
-    static async createVehicle(userId: string, data: any) {
+    static async createVehicle(userId: string, data: VehicleCreateData) {
         // Verificar se placa já existe
         const existingPlate = await db.query.vehicles.findFirst({
             where: eq(vehicles.plate, data.licensePlate)
@@ -132,7 +160,7 @@ export class VehiclesService {
         return newVehicle;
     }
 
-    static async updateVehicle(userId: string, vehicleId: string, data: any) {
+    static async updateVehicle(userId: string, vehicleId: string, data: VehicleUpdateData) {
         const id = parseInt(vehicleId);
 
         // Verificar se veículo existe e pertence ao usuário

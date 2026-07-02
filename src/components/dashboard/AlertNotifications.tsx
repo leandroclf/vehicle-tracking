@@ -100,7 +100,7 @@ export default function AlertNotifications({
           {alerts.length > 0 && (
             <div className="flex justify-end mb-2">
               <Button 
-                variant="danger" 
+                variant="destructive" 
                 size="sm"
                 onClick={handleDeleteAllAlerts}
                 className="flex items-center text-sm"

@@ -20,26 +20,31 @@ const variantConfig = {
     icon: XCircle,
     iconColor: "text-red-500",
     confirmVariant: "destructive" as const,
+    confirmClassName: "",
   },
   warning: {
     icon: AlertTriangle,
     iconColor: "text-yellow-500",
-    confirmVariant: "warning" as const,
+    confirmVariant: "default" as const,
+    confirmClassName: "bg-yellow-500 text-white hover:bg-yellow-600",
   },
   info: {
     icon: Info,
     iconColor: "text-blue-500",
-    confirmVariant: "info" as const,
+    confirmVariant: "default" as const,
+    confirmClassName: "bg-blue-600 text-white hover:bg-blue-700",
   },
   success: {
     icon: CheckCircle,
     iconColor: "text-green-500",
-    confirmVariant: "success" as const,
+    confirmVariant: "default" as const,
+    confirmClassName: "bg-green-600 text-white hover:bg-green-700",
   },
 };
 
 export interface ConfirmationDialogProps {
-  children: React.ReactNode;
+  /** Elemento que dispara o diálogo (opcional em modo controlado) */
+  children?: React.ReactNode;
   title: string;
   description: string;
   confirmText?: string;
@@ -49,6 +54,9 @@ export interface ConfirmationDialogProps {
   onCancel?: () => void;
   disabled?: boolean;
   loading?: boolean;
+  /** Modo controlado: estado de abertura gerenciado externamente */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   "data-testid"?: string;
 }
 
@@ -64,10 +72,22 @@ const ConfirmationDialog = forwardRef<HTMLDivElement, ConfirmationDialogProps>(
     onCancel,
     disabled = false,
     loading = false,
+    open: controlledOpen,
+    onOpenChange,
     "data-testid": testId,
   }, ref) => {
-    const [open, setOpen] = useState(false);
+    const [internalOpen, setInternalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : internalOpen;
+    const setOpen = (value: boolean) => {
+      if (isControlled) {
+        onOpenChange?.(value);
+      } else {
+        setInternalOpen(value);
+      }
+    };
     
     const config = variantConfig[variant];
     const Icon = config.icon;
@@ -93,9 +113,11 @@ const ConfirmationDialog = forwardRef<HTMLDivElement, ConfirmationDialogProps>(
     
     return (
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          {children}
-        </DialogTrigger>
+        {children && (
+          <DialogTrigger asChild>
+            {children}
+          </DialogTrigger>
+        )}
         <DialogContent 
           ref={ref}
           className="sm:max-w-[425px]"
@@ -129,6 +151,7 @@ const ConfirmationDialog = forwardRef<HTMLDivElement, ConfirmationDialogProps>(
             </Button>
             <Button
               variant={config.confirmVariant}
+              className={config.confirmClassName}
               onClick={handleConfirm}
               disabled={isButtonDisabled}
               data-testid={`${testId}-confirm`}

@@ -3,8 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
-import { Label } from '@/components/ui/Label';
-import { Separator } from '@/components/ui/Separator';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/Alert';
 import { 
   Dialog, 
@@ -13,7 +13,7 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger 
-} from '@/components/ui/Dialog';
+} from '@/components/ui/dialog';
 import { 
   Select,
   SelectContent,
@@ -25,7 +25,7 @@ import {
   Lock, 
   Unlock, 
   Siren, 
-  SirenOff, 
+  VolumeX, 
   Zap, 
   MapPin, 
   AlertTriangle,
@@ -69,7 +69,7 @@ const COMMAND_CONFIG = {
   deactivate_siren: {
     label: 'Desativar Sirene',
     description: 'Desliga a sirene do veículo',
-    icon: SirenOff,
+    icon: VolumeX,
     variant: 'secondary' as const,
     requiresConfirmation: false
   },
@@ -97,12 +97,13 @@ const COMMAND_CONFIG = {
 } as const;
 
 const STATUS_CONFIG = {
-  pending: { label: 'Pendente', color: 'bg-yellow-500', icon: Clock },
+  pending_confirmation: { label: 'Pendente', color: 'bg-yellow-500', icon: Clock },
   confirmed: { label: 'Confirmado', color: 'bg-blue-500', icon: CheckCircle },
-  sent: { label: 'Enviado', color: 'bg-green-500', icon: CheckCircle },
+  sent_to_device: { label: 'Enviado', color: 'bg-green-500', icon: CheckCircle },
   executed: { label: 'Executado', color: 'bg-green-600', icon: CheckCircle },
   failed: { label: 'Falhou', color: 'bg-red-500', icon: XCircle },
-  expired: { label: 'Expirado', color: 'bg-gray-500', icon: XCircle }
+  expired: { label: 'Expirado', color: 'bg-gray-500', icon: XCircle },
+  cancelled: { label: 'Cancelado', color: 'bg-gray-400', icon: XCircle }
 } as const;
 
 export function VehicleRemoteControl({ vehicleId, vehicleName, isOnline }: VehicleRemoteControlProps) {
@@ -128,9 +129,10 @@ export function VehicleRemoteControl({ vehicleId, vehicleName, isOnline }: Vehic
   // Verificar se há comandos pendentes de confirmação
   useEffect(() => {
     const pending = commands.find(cmd => 
-      cmd.status === 'pending' && 
+      cmd.status === 'pending_confirmation' && 
       cmd.confirmation_required &&
-      new Date(cmd.expires_at) > new Date()
+      cmd.confirmation_expires_at != null &&
+      new Date(cmd.confirmation_expires_at) > new Date()
     );
     setPendingConfirmation(pending || null);
   }, [commands]);
@@ -225,7 +227,7 @@ export function VehicleRemoteControl({ vehicleId, vehicleName, isOnline }: Vehic
                     Comando <strong>{COMMAND_CONFIG[pendingConfirmation.type].label}</strong> aguardando confirmação.
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Expira em: {getTimeRemaining(pendingConfirmation.expires_at)}
+                    Expira em: {getTimeRemaining(pendingConfirmation.confirmation_expires_at ?? '')}
                   </p>
                   <div className="flex gap-2">
                     <Input
@@ -267,7 +269,7 @@ export function VehicleRemoteControl({ vehicleId, vehicleName, isOnline }: Vehic
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="command-select">Tipo de Comando</Label>
-                  <Select value={selectedCommand} onValueChange={setSelectedCommand}>
+                  <Select value={selectedCommand} onValueChange={(value) => setSelectedCommand(value as CommandType)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione um comando" />
                     </SelectTrigger>
@@ -367,7 +369,7 @@ export function VehicleRemoteControl({ vehicleId, vehicleName, isOnline }: Vehic
                         {status.label}
                       </Badge>
                       
-                      {command.status === 'pending' && command.confirmation_required && (
+                      {command.status === 'pending_confirmation' && command.confirmation_required && (
                         <Badge variant="secondary">
                           Aguardando confirmação
                         </Badge>

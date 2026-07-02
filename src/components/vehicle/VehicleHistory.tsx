@@ -72,9 +72,9 @@ export default function VehicleHistory({
   const columns: DataTableColumn<HistoryRecord>[] = [
     {
       key: 'datetime',
-      label: 'Data/Hora',
+      title: 'Data/Hora',
       sortable: true,
-      render: (record) => (
+      render: (_value, record) => (
         <div className="text-sm">
           <div className="font-medium text-gray-900">{record.date}</div>
           <div className="text-gray-500">{record.time}</div>
@@ -83,8 +83,8 @@ export default function VehicleHistory({
     },
     {
       key: 'address',
-      label: 'Endereço',
-      render: (record) => (
+      title: 'Endereço',
+      render: (_value, record) => (
         <div className="text-sm text-gray-900 max-w-xs truncate" title={record.address}>
           {record.address}
         </div>
@@ -92,9 +92,9 @@ export default function VehicleHistory({
     },
     {
       key: 'speed',
-      label: 'Velocidade',
+      title: 'Velocidade',
       sortable: true,
-      render: (record) => (
+      render: (_value, record) => (
         <Badge variant={record.speed > 0 ? 'default' : 'secondary'}>
           {record.speed} km/h
         </Badge>
@@ -102,8 +102,8 @@ export default function VehicleHistory({
     },
     {
       key: 'ignition',
-      label: 'Ignição',
-      render: (record) => (
+      title: 'Ignição',
+      render: (_value, record) => (
         <div className="flex items-center space-x-2">
           {record.ignition === 'ligado' ? (
             <Power className="h-4 w-4 text-green-500" />
@@ -118,8 +118,8 @@ export default function VehicleHistory({
     },
     {
       key: 'voltage',
-      label: 'Voltagem',
-      render: (record) => (
+      title: 'Voltagem',
+      render: (_value, record) => (
         <div className="flex items-center space-x-2">
           <Zap className="h-4 w-4 text-yellow-500" />
           <span className="text-sm">{record.voltage}</span>
@@ -128,8 +128,8 @@ export default function VehicleHistory({
     },
     {
       key: 'direction',
-      label: 'Direção',
-      render: (record) => (
+      title: 'Direção',
+      render: (_value, record) => (
         <span className="text-sm text-gray-500">
           {record.direction || '-'}
         </span>

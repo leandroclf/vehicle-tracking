@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { getDbPool } from '@/lib/database';
+import { db } from '@/lib/database';
+import { events, vehicles } from '@/lib/schema';
+import { and, asc, count, desc, eq, gte, lte, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
@@ -14,120 +16,121 @@ const querySchema = z.object({
   sort: z.enum(['asc', 'desc']).optional().default('desc')
 });
 
-// Interface para eventos
-interface Event {
-  id: string;
-  vehicle_id: string;
-  type: string;
-  timestamp: string;
-  details: any;
-  position?: {
-    latitude: number;
-    longitude: number;
-    altitude?: number;
-    speed?: number;
-    heading?: number;
-  };
-  vehicle?: {
-    name: string;
-    license_plate: string;
-  };
-}
-
 // Handler para listar eventos de monitoramento (GET)
 export async function GET(request: NextRequest) {
   try {
     // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ 
-        error: authResult.error || 'Não autorizado' 
+      return NextResponse.json({
+        error: authResult.error || 'Não autorizado'
       }, { status: authResult.status || 401 });
     }
-    
+
     const userId = authResult.user.id;
-    
+
     // Extrair e validar parâmetros de consulta
     const url = new URL(request.url);
     const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
-    
+
     if (!queryResult.success) {
-      return NextResponse.json({ 
-        error: 'Parâmetros de consulta inválidos', 
-        details: queryResult.error.format() 
+      return NextResponse.json({
+        error: 'Parâmetros de consulta inválidos',
+        details: queryResult.error.format()
       }, { status: 400 });
     }
-    
+
     const { vehicle_id, type, from, to, limit, offset, sort } = queryResult.data;
-    
-    // Construir consulta base
-    // TODO: Implementar query SQL direta
-    let query = null;
-    // pool.query
-    // .from('monitoring_events')
-    // .select(`
-    //   *,
-    //   vehicles:vehicle_id (name, license_plate)
-    // `)
-    // .eq('user_id', userId)
-    // .order('timestamp', { ascending: sort === 'asc' })
-    // .range(offset, offset + limit - 1);
-    
-    // Aplicar filtros adicionais se fornecidos
+
+    // Construir condições da consulta (escopo por usuário via join com vehicles)
+    const conditions: SQL[] = [eq(vehicles.userId, userId)];
+
     if (vehicle_id) {
-      query = query.eq('vehicle_id', vehicle_id);
+      const vehicleIdNumber = parseInt(vehicle_id, 10);
+      if (Number.isNaN(vehicleIdNumber)) {
+        return NextResponse.json({
+          error: 'Parâmetros de consulta inválidos',
+          details: { vehicle_id: 'Deve ser um identificador numérico' }
+        }, { status: 400 });
+      }
+      conditions.push(eq(events.vehicleId, vehicleIdNumber));
     }
-    
+
     if (type) {
-      query = query.eq('type', type);
+      conditions.push(eq(events.type, type));
     }
-    
+
     if (from) {
-      query = query.gte('timestamp', from);
+      conditions.push(gte(events.timestamp, new Date(from)));
     }
-    
+
     if (to) {
-      query = query.lte('timestamp', to);
+      conditions.push(lte(events.timestamp, new Date(to)));
     }
-    
-    // Executar consulta
-    const { data: events, error, count } = await query;
-    
-    if (error) {
-      console.error('Erro ao buscar eventos:', error);
-      return NextResponse.json({ 
-        error: 'Erro ao buscar eventos de monitoramento' 
-      }, { status: 500 });
-    }
-    
+
+    const whereClause = and(...conditions);
+
+    // Executar consulta paginada
+    const rows = await db
+      .select({
+        id: events.id,
+        vehicleId: events.vehicleId,
+        type: events.type,
+        timestamp: events.timestamp,
+        description: events.description,
+        attributes: events.attributes,
+        lat: events.lat,
+        lng: events.lng,
+        speed: events.speed,
+        heading: events.heading,
+        vehicleName: vehicles.name,
+        licensePlate: vehicles.plate
+      })
+      .from(events)
+      .innerJoin(vehicles, eq(events.vehicleId, vehicles.id))
+      .where(whereClause)
+      .orderBy(sort === 'asc' ? asc(events.timestamp) : desc(events.timestamp))
+      .limit(limit)
+      .offset(offset);
+
+    const [totalRow] = await db
+      .select({ value: count() })
+      .from(events)
+      .innerJoin(vehicles, eq(events.vehicleId, vehicles.id))
+      .where(whereClause);
+
     // Formatar resultados
-    const formattedEvents = (events as Event[] | null)?.map(event => {
-      const vehicle = event.vehicle;
-      return {
-        id: event.id,
-        vehicle_id: event.vehicle_id,
-        vehicleName: vehicle?.name || 'Veículo desconhecido',
-        licensePlate: vehicle?.license_plate,
-        type: event.type,
-        timestamp: event.timestamp,
-        details: typeof event.details === 'string' ? JSON.parse(event.details) : event.details,
-        position: event.position
-      };
-    }) || [];
-    
+    const formattedEvents = rows.map(event => ({
+      id: event.id,
+      vehicle_id: event.vehicleId,
+      vehicleName: event.vehicleName || 'Veículo desconhecido',
+      licensePlate: event.licensePlate,
+      type: event.type,
+      timestamp: event.timestamp,
+      details: event.attributes ?? event.description ?? null,
+      position: event.lat != null && event.lng != null
+        ? {
+            latitude: event.lat,
+            longitude: event.lng,
+            speed: event.speed ?? undefined,
+            heading: event.heading ?? undefined
+          }
+        : undefined
+    }));
+
     return NextResponse.json({
       events: formattedEvents,
       pagination: {
-        total: count || 0,
+        total: totalRow?.value || 0,
         limit,
         offset
       }
     });
-    
+
   } catch (error) {
     console.error('Erro ao processar requisição de eventos:', error);
-    return NextResponse.json({ 
-      error: 'Erro interno do servidor' 
+    return NextResponse.json({
+      error: 'Erro interno do servidor'
     }, { status: 500 });
   }
 }

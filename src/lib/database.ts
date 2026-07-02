@@ -26,7 +26,6 @@ let redis: Redis | null = null;
 if (process.env.REDIS_URL && typeof window === 'undefined') {
   try {
     redis = new Redis(process.env.REDIS_URL, {
-      retryDelayOnFailover: 100,
       enableReadyCheck: false,
       maxRetriesPerRequest: null,
       lazyConnect: true,

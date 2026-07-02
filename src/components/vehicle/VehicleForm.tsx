@@ -3,7 +3,14 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/Button';
-import { Form } from '@/components/ui/form';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { FormFieldWithValidation } from '@/components/ui/form-field-with-validation';
 import {
   Select,
@@ -18,6 +25,8 @@ import { cn } from '@/lib/utils';
 
 // Schema de validação
 const vehicleSchema = z.object({
+  name: z.string()
+    .min(3, 'Nome deve ter pelo menos 3 caracteres'),
   plate: z.string()
     .min(1, 'Placa é obrigatória')
     .regex(/^[A-Z]{3}-?[0-9]{4}$|^[A-Z]{3}[0-9][A-Z][0-9]{2}$/, 'Formato de placa inválido (AAA-0000 ou AAA0A00)'),
@@ -44,6 +53,7 @@ interface VehicleFormProps {
   isEdit?: boolean;
   initialData?: {
     id?: string;
+    name?: string;
     plate?: string;
     model?: string;
     year?: string;
@@ -69,6 +79,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
   const form = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleSchema),
     defaultValues: {
+      name: initialData.name || '',
       plate: initialData.plate || '',
       model: initialData.model || '',
       year: initialData.year || '',
@@ -90,28 +101,9 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
     });
   };
 
-  // Validação customizada para placa
-  const validatePlate = (value: string) => {
-    if (!value) return 'Placa é obrigatória';
-    
-    // Remove hífens e espaços para validação
-    const cleanPlate = value.replace(/[-\s]/g, '').toUpperCase();
-    
-    // Formato antigo: AAA0000
-    const oldFormat = /^[A-Z]{3}[0-9]{4}$/.test(cleanPlate);
-    // Formato Mercosul: AAA0A00
-    const mercosulFormat = /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(cleanPlate);
-    
-    if (oldFormat || mercosulFormat) {
-      return true; // Válido
-    }
-    
-    return 'Formato de placa inválido. Use AAA-0000 ou AAA0A00';
-  };
-
   return (
     <Card className={cn("relative", className)} data-testid={testId}>
-      {isLoading && <LoadingOverlay />}
+      {isLoading && <LoadingOverlay isLoading overlay />}
       
       <CardHeader>
         <CardTitle>
@@ -125,11 +117,19 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormFieldWithValidation
                 control={form.control}
+                name="name"
+                label="Nome"
+                placeholder="Ex: Carro da frota 01"
+                required
+                data-testid="vehicle-form-name"
+              />
+
+              <FormFieldWithValidation
+                control={form.control}
                 name="plate"
                 label="Placa"
                 placeholder="ABC-1234 ou ABC1A23"
                 required
-                validate={validatePlate}
                 className="uppercase"
                 data-testid="vehicle-form-plate"
               />
@@ -149,8 +149,6 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
                 label="Ano"
                 type="number"
                 placeholder="2023"
-                min={1900}
-                max={new Date().getFullYear() + 1}
                 data-testid="vehicle-form-year"
               />
 
@@ -163,21 +161,32 @@ const VehicleForm: React.FC<VehicleFormProps> = ({
               />
 
               <div className="md:col-span-2">
-                <FormFieldWithValidation
+                <FormField
                   control={form.control}
                   name="status"
-                  label="Status"
-                  type="select"
-                  placeholder="Selecione o status"
-                  required
-                  data-testid="vehicle-form-status"
-                >
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </FormFieldWithValidation>
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <FormLabel className="after:content-['*'] after:ml-0.5 after:text-red-500">
+                        Status
+                      </FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="vehicle-form-status">
+                            <SelectValue placeholder="Selecione o status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {statusOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
 

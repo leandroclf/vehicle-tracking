@@ -6,6 +6,7 @@
         "jsx": "react",
         "noEmit": false,
         "esModuleInterop": true,
+        "isolatedModules": true,
         "types": [
             "node",
             "jest"

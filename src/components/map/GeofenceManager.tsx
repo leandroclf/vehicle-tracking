@@ -11,9 +11,9 @@ export interface Geofence {
   paths?: google.maps.LatLngLiteral[];
   color: string;
   fillColor: string;
-  clientId: string;
-  createdAt: string;
-  updatedAt: string;
+  clientId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Interface para evento de entrada/saída de geocerca
@@ -158,6 +158,71 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
     }
   }, [selectedGeofenceId, geofences]);
   
+  // Função para gerar alertas de geocerca
+  const generateGeofenceAlert = useCallback((vehicleId: number, geofenceId: string, eventType: 'enter' | 'exit', position: google.maps.LatLngLiteral) => {
+    const newAlert: GeofenceEvent = {
+      id: `${vehicleId}-${geofenceId}-${Date.now()}`,
+      vehicleId,
+      geofenceId,
+      eventType,
+      timestamp: new Date().toISOString(),
+      position
+    };
+
+    setGeofenceAlerts(prev => [newAlert, ...prev].slice(0, 50)); // Manter apenas os 50 alertas mais recentes
+
+    // Chamar o callback se fornecido
+    if (onGeofenceEvent) {
+      onGeofenceEvent(newAlert);
+    }
+
+    // Em uma aplicação real, aqui você enviaria o alerta para um sistema de notificações
+    console.log(`Alerta de Geocerca: Veículo ${vehicleId} ${eventType === 'enter' ? 'entrou na' : 'saiu da'} geocerca ${geofenceId}`);
+  }, [onGeofenceEvent]);
+
+  // Função para verificar se um ponto está dentro de um polígono
+  const isPointInPolygon = useCallback((point: google.maps.LatLngLiteral, polygon: google.maps.LatLngLiteral[]) => {
+    if (!point || !polygon || polygon.length < 3) return false;
+
+    const x = point.lat;
+    const y = point.lng;
+
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lat;
+      const yi = polygon[i].lng;
+      const xj = polygon[j].lat;
+      const yj = polygon[j].lng;
+
+      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+
+    return inside;
+  }, []);
+
+  // Função para verificar se um ponto está dentro de um círculo
+  const isPointInCircle = useCallback((point: google.maps.LatLngLiteral, center: google.maps.LatLngLiteral, radius: number) => {
+    if (!point || !center || !radius) return false;
+
+    const R = 6371000; // raio da Terra em metros
+    const rlat1 = center.lat * (Math.PI/180);
+    const rlat2 = point.lat * (Math.PI/180);
+    const rlon1 = center.lng * (Math.PI/180);
+    const rlon2 = point.lng * (Math.PI/180);
+
+    const dlat = rlat2 - rlat1;
+    const dlon = rlon2 - rlon1;
+
+    const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
+            Math.cos(rlat1) * Math.cos(rlat2) *
+            Math.sin(dlon/2) * Math.sin(dlon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const distance = R * c;
+
+    return distance <= radius;
+  }, []);
+
   // Efeito para verificar veículos dentro das geocercas e gerar alertas
   useEffect(() => {
     if (!vehicles || vehicles.length === 0 || !geofences || geofences.length === 0) return;
@@ -216,71 +281,6 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
       setDrawingMode(null);
     }
   }, [editable]);
-
-  // Função para gerar alertas de geocerca
-  const generateGeofenceAlert = useCallback((vehicleId: number, geofenceId: string, eventType: 'enter' | 'exit', position: google.maps.LatLngLiteral) => {
-    const newAlert: GeofenceEvent = {
-      id: `${vehicleId}-${geofenceId}-${Date.now()}`,
-      vehicleId,
-      geofenceId,
-      eventType,
-      timestamp: new Date().toISOString(),
-      position
-    };
-    
-    setGeofenceAlerts(prev => [newAlert, ...prev].slice(0, 50)); // Manter apenas os 50 alertas mais recentes
-    
-    // Chamar o callback se fornecido
-    if (onGeofenceEvent) {
-      onGeofenceEvent(newAlert);
-    }
-    
-    // Em uma aplicação real, aqui você enviaria o alerta para um sistema de notificações
-    console.log(`Alerta de Geocerca: Veículo ${vehicleId} ${eventType === 'enter' ? 'entrou na' : 'saiu da'} geocerca ${geofenceId}`);
-  }, [onGeofenceEvent]);
-  
-  // Função para verificar se um ponto está dentro de um polígono
-  const isPointInPolygon = useCallback((point: google.maps.LatLngLiteral, polygon: google.maps.LatLngLiteral[]) => {
-    if (!point || !polygon || polygon.length < 3) return false;
-    
-    const x = point.lat;
-    const y = point.lng;
-    
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i].lat;
-      const yi = polygon[i].lng;
-      const xj = polygon[j].lat;
-      const yj = polygon[j].lng;
-      
-      const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-      if (intersect) inside = !inside;
-    }
-    
-    return inside;
-  }, []);
-
-  // Função para verificar se um ponto está dentro de um círculo
-  const isPointInCircle = useCallback((point: google.maps.LatLngLiteral, center: google.maps.LatLngLiteral, radius: number) => {
-    if (!point || !center || !radius) return false;
-    
-    const R = 6371000; // raio da Terra em metros
-    const rlat1 = center.lat * (Math.PI/180);
-    const rlat2 = point.lat * (Math.PI/180);
-    const rlon1 = center.lng * (Math.PI/180);
-    const rlon2 = point.lng * (Math.PI/180);
-    
-    const dlat = rlat2 - rlat1;
-    const dlon = rlon2 - rlon1;
-    
-    const a = Math.sin(dlat/2) * Math.sin(dlat/2) +
-            Math.cos(rlat1) * Math.cos(rlat2) *
-            Math.sin(dlon/2) * Math.sin(dlon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c;
-    
-    return distance <= radius;
-  }, []);
 
   // Efeito para verificar veículos dentro das geocercas e disparar eventos
   useEffect(() => {

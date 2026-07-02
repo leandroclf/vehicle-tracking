@@ -1,8 +1,7 @@
 import { requireAuth } from '@/lib/auth/auth-middleware';
 import { db } from '@/lib/database';
-import { vehicles, gpsPositions, alerts } from '@/lib/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
-import { cookies } from 'next/headers';
+import { vehicles } from '@/lib/schema';
+import { and, eq, inArray } from 'drizzle-orm';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -24,7 +23,7 @@ const customFilterSchema = z.object({
 // Esquema para validar a requisição de relatório personalizado
 const customReportSchema = z.object({
   title: z.string().min(3, 'Título deve ter pelo menos 3 caracteres'),
-  vehicleIds: z.array(z.string().uuid()).min(1, 'Selecione pelo menos um veículo'),
+  vehicleIds: z.array(z.string().min(1)).min(1, 'Selecione pelo menos um veículo'),
   startDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Data inicial inválida' }),
   endDate: z.string().refine(val => !isNaN(Date.parse(val)), { message: 'Data final inválida' }),
   format: z.enum(['pdf', 'excel', 'csv']).default('pdf'),
@@ -54,129 +53,68 @@ const customReportSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  // TODO: Implementar conexão com banco de dados
-  // const pool = getDbPool();
-  
   try {
     // Obter e validar dados usando Zod
     const rawData = await request.json();
     const validationResult = customReportSchema.safeParse(rawData);
-    
+
     if (!validationResult.success) {
       return NextResponse.json(
         { error: 'Dados inválidos', details: validationResult.error.format() },
         { status: 400 }
       );
     }
-    
+
     const validatedData = validationResult.data;
-    
+
     // Verificar autenticação
-    // TODO: Implementar autenticação JWT
-    const user = { id: 'mock-user-id' };
-    const authError = null;
-    if (authError || !user) {
+    const authResult = await requireAuth(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
+    const user = authResult.user;
+    if (!user) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
-    
+
     // Verificar se os veículos pertencem ao usuário
-    // TODO: Implementar query SQL direta
-    const vehicles = null;
-    const vehiclesError = null;
-    // await pool.query(...)
-    // .from('vehicles')
-    // .select('id')
-    // .in('id', validatedData.vehicleIds)
-    // .eq('user_id', user.id);
-      
-    if (vehiclesError) {
-      console.error('Erro ao verificar veículos:', vehiclesError);
-      return NextResponse.json(
-        { error: 'Erro ao verificar veículos' },
-        { status: 500 }
-      );
-    }
-    
+    const numericVehicleIds = validatedData.vehicleIds
+      .map(id => parseInt(id, 10))
+      .filter(id => !Number.isNaN(id));
+
+    const userVehicles = numericVehicleIds.length > 0
+      ? await db
+          .select({ id: vehicles.id })
+          .from(vehicles)
+          .where(and(
+            inArray(vehicles.id, numericVehicleIds),
+            eq(vehicles.userId, user.id)
+          ))
+      : [];
+
     // Verificar se todos os veículos foram encontrados
-    const foundVehicleIds = new Set(vehicles?.map(v => v.id) || []);
+    const foundVehicleIds = new Set(userVehicles.map(v => String(v.id)));
     const missingVehicles = validatedData.vehicleIds.filter(id => !foundVehicleIds.has(id));
-    
+
     if (missingVehicles.length > 0) {
       return NextResponse.json(
         { error: 'Alguns veículos selecionados não foram encontrados ou você não tem permissão para acessá-los' },
         { status: 403 }
       );
     }
-    
-    // Criar o registro do relatório
-    // TODO: Implementar query SQL direta
-    const report = { id: 'mock-report-id' };
-    const reportError = null;
-    // await pool.query(...)
-    // .from('reports')
-    // .insert({
-    //   user_id: user.id,
-    //   title: validatedData.title,
-    //   report_type: validatedData.reportType,
-    //   start_date: validatedData.startDate,
-    //   end_date: validatedData.endDate,
-    //   vehicle_ids: validatedData.vehicleIds,
-    //   format: validatedData.format,
-    //   status: 'processing',
-    //   custom_fields: validatedData.customFields,
-    //   custom_filters: validatedData.customFilters,
-    //   created_at: new Date().toISOString()
-    // })
-    // .select()
-    // .single();
-      
-    if (reportError) {
-      console.error('Erro ao criar relatório customizado:', reportError);
-      return NextResponse.json(
-        { error: 'Erro ao criar relatório customizado' },
-        { status: 500 }
-      );
-    }
-    
-    // Em uma aplicação real, aqui você iniciaria um job em background
-    // para gerar o relatório de forma assíncrona
-    
-    // Simular processamento (em produção, isso seria feito por um worker)
-    setTimeout(async () => {
-      try {
-        // TODO: Implementar query SQL direta
-        // await pool.query
-        // .from('reports')
-        // .update({ 
-        //   status: 'completed',
-        //   file_url: `/api/reports/${report.id}/download?format=${validatedData.format}`,
-        //   completed_at: new Date().toISOString()
-        // })
-        // .eq('id', report.id);
-          
-        console.log(`Relatório ${report.id} processado com sucesso`);
-      } catch (error) {
-        console.error(`Erro ao atualizar relatório ${report.id}:`, error);
-        
-        // Marcar como falha em caso de erro
-        // TODO: Implementar query SQL direta
-        // await pool.query
-        // .from('reports')
-        // .update({ 
-        //   status: 'failed',
-        //   error_message: 'Falha ao processar relatório'
-        // })
-        // .eq('id', report.id);
-      }
-    }, 3000);
-    
+
+    // Não há tabela de relatórios no schema: gera um identificador para o
+    // acompanhamento do processamento sem persistência.
+    const reportId = `custom_${Date.now()}`;
+
     return NextResponse.json({
       message: 'Relatório customizado em processamento',
-      reportId: report.id,
+      reportId,
       status: 'processing',
       estimatedTime: '30 segundos'
     }, { status: 202 }); // 202 Accepted é mais apropriado para processamento assíncrono
-    
+
   } catch (error) {
     console.error('Erro ao processar requisição customizada:', error);
     return NextResponse.json(
