@@ -28,6 +28,8 @@ interface AlertContextType {
   error: string | null;
   fetchAlerts: () => Promise<void>;
   acknowledgeAlert: (id: number) => Promise<boolean>;
+  markAsRead: (id: number) => Promise<boolean>;
+  markAllAsRead: () => Promise<boolean>;
   getAlert: (id: number) => Alert | undefined;
   addAlert: (alert: Omit<Alert, 'id'>) => Promise<Alert | null>;
   deleteAlert: (id: number) => Promise<boolean>;
@@ -41,6 +43,8 @@ const defaultContextValue: AlertContextType = {
   error: null,
   fetchAlerts: async () => {},
   acknowledgeAlert: async () => false,
+  markAsRead: async () => false,
+  markAllAsRead: async () => false,
   getAlert: () => undefined,
   addAlert: async () => null,
   deleteAlert: async () => false,
@@ -140,6 +144,19 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const markAsRead = acknowledgeAlert;
+
+  const markAllAsRead = async (): Promise<boolean> => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAlerts(prevAlerts => prevAlerts.map(alert => ({ ...alert, acknowledged: true })));
+      return true;
+    } catch (err) {
+      console.error('Erro ao marcar todos os alertas como lidos:', err);
+      return false;
+    }
+  };
+
   // Obter um alerta específico
   const getAlert = (id: number): Alert | undefined => {
     return alerts.find(alert => alert.id === id);
@@ -192,6 +209,8 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     error,
     fetchAlerts,
     acknowledgeAlert,
+    markAsRead,
+    markAllAsRead,
     getAlert,
     addAlert,
     deleteAlert,

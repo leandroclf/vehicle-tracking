@@ -44,7 +44,7 @@ export default function AlertsPage() {
             <Bell size={16} className="mr-2" /> Ver Notificações
           </Button>
           <Button 
-            variant="danger" 
+            variant="destructive" 
             onClick={handleMarkAllAsRead}
           >
             <Trash2 size={16} className="mr-2" /> Limpar Todos

@@ -1,14 +1,13 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const path = require('path')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
-    // Desabilitando a verificação do ESLint durante o build
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    // Desabilitando a verificação de tipos durante o build
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   async headers() {
     return [

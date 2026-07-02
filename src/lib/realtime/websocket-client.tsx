@@ -54,7 +54,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     return () => {
       disconnect();
     };
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const connect = () => {
     if (!user || wsRef.current?.readyState === WebSocket.OPEN) {

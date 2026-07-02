@@ -8,6 +8,9 @@ import { toast } from 'sonner';
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  token: string | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => void;
@@ -24,6 +27,7 @@ const TOKEN_KEY = 'auth_token';
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
 
   // Verificar token ao carregar
   useEffect(() => {
@@ -33,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuthState = async () => {
     try {
       const token = localStorage.getItem(TOKEN_KEY);
+      setToken(token);
       if (!token) {
         setLoading(false);
         return;
@@ -54,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { user: userData, token } = await AuthClientService.signIn(email, password);
       
       localStorage.setItem(TOKEN_KEY, token);
+      setToken(token);
       setUser(userData);
       
       toast.success('Login realizado com sucesso!');
@@ -71,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { user: userData, token } = await AuthClientService.signUp(email, password, name);
       
       localStorage.setItem(TOKEN_KEY, token);
+      setToken(token);
       setUser(userData);
       
       toast.success('Conta criada com sucesso!');
@@ -84,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = () => {
     localStorage.removeItem(TOKEN_KEY);
+    setToken(null);
     setUser(null);
     toast.success('Logout realizado com sucesso!');
   };
@@ -199,6 +207,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextType = {
     user,
     loading,
+    isLoading: loading,
+    isAuthenticated: !!user,
+    token,
     signIn,
     signUp,
     signOut,

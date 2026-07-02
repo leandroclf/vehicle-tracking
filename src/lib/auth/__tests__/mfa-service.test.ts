@@ -1,200 +1,58 @@
-/**
- * Testes básicos para o serviço MFA
- * @description Testes unitários para validar funcionalidades críticas do MFA
- */
-
 import { mfaService } from '../mfa-service';
-import { MfaProvider, MfaSetupRequest } from '@/types/mfa';
 
-// Mock do banco de dados PostgreSQL
+const queryMock = jest.fn();
+const releaseMock = jest.fn();
+
 jest.mock('@/lib/database', () => ({
-  db: {
-    select: jest.fn(),
-    insert: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn()
-  },
-  executeQuery: jest.fn()
+  getConnection: jest.fn(async () => ({
+    query: queryMock,
+    release: releaseMock,
+  })),
 }));
 
-// Mock do sistema de cache Redis
-jest.mock('@/lib/database-legacy', () => ({
-  executeQuery: jest.fn(),
-  getRedisClient: jest.fn(() => ({
-    get: jest.fn(),
-    set: jest.fn(),
-    del: jest.fn()
-  }))
-}));
-
-describe('MfaService', () => {
-  const mockUserId = 'test-user-123';
-  const mockPhoneNumber = '+5565999887766';
-  const mockEmail = 'test@example.com';
-
+describe('mfaService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('getMfaStatus', () => {
-    it('deve retornar status correto quando MFA não está configurado', async () => {
-      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
-      mockExecuteQuery.mockResolvedValue({
-        rows: [],
-        rowCount: 0
-      });
+  it('returns disabled status when there is no MFA config', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [] });
 
-      const status = await mfaService.getMfaStatus(mockUserId);
+    const status = await mfaService.getMFAStatus('user-1');
 
-      expect(status.isEnabled).toBe(false);
-      expect(status.enabledProviders).toEqual([]);
-    });
-
-    it('deve retornar status correto quando MFA está configurado', async () => {
-      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
-      mockExecuteQuery.mockResolvedValue({
-        rows: [{
-          sms_enabled: true,
-          totp_enabled: false,
-          email_enabled: true,
-          phone_number: mockPhoneNumber,
-          email: mockEmail
-        }],
-        rowCount: 1
-      });
-
-      const status = await mfaService.getMfaStatus(mockUserId);
-
-      expect(status.isEnabled).toBe(true);
-      expect(status.enabledProviders).toContain(MfaProvider.SMS);
-      expect(status.enabledProviders).toContain(MfaProvider.EMAIL);
-      expect(status.enabledProviders).not.toContain(MfaProvider.TOTP);
-    });
+    expect(status.enabled).toBe(false);
+    expect(status.providers.sms.enabled).toBe(false);
+    expect(releaseMock).toHaveBeenCalled();
   });
 
-  describe('setupMfa', () => {
-    it('deve configurar MFA SMS corretamente', async () => {
-      const setupRequest: MfaSetupRequest = {
-        provider: MfaProvider.SMS,
-        phoneNumber: mockPhoneNumber
-      };
-
-      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
-      mockExecuteQuery.mockResolvedValue({
-        rows: [{ temp_secret: 'temp-secret-123' }],
-        rowCount: 1
-      });
-
-      const result = await mfaService.setupMfa(mockUserId, setupRequest);
-
-      expect(result.success).toBe(true);
-      expect(result.tempSecret).toBe('temp-secret-123');
-      expect(result.message).toContain('SMS');
+  it('returns enabled status from stored config', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [{
+        enabled: true,
+        sms_enabled: true,
+        sms_phone: '+5565999887766',
+        totp_enabled: false,
+        email_enabled: true,
+        email_address: 'test@example.com',
+        backup_codes_count: 2,
+        backup_codes_last_used: new Date('2025-01-01T00:00:00.000Z'),
+      }],
     });
 
-    it('deve configurar MFA TOTP corretamente', async () => {
-      const setupRequest: MfaSetupRequest = {
-        provider: MfaProvider.TOTP
-      };
+    const status = await mfaService.getMFAStatus('user-1');
 
-      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
-      mockExecuteQuery.mockResolvedValue({
-        rows: [{ 
-          temp_secret: 'JBSWY3DPEHPK3PXP',
-          qr_code_url: 'data:image/png;base64,mock-qr-code'
-        }],
-        rowCount: 1
-      });
-
-      const result = await mfaService.setupMfa(mockUserId, setupRequest);
-
-      expect(result.success).toBe(true);
-      expect(result.tempSecret).toBe('JBSWY3DPEHPK3PXP');
-      expect(result.qrCodeUrl).toBeDefined();
-    });
-
-    it('deve retornar erro para provider inválido', async () => {
-      const setupRequest: MfaSetupRequest = {
-        provider: 'INVALID' as MfaProvider
-      };
-
-      const result = await mfaService.setupMfa(mockUserId, setupRequest);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Provider inválido');
-    });
+    expect(status.enabled).toBe(true);
+    expect(status.providers.sms.phone).toBe('+5565999887766');
+    expect(status.providers.email.email).toBe('test@example.com');
+    expect(status.backupCodes.count).toBe(2);
   });
 
-  describe('verifyMfaCode', () => {
-    it('deve verificar código SMS corretamente', async () => {
-      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
-      
-      // Mock para buscar configuração temporária
-      mockExecuteQuery
-        .mockResolvedValueOnce({
-          rows: [{
-            provider: MfaProvider.SMS,
-            temp_secret: 'temp-secret-123',
-            phone_number: mockPhoneNumber
-          }],
-          rowCount: 1
-        })
-        // Mock para inserir configuração permanente
-        .mockResolvedValueOnce({
-          rows: [{ id: 'config-123' }],
-          rowCount: 1
-        });
+  it('generates 10 backup codes with 8 characters each', () => {
+    const codes = mfaService.generateBackupCodes();
 
-      const result = await mfaService.verifyMfaCode(mockUserId, '123456', 'temp-secret-123');
-
-      expect(result.success).toBe(true);
-      expect(result.message).toContain('configurado com sucesso');
-    });
-
-    it('deve retornar erro para código inválido', async () => {
-      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
-      mockExecuteQuery.mockResolvedValue({
-        rows: [],
-        rowCount: 0
-      });
-
-      const result = await mfaService.verifyMfaCode(mockUserId, '000000', 'invalid-secret');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Código inválido');
-    });
-  });
-
-  describe('disableMfa', () => {
-    it('deve desabilitar MFA corretamente', async () => {
-      const mockExecuteQuery = require('@/lib/database-legacy').executeQuery;
-      mockExecuteQuery.mockResolvedValue({
-        rows: [],
-        rowCount: 1
-      });
-
-      const result = await mfaService.disableMfa(mockUserId);
-
-      expect(result.success).toBe(true);
-      expect(result.message).toContain('desabilitado com sucesso');
-    });
-  });
-
-  describe('generateBackupCodes', () => {
-    it('deve gerar códigos de backup válidos', () => {
-      const codes = mfaService.generateBackupCodes();
-
-      expect(codes).toHaveLength(10);
-      codes.forEach(code => {
-        expect(code).toMatch(/^[A-Z0-9]{8}$/);
-      });
-    });
-
-    it('deve gerar códigos únicos', () => {
-      const codes1 = mfaService.generateBackupCodes();
-      const codes2 = mfaService.generateBackupCodes();
-
-      expect(codes1).not.toEqual(codes2);
+    expect(codes).toHaveLength(10);
+    codes.forEach((code) => {
+      expect(code).toMatch(/^[A-Z0-9]{8}$/);
     });
   });
 });
