@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
-import Tabs, { TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs-fixed';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Progress } from '@/components/ui/Progress';
 import { Badge } from '@/components/ui/Badge';
 import { Calendar, AlertTriangle, CheckCircle, Clock, ArrowRight, Wrench } from 'lucide-react';

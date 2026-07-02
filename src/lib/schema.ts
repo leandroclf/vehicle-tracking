@@ -13,12 +13,51 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// Papéis (RBAC)
+export const roles = pgTable('roles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull().unique(),
+});
+
 // Perfis
 export const profiles = pgTable('profiles', {
   id: uuid('id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   phone: text('phone'),
+  roleId: uuid('role_id').references(() => roles.id, { onDelete: 'set null' }),
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Notificações por usuário (alimentadas por eventos operacionais, ex.: alerts)
+export const notifications = pgTable('notifications', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull().default('info'),
+  title: text('title').notNull(),
+  message: text('message'),
+  link: text('link'),
+  read: boolean('read').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+// Configurações por usuário (jsonb para evitar churn de migração)
+export const userSettings = pgTable('user_settings', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  preferences: jsonb('preferences').default({}),
+  notifications: jsonb('notifications').default({}),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Relatórios persistidos (geração síncrona; conteúdo em jsonb)
+export const reports = pgTable('reports', {
+  id: serial('id').primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  type: text('type').notNull(),
+  params: jsonb('params').default({}),
+  status: text('status').default('completed'),
+  content: jsonb('content'),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
 // Veículos
@@ -254,3 +293,9 @@ export type Geofence = typeof geofences.$inferSelect;
 export type NewGeofence = typeof geofences.$inferInsert;
 export type Command = typeof commands.$inferSelect;
 export type NewCommand = typeof commands.$inferInsert;
+export type Role = typeof roles.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+export type UserSettings = typeof userSettings.$inferSelect;
+export type Report = typeof reports.$inferSelect;
+export type NewReport = typeof reports.$inferInsert;

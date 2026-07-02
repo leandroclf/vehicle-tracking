@@ -1,20 +1,8 @@
-import { useState, ReactNode } from 'react';
+import { useState } from 'react';
 import { useVehicles } from '@/lib/vehicles-client';
 import { motion } from 'framer-motion';
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/Tooltip';
+import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { AlertTriangle, Power, VolumeX, Lightbulb } from 'lucide-react';
-
-// Wrapper local com a API declarativa usada pelos botões de comando
-function CommandTooltip({ content, children }: { content: string; children: ReactNode }) {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent>{content}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
 
 // Componente para enviar comandos para veículos
 export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
@@ -74,13 +62,13 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
     setCommandResult(null);
     
     try {
-      // Simular envio de comando
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simular resultado bem-sucedido
+      const result = await sendCommand(vehicleId, 'siren');
+
       setCommandResult({
-        success: true,
-        message: `Comando de sirene enviado com sucesso para ${vehicle.name}.`
+        success: result,
+        message: result
+          ? `Comando de sirene enviado com sucesso para ${vehicle.name}.`
+          : `Falha ao enviar comando de sirene para ${vehicle.name}.`
       });
     } catch (error) {
       setCommandResult({
@@ -98,13 +86,13 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
     setCommandResult(null);
     
     try {
-      // Simular envio de comando
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simular resultado bem-sucedido
+      const result = await sendCommand(vehicleId, 'lights');
+
       setCommandResult({
-        success: true,
-        message: `Comando de acender faróis enviado com sucesso para ${vehicle.name}.`
+        success: result,
+        message: result
+          ? `Comando de acender faróis enviado com sucesso para ${vehicle.name}.`
+          : `Falha ao enviar comando de faróis para ${vehicle.name}.`
       });
     } catch (error) {
       setCommandResult({
@@ -145,7 +133,7 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
       
       {/* Lista de comandos disponíveis */}
       <div className="grid grid-cols-3 gap-4">
-        <CommandTooltip content={vehicle.ignition ? "Bloquear motor do veículo" : "Desbloquear motor do veículo"}>
+        <SimpleTooltip content={vehicle.ignition ? "Bloquear motor do veículo" : "Desbloquear motor do veículo"}>
           <motion.button
             className={`flex flex-col items-center p-4 rounded-md transition-all duration-200 ${
               vehicle.ignition 
@@ -160,9 +148,9 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
             <Power className="w-6 h-6 mb-2" />
             <span className="text-sm font-medium">{vehicle.ignition ? 'Bloquear' : 'Desbloquear'}</span>
           </motion.button>
-        </CommandTooltip>
+        </SimpleTooltip>
         
-        <CommandTooltip content="Ativar sirene do veículo por 30 segundos">
+        <SimpleTooltip content="Ativar sirene do veículo por 30 segundos">
           <motion.button
             className={`flex flex-col items-center p-4 rounded-md bg-yellow-50 hover:bg-yellow-100 text-yellow-700 transition-all duration-200 border border-yellow-200 ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
             onClick={handleSirenCommand}
@@ -173,9 +161,9 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
             <VolumeX className="w-6 h-6 mb-2" />
             <span className="text-sm font-medium">Sirene</span>
           </motion.button>
-        </CommandTooltip>
+        </SimpleTooltip>
         
-        <CommandTooltip content="Piscar faróis do veículo por 30 segundos">
+        <SimpleTooltip content="Piscar faróis do veículo por 30 segundos">
           <motion.button
             className={`flex flex-col items-center p-4 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 transition-all duration-200 border border-blue-200 ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
             onClick={handleLightsCommand}
@@ -186,7 +174,7 @@ export default function VehicleCommands({ vehicleId }: { vehicleId: number }) {
             <Lightbulb className="w-6 h-6 mb-2" />
             <span className="text-sm font-medium">Faróis</span>
           </motion.button>
-        </CommandTooltip>
+        </SimpleTooltip>
       </div>
       
       {/* Indicador de processamento */}

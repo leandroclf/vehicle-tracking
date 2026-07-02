@@ -1,168 +1,152 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
-import { getDbPool } from '@/lib/database';
+import { db } from '@/lib/database';
+import { events, vehicles, vehicleStatus } from '@/lib/schema';
+import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
 const querySchema = z.object({
-  vehicleId: z.string().optional(),
-  limit: z.string().optional().transform(val => val ? parseInt(val, 10) : 1),
-  history: z.string().optional().transform(val => val ? parseInt(val, 10) : 0)
+  vehicleId: z.coerce.number().int().positive().optional(),
+  history: z.coerce.number().int().min(0).max(1000).optional().default(0),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
 });
 
+interface PositionPayload {
+  vehicle_id: number;
+  lat: number | null;
+  lng: number | null;
+  speed: number | null;
+  heading: number | null;
+  address: string | null;
+  timestamp: Date | string | null;
+}
+
 /**
- * Handler para obter posições dos veículos
- * GET /api/vehicles/positions - Retorna a última posição de todos os veículos do usuário
- * GET /api/vehicles/positions?vehicleId=123 - Retorna a última posição de um veículo específico
- * GET /api/vehicles/positions?vehicleId=123&history=10 - Retorna as últimas 10 posições de um veículo específico
+ * GET /api/vehicles/positions
+ * - Sem parâmetros: última posição conhecida (vehicle_status) de todos os veículos do usuário.
+ * - ?vehicleId=1: última posição conhecida do veículo.
+ * - ?vehicleId=1&history=50[&from=...&to=...]: histórico real de posições (tabela events).
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticação do usuário
     const authResult = await verifyAuth(request);
     if (!authResult.user) {
-      return NextResponse.json({ error: authResult.error || 'Não autorizado' }, { status: authResult.status || 401 });
+      return NextResponse.json(
+        { error: authResult.error || 'Não autorizado' },
+        { status: authResult.status || 401 }
+      );
     }
-    
+
     const userId = authResult.user.id;
-    
-    // Extrair e validar parâmetros de consulta
+
     const url = new URL(request.url);
     const queryResult = querySchema.safeParse(Object.fromEntries(url.searchParams.entries()));
-    
+
     if (!queryResult.success) {
-      return NextResponse.json({ 
-        error: 'Parâmetros de consulta inválidos', 
-        details: queryResult.error.format() 
+      return NextResponse.json({
+        error: 'Parâmetros de consulta inválidos',
+        details: queryResult.error.format()
       }, { status: 400 });
     }
-    
-    const { vehicleId, limit, history } = queryResult.data;
-    
-    // Se um ID de veículo específico for fornecido
+
+    const { vehicleId, history, from, to } = queryResult.data;
+
     if (vehicleId) {
       // Verificar se o veículo pertence ao usuário
-      // TODO: Implementar query SQL direta
-      const pool = getDbPool();
-      const vehicleQuery = `
-        SELECT id
-        FROM vehicles
-        WHERE id = $1 AND user_id = $2
-      `;
-      const vehicleResult = await pool.query(vehicleQuery, [vehicleId, userId]);
-      const vehicle = vehicleResult.rows[0];
-      const vehicleError = null;
-        
-      if (vehicleError) {
-        console.error('Erro ao verificar propriedade do veículo:', vehicleError);
-        return NextResponse.json({ error: 'Erro ao verificar veículo' }, { status: 500 });
-      }
-      
+      const [vehicle] = await db
+        .select({ id: vehicles.id })
+        .from(vehicles)
+        .where(and(eq(vehicles.id, vehicleId), eq(vehicles.userId, userId)))
+        .limit(1);
+
       if (!vehicle) {
-        return NextResponse.json({ error: 'Veículo não encontrado ou não pertence ao usuário' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Veículo não encontrado ou não pertence ao usuário' },
+          { status: 404 }
+        );
       }
-      
-      // Se history > 0, retornar o histórico de posições
+
+      // Histórico real de posições a partir da tabela events
       if (history > 0) {
-        // TODO: Implementar query SQL direta
-        const positionsQuery = `
-          SELECT *
-          FROM positions
-          WHERE vehicle_id = $1
-          ORDER BY timestamp DESC
-          LIMIT $2
-        `;
-        const positionsResult = await pool.query(positionsQuery, [vehicleId, history]);
-        const positions = positionsResult.rows;
-        const positionsError = null;
-          
-        if (positionsError) {
-          console.error('Erro ao buscar histórico de posições:', positionsError);
-          return NextResponse.json({ error: 'Erro ao buscar histórico de posições' }, { status: 500 });
-        }
-        
+        const conditions = [eq(events.vehicleId, vehicleId)];
+        if (from) conditions.push(gte(events.timestamp, new Date(from)));
+        if (to) conditions.push(lte(events.timestamp, new Date(to)));
+
+        const rows = await db
+          .select({
+            vehicle_id: events.vehicleId,
+            lat: events.lat,
+            lng: events.lng,
+            speed: events.speed,
+            heading: events.heading,
+            address: events.address,
+            timestamp: events.timestamp,
+          })
+          .from(events)
+          .where(and(...conditions))
+          .orderBy(desc(events.timestamp))
+          .limit(history);
+
+        const positions: PositionPayload[] = rows.filter(row => row.lat != null && row.lng != null);
         return NextResponse.json({ positions });
       }
-      
-      // Caso contrário, retornar apenas a última posição
-      // TODO: Implementar query SQL direta
-      const positionQuery = `
-        SELECT *
-        FROM positions
-        WHERE vehicle_id = $1
-        ORDER BY timestamp DESC
-        LIMIT 1
-      `;
-      const positionResult = await pool.query(positionQuery, [vehicleId]);
-      const position = positionResult.rows[0];
-      const positionError = null;
-        
-      if (positionError) {
-        console.error('Erro ao buscar posição do veículo:', positionError);
-        return NextResponse.json({ error: 'Erro ao buscar posição do veículo' }, { status: 500 });
+
+      // Última posição conhecida (vehicle_status)
+      const [status] = await db
+        .select()
+        .from(vehicleStatus)
+        .where(eq(vehicleStatus.vehicleId, vehicleId))
+        .limit(1);
+
+      if (!status || status.lat == null || status.lng == null) {
+        return NextResponse.json(
+          { error: 'Nenhuma posição encontrada para este veículo' },
+          { status: 404 }
+        );
       }
-      
-      if (!position) {
-        return NextResponse.json({ error: 'Nenhuma posição encontrada para este veículo' }, { status: 404 });
-      }
-      
+
+      const position: PositionPayload = {
+        vehicle_id: status.vehicleId,
+        lat: status.lat,
+        lng: status.lng,
+        speed: status.speed,
+        heading: status.heading,
+        address: status.address,
+        timestamp: status.lastUpdate,
+      };
+
       return NextResponse.json({ position });
     }
-    
-    // Caso nenhum ID específico seja fornecido, retornar a última posição de todos os veículos do usuário
-    
-    // Primeiro, obter a lista de veículos do usuário
-    // TODO: Implementar query SQL direta
-    const pool = getDbPool();
-    const vehiclesQuery = `
-      SELECT id
-      FROM vehicles
-      WHERE user_id = $1
-    `;
-    const vehiclesResult = await pool.query(vehiclesQuery, [userId]);
-    const vehicles = vehiclesResult.rows;
-    const vehiclesError = null;
-      
-    if (vehiclesError) {
-      console.error('Erro ao buscar veículos do usuário:', vehiclesError);
-      return NextResponse.json({ error: 'Erro ao buscar veículos' }, { status: 500 });
-    }
-    
-    if (!vehicles || vehicles.length === 0) {
+
+    // Última posição conhecida de todos os veículos do usuário
+    const userVehicles = await db
+      .select({ id: vehicles.id })
+      .from(vehicles)
+      .where(eq(vehicles.userId, userId));
+
+    if (userVehicles.length === 0) {
       return NextResponse.json({ positions: [] });
     }
-    
-    // Para cada veículo, buscar a última posição
-    const vehicleIds = vehicles.map(v => v.id);
-    
-    // Buscar a última posição registrada para cada veículo
-    // TODO: Implementar query SQL direta
-    const latestPositionsQuery = `
-      SELECT *
-      FROM positions
-      WHERE vehicle_id = ANY($1)
-      ORDER BY timestamp DESC
-    `;
-    const latestPositionsResult = await pool.query(latestPositionsQuery, [vehicleIds]);
-    const latestPositions = latestPositionsResult.rows;
-    const positionsError = null;
-      
-    if (positionsError) {
-      console.error('Erro ao buscar posições dos veículos:', positionsError);
-      return NextResponse.json({ error: 'Erro ao buscar posições dos veículos' }, { status: 500 });
-    }
-    
-    // Filtrar para ter apenas a posição mais recente de cada veículo
-    const positionMap = new Map();
-    latestPositions?.forEach(position => {
-      if (!positionMap.has(position.vehicle_id) || 
-          new Date(position.timestamp) > new Date(positionMap.get(position.vehicle_id).timestamp)) {
-        positionMap.set(position.vehicle_id, position);
-      }
-    });
-    
-    const positions = Array.from(positionMap.values());
-    
+
+    const statusRows = await db
+      .select()
+      .from(vehicleStatus)
+      .where(inArray(vehicleStatus.vehicleId, userVehicles.map(v => v.id)));
+
+    const positions: PositionPayload[] = statusRows
+      .filter(status => status.lat != null && status.lng != null)
+      .map(status => ({
+        vehicle_id: status.vehicleId,
+        lat: status.lat,
+        lng: status.lng,
+        speed: status.speed,
+        heading: status.heading,
+        address: status.address,
+        timestamp: status.lastUpdate,
+      }));
+
     return NextResponse.json({ positions });
   } catch (error) {
     console.error('Erro ao processar requisição:', error);

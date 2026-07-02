@@ -25,5 +25,26 @@ const TooltipContent = React.forwardRef<
 ))
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+/**
+ * API declarativa de conveniência. Requer um TooltipProvider ancestral
+ * (montado globalmente no layout raiz).
+ */
+function SimpleTooltip({
+  content,
+  side,
+  children,
+}: {
+  content: React.ReactNode
+  side?: "top" | "right" | "bottom" | "left"
+  children: React.ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side={side}>{content}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, SimpleTooltip }
 export default Tooltip

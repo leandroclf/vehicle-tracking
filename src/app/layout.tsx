@@ -11,6 +11,7 @@ import React from 'react'
 import { RadixPatchProvider } from '@/components/ui/RadixPatchProvider'
 import { TooltipProvider } from '@/components/ui/Tooltip'
 import Script from 'next/script'
+import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
   title: 'YUKZ Tracker',
@@ -53,6 +54,7 @@ export default function RootLayout({
                       <NotificationProvider>
                         <KeyboardNavigationProvider>
                           {children}
+                          <Toaster richColors closeButton position="top-right" />
                         </KeyboardNavigationProvider>
                       </NotificationProvider>
                     </NotificationsProvider>

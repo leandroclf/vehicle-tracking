@@ -75,43 +75,47 @@ export function AlertProvider({ children }: { children: ReactNode }) {
   const fetchAlerts = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      // Simulação de busca no backend
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Dados simulados
-      const mockAlerts: Alert[] = [
-        {
-          id: 1,
-          vehicleId: 1,
-          vehicleName: 'Caminhão 137',
-          vehiclePlate: 'ABC-1234',
-          type: 'speed',
-          severity: 'critical',
-          message: 'Veículo ultrapassou limite de velocidade (120km/h)',
-          timestamp: new Date().toISOString(),
-          location: {
-            lat: -23.550520,
-            lng: -46.633308,
-            address: 'Av. Paulista, 1000, São Paulo - SP'
-          },
-          acknowledged: false
-        },
-        {
-          id: 2,
-          vehicleId: 2,
-          vehicleName: 'Van 203',
-          vehiclePlate: 'DEF-5678',
-          type: 'geofence',
-          severity: 'warning',
-          message: 'Veículo saiu da área permitida',
-          timestamp: new Date(Date.now() - 30 * 60000).toISOString(),
-          acknowledged: false
-        }
-      ];
-      
-      setAlerts(mockAlerts);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const response = await fetch('/api/alerts?limit=100', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error || 'Falha ao carregar alertas');
+      }
+
+      const data = (await response.json()) as {
+        alerts: Array<{
+          id: number;
+          vehicle_id: number;
+          type: string;
+          severity: string | null;
+          title: string;
+          message: string;
+          read: boolean;
+          timestamp: string | null;
+          vehicleName: string;
+          vehiclePlate: string;
+        }>;
+      };
+
+      const validTypes = ['speed', 'geofence', 'battery', 'engine'];
+      const mapped: Alert[] = (data.alerts || []).map(item => ({
+        id: item.id,
+        vehicleId: item.vehicle_id,
+        vehicleName: item.vehicleName,
+        vehiclePlate: item.vehiclePlate,
+        type: (validTypes.includes(item.type) ? item.type : 'other') as Alert['type'],
+        severity: item.severity === 'critical' ? 'critical' : item.severity === 'warning' ? 'warning' : 'info',
+        message: item.message || item.title,
+        timestamp: item.timestamp ?? new Date().toISOString(),
+        acknowledged: item.read,
+      }));
+
+      setAlerts(mapped);
     } catch (err) {
       console.error('Erro ao buscar alertas:', err);
       setError('Falha ao carregar alertas. Tente novamente mais tarde.');
@@ -125,18 +129,27 @@ export function AlertProvider({ children }: { children: ReactNode }) {
     fetchAlerts();
   }, []);
 
-  // Acknowledge um alerta (marcar como visualizado/tratado)
+  // Acknowledge um alerta (persistido no backend)
   const acknowledgeAlert = async (id: number): Promise<boolean> => {
     try {
-      // Simulação de chamada ao backend
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setAlerts(prevAlerts => 
-        prevAlerts.map(alert => 
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const response = await fetch('/api/alerts', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ alertIds: [id] }),
+      });
+
+      if (!response.ok) return false;
+
+      setAlerts(prevAlerts =>
+        prevAlerts.map(alert =>
           alert.id === id ? { ...alert, acknowledged: true } : alert
         )
       );
-      
+
       return true;
     } catch (err) {
       console.error('Erro ao reconhecer alerta:', err);
@@ -148,7 +161,14 @@ export function AlertProvider({ children }: { children: ReactNode }) {
 
   const markAllAsRead = async (): Promise<boolean> => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const response = await fetch('/api/alerts/read-all', {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!response.ok) return false;
+
       setAlerts(prevAlerts => prevAlerts.map(alert => ({ ...alert, acknowledged: true })));
       return true;
     } catch (err) {

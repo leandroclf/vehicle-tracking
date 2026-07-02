@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
     const userId = authResult.user.id;
     
     // Buscar preferências do usuário
-    // TODO: Implementar query SQL direta
     const pool = getDbPool();
     const settingsQuery = `
       SELECT preferences
@@ -116,10 +115,9 @@ export async function PUT(request: NextRequest) {
     const preferencesData = preferencesResult.data;
     
     // Verificar se o usuário já tem configurações
-    // TODO: Implementar query SQL direta
     const pool = getDbPool();
     const checkQuery = `
-      SELECT id, preferences
+      SELECT preferences
       FROM user_settings
       WHERE user_id = $1
     `;
@@ -142,7 +140,6 @@ export async function PUT(request: NextRequest) {
       };
       
       // Atualizar registro existente
-      // TODO: Implementar query SQL direta
       const updateQuery = `
         UPDATE user_settings
         SET preferences = $1, updated_at = $2
@@ -165,17 +162,15 @@ export async function PUT(request: NextRequest) {
       result = data;
     } else {
       // Criar novo registro
-      // TODO: Implementar query SQL direta
       const insertQuery = `
         INSERT INTO user_settings (
-          user_id, preferences, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4)
+          user_id, preferences, updated_at
+        ) VALUES ($1, $2, $3)
         RETURNING preferences
       `;
       const insertResult = await pool.query(insertQuery, [
         userId,
         JSON.stringify(preferencesData),
-        new Date().toISOString(),
         new Date().toISOString()
       ]);
       const data = insertResult.rows[0];

@@ -88,53 +88,44 @@ export function ReportProvider({ children }: { children: ReactNode }) {
   const fetchReports = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      // Simulação de uma chamada API
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Dados simulados de relatórios
-      const mockReports: Report[] = [
-        {
-          id: '1',
-          title: 'Relatório diário de atividades',
-          type: 'daily',
-          startDate: '2025-04-26T00:00:00Z',
-          endDate: '2025-04-26T23:59:59Z',
-          vehicles: [1, 2, 3],
-          status: 'completed',
-          downloadUrl: '/api/reports/1/download',
-          createdAt: '2025-04-27T08:30:00Z',
-          format: 'pdf',
-          size: 1250000
-        },
-        {
-          id: '2',
-          title: 'Relatório semanal de atividades',
-          type: 'weekly',
-          startDate: '2025-04-20T00:00:00Z',
-          endDate: '2025-04-26T23:59:59Z',
-          vehicles: 'all',
-          status: 'completed',
-          downloadUrl: '/api/reports/2/download',
-          createdAt: '2025-04-27T07:15:00Z',
-          format: 'xlsx',
-          size: 3540000
-        },
-        {
-          id: '3',
-          title: 'Relatório personalizado',
-          type: 'custom',
-          startDate: '2025-04-01T00:00:00Z',
-          endDate: '2025-04-26T23:59:59Z',
-          vehicles: [1],
-          status: 'processing',
-          createdAt: '2025-04-27T09:45:00Z',
-          format: 'csv'
-        }
-      ];
-      
-      setReports(mockReports);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const response = await fetch('/api/reports?limit=100&offset=0', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error || 'Falha ao carregar relatórios');
+      }
+
+      const data = (await response.json()) as {
+        reports: Array<{
+          id: string;
+          report_type: string;
+          start_date: string;
+          end_date: string;
+          status: 'processing' | 'completed' | 'error';
+          created_at: string;
+          vehicle_ids: string[];
+        }>;
+      };
+
+      const mapped: Report[] = (data.reports || []).map(item => ({
+        id: item.id,
+        title: `Relatório ${item.report_type}`,
+        type: 'custom',
+        startDate: item.start_date,
+        endDate: item.end_date,
+        vehicles: item.vehicle_ids.map(id => parseInt(id, 10)).filter(Number.isInteger),
+        status: item.status === 'error' ? 'failed' : item.status === 'processing' ? 'processing' : 'completed',
+        downloadUrl: `/api/reports/${item.id}/download`,
+        createdAt: item.created_at,
+        format: 'csv',
+      }));
+
+      setReports(mapped);
     } catch (err) {
       console.error('Erro ao buscar relatórios:', err);
       setError('Falha ao carregar relatórios. Tente novamente mais tarde.');
@@ -163,43 +154,38 @@ export function ReportProvider({ children }: { children: ReactNode }) {
     ];
   };
 
-  // Gerar um novo relatório
+  // Gerar um novo relatório (síncrono na API)
   const generateReport = async (reportData: Omit<Report, 'id' | 'status' | 'createdAt' | 'downloadUrl'>): Promise<Report | null> => {
     setIsLoading(true);
-    
+
     try {
-      // Simulação de uma chamada API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Criar novo relatório
-      const newReport: Report = {
-        ...reportData,
-        id: `report-${Date.now()}`,
-        status: 'processing',
-        createdAt: new Date().toISOString()
-      };
-      
-      setReports(prev => [...prev, newReport]);
-      
-      // Simular processamento do relatório
-      setTimeout(() => {
-        setReports(prev => 
-          prev.map(report => 
-            report.id === newReport.id
-              ? { 
-                  ...report, 
-                  status: 'completed',
-                  downloadUrl: `/api/reports/${newReport.id}/download`
-                }
-              : report
-          )
-        );
-      }, 5000);
-      
-      return newReport;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const response = await fetch('/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          reportType: reportData.type,
+          startDate: reportData.startDate,
+          endDate: reportData.endDate,
+          vehicleIds: reportData.vehicles === 'all' ? [] : reportData.vehicles,
+          format: reportData.format,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error || 'Falha ao gerar relatório');
+      }
+
+      await fetchReports();
+      const data = (await response.json().catch(() => null)) as { report?: { id: string } } | null;
+      return data?.report ? reports.find(r => r.id === data.report!.id) ?? null : null;
     } catch (err) {
       console.error('Erro ao gerar relatório:', err);
-      setError('Falha ao gerar relatório. Tente novamente mais tarde.');
+      setError(err instanceof Error ? err.message : 'Falha ao gerar relatório. Tente novamente mais tarde.');
       return null;
     } finally {
       setIsLoading(false);
@@ -214,29 +200,13 @@ export function ReportProvider({ children }: { children: ReactNode }) {
       return null;
     }
     
-    try {
-      // Simulação do download
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      return report.downloadUrl;
-    } catch (err) {
-      console.error('Erro ao baixar relatório:', err);
-      return null;
-    }
+    return report.downloadUrl;
   };
 
-  // Excluir um relatório
-  const deleteReport = async (id: string): Promise<boolean> => {
-    try {
-      // Simulação de uma chamada API
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setReports(prev => prev.filter(report => report.id !== id));
-      return true;
-    } catch (err) {
-      console.error('Erro ao excluir relatório:', err);
-      return false;
-    }
+  // Excluir um relatório — sem suporte de backend no baseline
+  const deleteReport = async (): Promise<boolean> => {
+    setError('Exclusão de relatórios não é suportada nesta versão.');
+    return false;
   };
 
   // Agendamento não tem suporte de backend no baseline de produção:

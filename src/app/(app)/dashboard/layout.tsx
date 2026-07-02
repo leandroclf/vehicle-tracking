@@ -10,8 +10,6 @@ import PanelLayout from '@/components/dashboard/PanelLayout';
 import { AlertProvider } from '@/lib/alerts';
 import { ReportProvider } from '@/lib/reports';
 import { useSidebar } from '@/lib/sidebar-context';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 // Removendo importações redundantes
 // import Header from '@/components/layout/Header';
 // import Sidebar from '@/components/layout/Sidebar';
@@ -108,20 +106,6 @@ function DashboardLayoutContent({ children }: DashboardLayoutProps) {
         <BottomNav onOpenMenu={() => setMobileMenuOpen(true)} />
       )}
       
-      {/* Contêiner de notificações toast */}
-      <ToastContainer 
-        position={isMobile ? "top-center" : "bottom-right"}
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-        style={{ zIndex: 9999 }}
-      />
     </div>
   );
 }
