@@ -1,8 +1,7 @@
 import jwt from 'jsonwebtoken';
 import type { User } from '@/types/auth';
+import { getJwtExpiresIn, getJwtSecret } from '@/lib/env';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 /**
  * Cria um token JWT para o usuário
@@ -17,8 +16,8 @@ export function createJWT(user: Omit<User, 'password'>): string {
     role: user.role,
   };
 
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN,
+  return jwt.sign(payload, getJwtSecret(), {
+    expiresIn: getJwtExpiresIn(),
     issuer: 'yukz-vehicle-tracking',
     audience: 'yukz-users',
   });
@@ -31,7 +30,7 @@ export function createJWT(user: Omit<User, 'password'>): string {
  */
 export function verifyToken(token: string): Omit<User, 'password'> | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET, {
+    const decoded = jwt.verify(token, getJwtSecret(), {
       issuer: 'yukz-vehicle-tracking',
       audience: 'yukz-users',
     }) as any;

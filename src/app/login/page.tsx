@@ -10,14 +10,13 @@ import { Alert } from '@/components/ui/Alert';
 import { Container } from '@/components/ui/Container';
 import { Card } from '@/components/ui/Card';
 import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
-import { SocialAuthError } from '@/types/social-auth';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn, socialLogin } = useAuth();
-  const [email, setEmail] = useState('admin@yukz.com');
-  const [password, setPassword] = useState('admin123');
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,20 +55,7 @@ function LoginForm() {
   const handleSocialLogin = async (provider: string) => {
     setError(null);
     setSuccess(null);
-    
-    try {
-      // Simulação de tokens para demonstração
-      // Em produção, estes seriam obtidos do SDK do provedor
-      const accessToken = 'demo-access-token';
-      const idToken = provider === 'apple' || provider === 'google' ? 'demo-id-token' : undefined;
-      
-      await socialLogin(provider, accessToken, idToken);
-      router.push('/dashboard');
-    } catch (err: any) {
-      const socialError = err as SocialAuthError;
-      setError(socialError.message || 'Erro ao realizar login social');
-      console.error('Erro de login social:', socialError);
-    }
+    setError(`Login social com ${provider} requer configuração do provedor OAuth.`);
   };
 
   return (
