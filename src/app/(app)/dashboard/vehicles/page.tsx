@@ -19,6 +19,8 @@ import { toast } from 'sonner';
 import VehicleHistory from '@/components/vehicle/VehicleHistory';
 import VehicleStatusFilters from '@/components/ui/vehicle-status-filters';
 import { useVehicles, Vehicle } from '@/lib/vehicles-client';
+import { useAuth } from '@/lib/auth';
+import { fetchWithAuth } from '@/lib/apiClient';
 
 // Payload do VehicleForm
 interface VehicleFormData {
@@ -55,11 +57,6 @@ function PageModal({
   );
 }
 
-function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem('auth_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 async function parseApiError(response: Response, fallback: string): Promise<string> {
   try {
     const body = (await response.json()) as { error?: string; message?: string };
@@ -71,6 +68,7 @@ async function parseApiError(response: Response, fallback: string): Promise<stri
 
 export default function VehiclesPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const { vehicles, isLoading, error, refreshVehicles } = useVehicles();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
@@ -155,12 +153,8 @@ export default function VehiclesPage() {
   const handleSubmitAdd = async (data: VehicleFormData) => {
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/vehicles', {
+      const response = await fetchWithAuth('/api/vehicles', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader(),
-        },
         body: JSON.stringify({
           name: data.name,
           licensePlate: data.plate,
@@ -169,7 +163,7 @@ export default function VehiclesPage() {
           color: data.color,
           status: data.status,
         }),
-      });
+      }, token);
 
       if (!response.ok) {
         throw new Error(await parseApiError(response, 'Erro ao adicionar veículo'));
@@ -191,12 +185,8 @@ export default function VehiclesPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/vehicles', {
+      const response = await fetchWithAuth('/api/vehicles', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...getAuthHeader(),
-        },
         body: JSON.stringify({
           id: data.id,
           name: data.name,
@@ -206,7 +196,7 @@ export default function VehiclesPage() {
           color: data.color,
           status: data.status,
         }),
-      });
+      }, token);
 
       if (!response.ok) {
         throw new Error(await parseApiError(response, 'Erro ao atualizar veículo'));
@@ -229,10 +219,9 @@ export default function VehiclesPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/vehicles?id=${selectedVehicle.id}`, {
+      const response = await fetchWithAuth(`/api/vehicles?id=${selectedVehicle.id}`, {
         method: 'DELETE',
-        headers: getAuthHeader(),
-      });
+      }, token);
 
       if (!response.ok) {
         throw new Error(await parseApiError(response, 'Erro ao excluir veículo'));
@@ -538,17 +527,20 @@ export default function VehiclesPage() {
       </PageModal>
 
       {/* Modal de Histórico */}
-      {isHistoryModalOpen && selectedVehicle && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={handleCloseModal}>
-          <div className="bg-white rounded-lg p-6 w-full max-w-7xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <Modal open={isHistoryModalOpen && !!selectedVehicle} onOpenChange={(open) => { if (!open) handleCloseModal(); }}>
+        <ModalContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <ModalHeader>
+            <ModalTitle>Histórico do Veículo</ModalTitle>
+          </ModalHeader>
+          {selectedVehicle && (
             <VehicleHistory
               vehicleName={selectedVehicle.name}
               vehicleDetails={`${selectedVehicle.model} (${selectedVehicle.plate})`}
               vehicleImei={selectedVehicle.device_imei ?? ''}
             />
-          </div>
-        </div>
-      )}
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

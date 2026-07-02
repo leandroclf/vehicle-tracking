@@ -63,4 +63,36 @@ executa validação real de tipos e lint (Decisão 3 do design).
 - Remover as dependências não usadas (`react-day-picker`, `xlsx` se não referenciada) e
   consolidar bibliotecas de toast (há `sonner`, `react-hot-toast` e `react-toastify`).
 - Unificar os componentes duplicados de UI com case divergente (`Tabs.tsx` vs `tabs-fixed.tsx`,
-  `ScrollArea.tsx` vs `scroll-area.tsx`).
+  `ScrollArea.tsx` vs `scroll-area.tsx`) e exportar um `SimpleTooltip({content, children})` de
+  `components/ui/Tooltip.tsx` para eliminar os wrappers Radix ad-hoc repetidos
+  (VehicleCommands, Sidebar, VehicleCard).
+
+## Auditoria de implementação (2026-07-02)
+
+Revisão multi-ângulo do diff (varredura linha a linha, comportamento removido,
+rastreamento cross-file, reuso/eficiência). Achados confirmados e corrigidos:
+
+1. `GET /api/commands` retornava `pagination.total` igual ao tamanho da página — corrigido com
+   `count()` real em paralelo (`Promise.all`).
+2. `POST /api/commands/confirm` respondia `status: 'confirmed'` enquanto persistia
+   `sent_to_device` — resposta alinhada ao estado persistido.
+3. `/dashboard/users` consumia o payload de `/api/users` como array e sem header de
+   autorização — corrigido (consome `{data}`, envia Bearer token, tolera RBAC ausente).
+4. Filtros "online" e "offline" marcados juntos zeravam a lista de veículos — agora a
+   categoria só restringe quando exatamente um dos dois está ativo.
+5. Botões de ação da tabela de veículos borbulhavam o clique para `onRowClick` (abriam o
+   histórico por cima da ação) — `stopPropagation` aplicado.
+6. Estatísticas do dashboard buscavam todas as linhas de alerts/trips para agregar em JS —
+   trocado por `count()`/`sum()` no banco, em paralelo.
+7. Consulta paginada + contagem de `/api/monitoring/events` executavam em série — paralelizadas.
+8. Duplicações removidas: `errorResponse` local em `/api/drivers/assign` (usa
+   `@/lib/api-helpers`), helpers locais de auth-header na página de veículos (usa
+   `fetchWithAuth` de `@/lib/apiClient`), modal de histórico artesanal (usa o Modal Radix
+   acessível compartilhado).
+
+Verificações de segurança do diff: nenhum `@ts-ignore`/`@ts-expect-error`/`eslint-disable`
+adicionado, nenhum cast `as unknown as`, nenhum log de segredo/token, nenhum símbolo removido
+ainda referenciado (auditoria de imports com grep).
+
+Suíte re-executada após as correções da auditoria: typecheck 0 erros, lint limpo,
+12/12 testes, build de produção OK (59 páginas).
