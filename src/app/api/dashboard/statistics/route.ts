@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth-middleware';
 import { db } from '@/lib/database';
 import { vehicles, trips, alerts } from '@/lib/schema';
-import { and, eq, gte, inArray } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, sum } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Esquema para validar parâmetros de consulta
@@ -57,26 +57,30 @@ export async function GET(request: NextRequest) {
 
     // Se houver veículos, buscar estatísticas de alertas e viagens
     if (vehicleIds.length > 0) {
-      const periodAlerts = await db
-        .select({ id: alerts.id })
-        .from(alerts)
-        .where(and(
-          inArray(alerts.vehicleId, vehicleIds),
-          gte(alerts.createdAt, startDate)
-        ));
-      alertsCount = periodAlerts.length;
+      // Agregações no banco (count/sum) em paralelo, sem transferir linhas
+      const [[alertsRow], [tripsRow]] = await Promise.all([
+        db
+          .select({ value: count() })
+          .from(alerts)
+          .where(and(
+            inArray(alerts.vehicleId, vehicleIds),
+            gte(alerts.createdAt, startDate)
+          )),
+        db
+          .select({
+            distance: sum(trips.distance),
+            fuel: sum(trips.fuelConsumed),
+          })
+          .from(trips)
+          .where(and(
+            inArray(trips.vehicleId, vehicleIds),
+            gte(trips.endTime, startDate)
+          )),
+      ]);
 
-      const periodTrips = await db
-        .select({ distance: trips.distance, fuelConsumed: trips.fuelConsumed })
-        .from(trips)
-        .where(and(
-          inArray(trips.vehicleId, vehicleIds),
-          gte(trips.endTime, startDate)
-        ));
-
-      // Somar distâncias e consumo de combustível
-      totalDistance = periodTrips.reduce((sum, trip) => sum + (trip.distance || 0), 0);
-      fuelConsumption = periodTrips.reduce((sum, trip) => sum + (trip.fuelConsumed || 0), 0);
+      alertsCount = alertsRow?.value ?? 0;
+      totalDistance = Number(tripsRow?.distance ?? 0);
+      fuelConsumption = Number(tripsRow?.fuel ?? 0);
     }
 
     // Retornar estatísticas combinadas

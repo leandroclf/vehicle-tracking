@@ -70,34 +70,35 @@ export async function GET(request: NextRequest) {
 
     const whereClause = and(...conditions);
 
-    // Executar consulta paginada
-    const rows = await db
-      .select({
-        id: events.id,
-        vehicleId: events.vehicleId,
-        type: events.type,
-        timestamp: events.timestamp,
-        description: events.description,
-        attributes: events.attributes,
-        lat: events.lat,
-        lng: events.lng,
-        speed: events.speed,
-        heading: events.heading,
-        vehicleName: vehicles.name,
-        licensePlate: vehicles.plate
-      })
-      .from(events)
-      .innerJoin(vehicles, eq(events.vehicleId, vehicles.id))
-      .where(whereClause)
-      .orderBy(sort === 'asc' ? asc(events.timestamp) : desc(events.timestamp))
-      .limit(limit)
-      .offset(offset);
-
-    const [totalRow] = await db
-      .select({ value: count() })
-      .from(events)
-      .innerJoin(vehicles, eq(events.vehicleId, vehicles.id))
-      .where(whereClause);
+    // Executar consulta paginada e contagem total em paralelo
+    const [rows, [totalRow]] = await Promise.all([
+      db
+        .select({
+          id: events.id,
+          vehicleId: events.vehicleId,
+          type: events.type,
+          timestamp: events.timestamp,
+          description: events.description,
+          attributes: events.attributes,
+          lat: events.lat,
+          lng: events.lng,
+          speed: events.speed,
+          heading: events.heading,
+          vehicleName: vehicles.name,
+          licensePlate: vehicles.plate
+        })
+        .from(events)
+        .innerJoin(vehicles, eq(events.vehicleId, vehicles.id))
+        .where(whereClause)
+        .orderBy(sort === 'asc' ? asc(events.timestamp) : desc(events.timestamp))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ value: count() })
+        .from(events)
+        .innerJoin(vehicles, eq(events.vehicleId, vehicles.id))
+        .where(whereClause),
+    ]);
 
     // Formatar resultados
     const formattedEvents = rows.map(event => ({

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { errorResponse } from '@/lib/api-helpers';
 import { verifyAuth } from '@/lib/auth-middleware';
 import { z } from 'zod';
 
@@ -33,15 +34,6 @@ const assignmentSchema = z.object({
   message: 'A data de término deve ser posterior à data de início',
   path: ['end_date']
 });
-
-// Função para estruturar respostas de erro de forma consistente
-function errorResponse(message: string, details?: unknown, status: number = 400) {
-  return NextResponse.json({
-    success: false,
-    error: message,
-    details: details || undefined
-  }, { status });
-}
 
 // A atribuição motorista-veículo depende das tabelas `drivers` e
 // `driver_vehicle_assignments`, que não existem no schema canônico
