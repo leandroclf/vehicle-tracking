@@ -12,10 +12,13 @@
     "start": "NODE_ENV=production node server.js",
     "migrate": "ts-node scripts/migrate.ts",
     "seed": "node scripts/init-db.js",
-    "lint": "next lint",
+    "lint": "eslint . --max-warnings=0",
     "build:worker": "opennextjs-cloudflare",
     "preview": "opennextjs-cloudflare && wrangler dev",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv env.d.ts"
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv env.d.ts",
+    "test": "jest --runInBand",
+    "typecheck": "tsc --noEmit",
+    "validate": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

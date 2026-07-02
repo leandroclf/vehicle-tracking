@@ -3,9 +3,8 @@ import bcrypt from 'bcryptjs';
 import { db } from '../database';
 import { users, profiles } from '../schema';
 import { eq } from 'drizzle-orm';
+import { getJwtExpiresIn, getJwtSecret } from '../env';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 export interface AuthUser {
   id: string;
@@ -101,7 +100,7 @@ export class AuthService {
 
   static async verifyToken(token: string): Promise<AuthUser> {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const decoded = jwt.verify(token, getJwtSecret()) as any;
       
       // Buscar usuário atualizado
       const [user] = await db.select().from(users).where(eq(users.id, decoded.id)).limit(1);
@@ -211,8 +210,8 @@ export class AuthService {
         name: user.name,
         emailVerified: user.emailVerified || false,
       },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      getJwtSecret(),
+      { expiresIn: getJwtExpiresIn() }
     );
   }
 
