@@ -1,11 +1,13 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
 const { decodeTeltonikaCodec8 } = require('../teltonika-decoder');
 
-describe('Teltonika legacy behavior conformance', () => {
-  test('recognizes 15-digit IMEI authentication frame', () => {
+test('Teltonika legacy behavior conformance', async (t) => {
+  await t.test('recognizes 15-digit IMEI authentication frame', () => {
     const frame=Buffer.concat([Buffer.from([0x00,0x0f]),Buffer.from('135790246811220','ascii')]);
-    expect(decodeTeltonikaCodec8(frame)).toEqual({type:'imei',imei:'135790246811220'});
+    assert.deepEqual(decodeTeltonikaCodec8(frame),{type:'imei',imei:'135790246811220'});
   });
-  test('rejects malformed/short frames deterministically', () => {
-    expect(decodeTeltonikaCodec8(Buffer.from([1,2,3]))).toBeNull();
+  await t.test('rejects malformed/short frames deterministically', () => {
+    assert.equal(decodeTeltonikaCodec8(Buffer.from([1,2,3])),null);
   });
 });
