@@ -1,6 +1,7 @@
 export type ProductEventName = 'signup_completed' | 'activation_completed' | 'feature_used' | 'limit_reached' | 'upgrade_intent' | 'subscription_changed' | 'feedback_submitted';
 
 export interface ProductEvent {
+  schema_version: '1.0';
   event: ProductEventName;
   product_id: 'vehicle-tracking';
   environment: string;
@@ -27,6 +28,7 @@ type ProductEventFields = Partial<Omit<ProductEvent, 'event' | 'product_id' | 'e
 export function createProductEvent(event: ProductEventName, fields: ProductEventFields = {}): ProductEvent {
   return {
     ...fields,
+    schema_version: '1.0',
     event,
     product_id: 'vehicle-tracking',
     environment: process.env.NODE_ENV || 'development',
