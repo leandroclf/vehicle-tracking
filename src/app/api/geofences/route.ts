@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { checkEntitlement } from '@/lib/product-harness/entitlements';
 import { createProductEvent, emitProductEvent } from '@/lib/product-harness/events';
 import { configureProductHarness } from '@/lib/product-harness/configure';
+import { toSalesSignal } from '@/lib/product-harness/sales-signals';
+import { enqueueSalesSignal } from '@/lib/product-harness/sales-outbox';
 
 configureProductHarness();
 
@@ -147,13 +149,16 @@ export async function POST(request: NextRequest) {
       });
 
       if (!decision.allowed) {
-        await emitProductEvent(createProductEvent('limit_reached', {
+        const productEvent = createProductEvent('limit_reached', {
           user_id: userId,
           account_id: userId,
           plan_id: decision.plan,
           feature: decision.capability,
           outcome: decision.reason,
-        }));
+        });
+        await emitProductEvent(productEvent);
+        const salesSignal = toSalesSignal(productEvent);
+        if (salesSignal) await enqueueSalesSignal(salesSignal);
         return NextResponse.json({
           error: 'Limite de geocercas atingido',
           code: 'ENTITLEMENT_LIMIT_REACHED',
