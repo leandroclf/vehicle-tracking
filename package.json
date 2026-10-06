@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit",
     "validate": "pnpm run typecheck && pnpm run test && pnpm run build",
     "seed:rbac": "node scripts/seed-rbac.js",
-    "test:integration": "jest -c jest.integration.config.js --runInBand"
+    "test:integration": "jest -c jest.integration.config.js --runInBand",
+    "worker:sales": "ts-node scripts/sales-outbox-worker.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
