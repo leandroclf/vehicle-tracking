@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yukz.local/schemas/product-event.schema.json",
+  "title": "ProductEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "product_id", "environment", "release_sha", "occurred_at"],
+  "properties": {
+    "event": {
+      "enum": ["signup_completed", "activation_completed", "feature_used", "limit_reached", "upgrade_intent", "subscription_changed", "feedback_submitted"]
+    },
+    "product_id": { "const": "vehicle-tracking" },
+    "environment": { "type": "string", "minLength": 1 },
+    "user_id": { "type": ["string", "null"] },
+    "account_id": { "type": ["string", "null"] },
+    "plan_id": { "type": ["string", "null"] },
+    "session_id": { "type": ["string", "null"] },
+    "feature": { "type": ["string", "null"] },
+    "outcome": { "type": ["string", "null"] },
+    "release_sha": { "type": "string", "minLength": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" }
+  }
+}
