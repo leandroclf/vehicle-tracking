@@ -6,6 +6,9 @@ import { and, asc, count, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { checkEntitlement } from '@/lib/product-harness/entitlements';
 import { createProductEvent, emitProductEvent } from '@/lib/product-harness/events';
+import { configureProductHarness } from '@/lib/product-harness/configure';
+
+configureProductHarness();
 
 // Esquema para validar parâmetros de consulta
 const querySchema = z.object({
