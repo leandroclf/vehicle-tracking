@@ -17,7 +17,7 @@ export class MercadoPagoAdapter implements IPaymentGateway {
     if(!input.paymentMethodId)throw new Error('mercado_pago payment token is required for direct charges');
     const r=await gatewayFetch<any>('https://api.mercadopago.com/v1/payments',{method:'POST',headers:this.headers(input.idempotencyKey),body:JSON.stringify({transaction_amount:input.amountMinor/100,token:input.paymentMethodId,description:input.description,external_reference:input.tenantId})}); return {id:String(r.id),status:r.status};
   }
-  async cancelSubscription(id:string):Promise<void>{await gatewayFetch('https://api.mercadopago.com/preapproval/'+encodeURIComponent(id),{method:'PUT',headers:this.headers(),body:JSON.stringify({status:'cancelled'})});}
+  async cancelSubscription(id:string):Promise<void>{await gatewayFetch('https://api.mercadopago.com/preapproval/'+encodeURIComponent(id),{method:'PUT',headers:this.headers(),body:JSON.stringify({status:'canceled'})});}
   async verifyWebhook({headers,url}:WebhookInput):Promise<boolean>{
     const signature=headers.get('x-signature'),requestId=headers.get('x-request-id'),dataId=url.searchParams.get('data.id'); if(!signature||!requestId||!dataId)return false;
     const entries=signature.split(',').map(v=>v.trim().split('=',2)); const ts=entries.find(x=>x[0]==='ts')?.[1]; const v1=entries.find(x=>x[0]==='v1')?.[1]; if(!ts||!v1)return false;
