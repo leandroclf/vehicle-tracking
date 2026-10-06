@@ -31,9 +31,12 @@ export class SalesOutboxWorker {
     const result = await getDbPool().query(
       `UPDATE sales_signal_outbox
           SET status = CASE WHEN attempts >= $1 THEN 'failed' ELSE 'retry' END,
-              last_error = COALESCE(last_error, 'recovered stale processing claim')
+              last_error = COALESCE(last_error, 'recovered stale processing claim'),
+              locked_at = NULL,
+              next_attempt_at = now()
         WHERE status = 'processing'
-          AND created_at < now() - ($2 * interval '1 minute')
+          AND locked_at IS NOT NULL
+          AND locked_at < now() - ($2 * interval '1 minute')
         RETURNING id`,
       [this.maxAttempts, staleAfterMinutes],
     );
@@ -50,6 +53,7 @@ export class SalesOutboxWorker {
            FROM sales_signal_outbox
           WHERE status IN ('pending', 'retry')
             AND attempts < $1
+            AND (next_attempt_at IS NULL OR next_attempt_at <= now())
           ORDER BY id
           FOR UPDATE SKIP LOCKED
           LIMIT $2`,
@@ -59,7 +63,7 @@ export class SalesOutboxWorker {
       if (rows.length) {
         await client.query(
           `UPDATE sales_signal_outbox
-              SET status = 'processing', attempts = attempts + 1
+              SET status = 'processing', attempts = attempts + 1, locked_at = now()
             WHERE id = ANY($1::int[])`,
           [rows.map((row) => row.id)],
         );
@@ -80,13 +84,14 @@ export class SalesOutboxWorker {
         userId: row.user_id,
         planId: row.plan_id,
         feature: row.feature,
-        occurredAt: row.occurred_at.toISOString(),
+        occurredAt: new Date(row.occurred_at).toISOString(),
       };
       try {
         await this.options.sink.emit(signal);
         await getDbPool().query(
           `UPDATE sales_signal_outbox
-              SET status = 'delivered', delivered_at = now(), last_error = NULL
+              SET status = 'delivered', delivered_at = now(), last_error = NULL,
+                  locked_at = NULL, next_attempt_at = NULL
             WHERE id = $1 AND status = 'processing'`,
           [row.id],
         );
@@ -95,7 +100,12 @@ export class SalesOutboxWorker {
         await getDbPool().query(
           `UPDATE sales_signal_outbox
               SET status = CASE WHEN attempts >= $2 THEN 'failed' ELSE 'retry' END,
-                  last_error = $3
+                  last_error = $3,
+                  locked_at = NULL,
+                  next_attempt_at = CASE
+                    WHEN attempts >= $2 THEN NULL
+                    ELSE now() + (LEAST(300, POWER(2, attempts) * 5) * interval '1 second')
+                  END
             WHERE id = $1 AND status = 'processing'`,
           [row.id, this.maxAttempts, message],
         );

@@ -158,7 +158,18 @@ export async function POST(request: NextRequest) {
         });
         await emitProductEvent(productEvent);
         const salesSignal = toSalesSignal(productEvent);
-        if (salesSignal) await enqueueSalesSignal(salesSignal);
+        if (salesSignal) {
+          try {
+            await enqueueSalesSignal(salesSignal);
+          } catch (error) {
+            console.error('sales_signal_enqueue_failed', {
+              idempotencyKey: salesSignal.idempotencyKey,
+              kind: salesSignal.kind,
+              feature: salesSignal.feature,
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          }
+        }
         return NextResponse.json({
           error: 'Limite de geocercas atingido',
           code: 'ENTITLEMENT_LIMIT_REACHED',
