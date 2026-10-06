@@ -18,10 +18,11 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv env.d.ts",
     "test": "jest --runInBand",
     "typecheck": "tsc --noEmit",
-    "validate": "pnpm run typecheck && pnpm run test && pnpm run build",
+    "validate": "pnpm run validate:product-contract && pnpm run typecheck && pnpm run test && pnpm run build",
     "seed:rbac": "node scripts/seed-rbac.js",
     "test:integration": "jest -c jest.integration.config.js --runInBand",
-    "worker:sales": "ts-node scripts/sales-outbox-worker.ts"
+    "worker:sales": "ts-node scripts/sales-outbox-worker.ts",
+    "validate:product-contract": "node scripts/validate-product-event-contract.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
