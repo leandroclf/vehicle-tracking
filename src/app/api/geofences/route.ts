@@ -4,6 +4,8 @@ import { db } from '@/lib/database';
 import { geofences } from '@/lib/schema';
 import { and, asc, count, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
+import { checkEntitlement } from '@/lib/product-harness/entitlements';
+import { createProductEvent, emitProductEvent } from '@/lib/product-harness/events';
 
 // Esquema para validar parâmetros de consulta
 const querySchema = z.object({
@@ -126,6 +128,36 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, description, type, coordinates, radius, color, status } = geofenceResult.data;
+
+    const configuredLimit = Number.parseInt(process.env.FREE_GEOFENCE_LIMIT || '', 10);
+    if (Number.isFinite(configuredLimit) && configuredLimit >= 0) {
+      const [usageRow] = await db
+        .select({ value: count() })
+        .from(geofences)
+        .where(eq(geofences.userId, userId));
+
+      const decision = checkEntitlement({
+        plan: 'free',
+        capability: 'geofences',
+        usage: usageRow?.value ?? 0,
+        limits: { geofences: configuredLimit },
+      });
+
+      if (!decision.allowed) {
+        await emitProductEvent(createProductEvent('limit_reached', {
+          user_id: userId,
+          account_id: userId,
+          plan_id: decision.plan,
+          feature: decision.capability,
+          outcome: decision.reason,
+        }));
+        return NextResponse.json({
+          error: 'Limite de geocercas atingido',
+          code: 'ENTITLEMENT_LIMIT_REACHED',
+          entitlement: decision,
+        }, { status: 403 });
+      }
+    }
 
     const [newGeofence] = await db
       .insert(geofences)
