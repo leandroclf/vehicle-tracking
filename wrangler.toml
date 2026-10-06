@@ -1,31 +1,19 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "yukz-app"
 main = ".open-next/worker.js"
-compatibility_date = "2024-09-23"
+compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
 
-[[d1_databases]]
-binding = "DB"
-database_name = "yukz-db-local"
-database_id = "a1b2c3d4-e5f6-7890-1234-567890abcdef" # Placeholder ID for local development
+[vars]
+ENVIRONMENT = "development"
 
-
-
-[env.production]
-# Define production environment settings here
-
-# Production D1 Database Binding (Replace with your actual production DB ID)
-[[env.production.d1_databases]]
-binding = "DB"
-database_name = "yukz-db-prod"
-database_id = "YOUR_PRODUCTION_DATABASE_ID_HERE" # <-- IMPORTANT: Replace this placeholder
-
-# Production Environment Variables
 [env.production.vars]
-# Configure secrets with: wrangler secret put JWT_SECRET --env production
 ENVIRONMENT = "production"
+APP_ENV = "production"
 
+# Runtime secrets are configured with "wrangler secret put <NAME> --env production".
+# Do not commit DATABASE_URL, JWT_SECRET or payment gateway credentials.
