@@ -22,16 +22,16 @@ let sink: ProductEventSink = { async emit(event) { console.info('product_event',
 
 export function setProductEventSink(next: ProductEventSink): void { sink = next; }
 
-export function createProductEvent(event: ProductEventName, fields: Partial<ProductEvent> = {}): ProductEvent {
+type ProductEventFields = Partial<Omit<ProductEvent, 'event' | 'product_id' | 'environment' | 'release_sha' | 'occurred_at'>>;
+
+export function createProductEvent(event: ProductEventName, fields: ProductEventFields = {}): ProductEvent {
   return {
+    ...fields,
     event,
     product_id: 'vehicle-tracking',
     environment: process.env.NODE_ENV || 'development',
     release_sha: process.env.RELEASE_SHA || 'local',
     occurred_at: new Date().toISOString(),
-    ...fields,
-    event,
-    product_id: 'vehicle-tracking',
   };
 }
 
