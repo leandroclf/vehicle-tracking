@@ -3,6 +3,10 @@ import { VehiclesService } from '@/lib/vehicles/vehicles-service';
 import { requireAuth } from '@/lib/auth/auth-middleware';
 import { z } from 'zod';
 import { ApiError, handleApiError } from '@/lib/api-error';
+import { configureProductHarness } from '@/lib/product-harness/configure';
+import { createProductEvent, emitProductEvent } from '@/lib/product-harness/events';
+
+configureProductHarness();
 
 // Esquema para validar parâmetros de consulta
 const querySchema = z.object({
@@ -91,6 +95,14 @@ export async function POST(request: NextRequest) {
 
     // Criar novo veículo usando o serviço real
     const newVehicle = await VehiclesService.createVehicle(user.id, vehicleData);
+
+    await emitProductEvent(createProductEvent('activation_completed', {
+      user_id: user.id,
+      account_id: user.id,
+      feature: 'vehicle_created',
+      outcome: 'success',
+    }));
+
     return NextResponse.json(newVehicle, { status: 201 });
   } catch (error) {
     return handleApiError(error);
