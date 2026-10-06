@@ -1,0 +1,2 @@
+import { NextResponse } from 'next/server'; import { getDbPool } from '@/lib/database';
+export async function GET(){const r=await getDbPool().query(`SELECT p.id,p.name,pp.gateway,pp.currency,pp.amount_minor,pp.billing_interval FROM payment_plans p LEFT JOIN payment_plan_prices pp ON pp.plan_id=p.id AND pp.active=true WHERE p.active=true ORDER BY p.id,pp.currency,pp.gateway`);return NextResponse.json({plans:r.rows});}
