@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AuthService } from '@/lib/auth/auth-service';
+import { configureProductHarness } from '@/lib/product-harness/configure';
+import { createProductEvent, emitProductEvent } from '@/lib/product-harness/events';
+
+configureProductHarness();
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,8 +14,6 @@ export async function POST(request: NextRequest) {
       phone?: string;
     };
     const { email, password, name, phone } = body;
-    console.log('Register attempt:', { email, name, phone }); // Debug log
-
     if (!email || !password || !name) {
       return NextResponse.json(
         { error: 'Email, senha e nome são obrigatórios' },
@@ -25,6 +27,12 @@ export async function POST(request: NextRequest) {
     if (phone) {
       await AuthService.updateProfile(user.id, { phone });
     }
+
+    await emitProductEvent(createProductEvent('signup_completed', {
+      user_id: user.id,
+      account_id: user.id,
+      outcome: 'success',
+    }));
 
     return NextResponse.json({
       message: 'Registro realizado com sucesso',
