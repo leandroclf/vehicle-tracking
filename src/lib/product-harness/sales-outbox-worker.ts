@@ -27,6 +27,19 @@ export class SalesOutboxWorker {
     this.maxAttempts = options.maxAttempts ?? 5;
   }
 
+  async recoverStaleProcessing(staleAfterMinutes = 10): Promise<number> {
+    const result = await getDbPool().query(
+      `UPDATE sales_signal_outbox
+          SET status = CASE WHEN attempts >= $1 THEN 'failed' ELSE 'retry' END,
+              last_error = COALESCE(last_error, 'recovered stale processing claim')
+        WHERE status = 'processing'
+          AND created_at < now() - ($2 * interval '1 minute')
+        RETURNING id`,
+      [this.maxAttempts, staleAfterMinutes],
+    );
+    return result.rowCount || 0;
+  }
+
   async runOnce(): Promise<number> {
     const client = await getDbPool().connect();
     let rows: OutboxRow[] = [];
