@@ -5,7 +5,7 @@ The product pins an immutable product-platform-harness release. The Harness is e
 ## Production sequence
 
 1. install frozen dependencies and verify pinned Harness version
-2. validate product-platform-kit/product-harness contracts
+2. validate product-platform-kit/product-platform-harness contracts
 3. unit + integration + build
 4. build immutable application artifact
 5. apply backward-compatible EXPAND migrations
