@@ -1,6 +1,6 @@
 # Product Harness extraction boundary
 
-Canonical reusable owner: `leandroclf/product-harness` (repository creation pending).
+Canonical reusable owner: `leandroclf/product-platform-harness` (repository creation pending).
 
 ## Move to product-harness
 
@@ -42,7 +42,7 @@ Canonical reusable owner: `leandroclf/product-harness` (repository creation pend
 ## Removal gate
 
 No local reusable implementation is deleted until:
-1. product-harness package exists at an immutable version;
+1. product-platform-harness package exists at an immutable version;
 2. equivalent unit/contract/integration tests are green there;
 3. vehicle-tracking consumes the pinned package;
 4. vehicle integration tests and build are green;
