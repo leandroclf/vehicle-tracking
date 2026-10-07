@@ -1,6 +1,6 @@
 # Product Harness extraction boundary
 
-Canonical reusable owner: `leandroclf/product-platform-harness` (canonical repository active).
+Canonical reusable owner: the `harness` package of `leandroclf/product-platform` (`packages/harness`), consumed through `harness-v*` releases.
 
 ## Move to product-platform-harness
 

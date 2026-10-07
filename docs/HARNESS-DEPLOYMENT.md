@@ -1,6 +1,6 @@
 # Harness-aware deployment sequence
 
-The product pins an immutable product-platform-harness release. The Harness is embedded in the application; it is not independently deployed.
+The product pins an immutable `harness-v*` release of the platform repository (`leandroclf/product-platform`), verified by SHA-256 (see `vendor/README.md`). The Harness is embedded in the application; it is not independently deployed.
 
 ## Production sequence
 

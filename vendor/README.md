@@ -1,26 +1,27 @@
 # Artefato do Product Platform Harness
 
-O piloto consome um pacote compilado do proprietário canônico, proveniente do
-commit remoto `ffb68c07dfbe491b804e3b59ad1e0ad791872e9e`. O arquivo `.tgz` é uma
-dependência distribuída; não editar seu conteúdo nem copiar suas primitives
-para o source do produto. Origem e checksum estão em `harness-artifact.json`.
+O produto consome o pacote compilado do harness a partir de um **release** do repositório da plataforma
+(`leandroclf/product-platform`, tag `harness-v<versão>`). O arquivo `.tgz` é o ativo publicado nesse release,
+guardado aqui para que o deploy não dependa de acesso ao repositório privado. Não editar seu conteúdo nem
+copiar suas primitives para o source do produto. Origem, tag, commit e checksum estão em `harness-artifact.json`.
 
-O artefato foi construído em um clone independente desse SHA, com os dois testes
-originais aprovados. Instaladores que desativam `prepare` podem produzir um
-pacote Git sem `dist`; a distribuição local evita esse problema e permite
-instalação do harness sem acesso ao repositório privado durante o deploy.
-Demais dependências continuam sujeitas ao lockfile e ao registry.
+`pnpm install --frozen-lockfile` instala o artefato. `validate:product-contract` confere o repositório de origem,
+a tag, o nome do arquivo, a identidade da dependência e os bytes por SHA-256, que deve ser o publicado no
+`SHA256SUMS` do release. O lockfile também registra a integridade do tarball.
 
-`pnpm install --frozen-lockfile` instala o artefato. `validate:product-contract`
-confere a identidade da dependência e os bytes por SHA-256. O lockfile também
-registra a integridade do tarball.
+Para atualizar:
 
-Para atualizar: validar o proprietário, selecionar uma revisão publicada,
-construir/obter um novo artefato, registrar seu SHA e checksum, atualizar o
-lockfile e executar os testes do consumidor. Não substituir os bytes mantendo
-a mesma identidade. O piloto ainda usa a API anterior à validação runtime de
-eventos acrescentada neste ciclo; essa melhoria requer adoção posterior.
+1. escolher um release `harness-v*` da plataforma (a CI do release valida versão, commit em `main` e testes);
+2. baixar o ativo e o `SHA256SUMS` do release (`gh release download harness-vX.Y.Z -R leandroclf/product-platform`);
+3. conferir o SHA-256 do `.tgz` com o `SHA256SUMS`, colocar o arquivo em `vendor/` e remover o anterior;
+4. atualizar `harness-artifact.json` (versão, tag, commit da tag, arquivo, sha256) e a dependência em `package.json`;
+5. atualizar o lockfile e executar `pnpm run validate` no consumidor.
 
-As integrações PostHog/HubSpot, a persistência de outbox, a autenticação e o
-tratamento de falhas de entrega continuam nos adapters do produto. Eventos,
-decisão de limite e mapeamento de sinal comercial vêm do pacote compartilhado.
+Não substituir os bytes mantendo a mesma identidade.
+
+A partir da 0.2.0 o harness valida cada evento em tempo de execução (`createProductEvent` rejeita campos
+desconhecidos e metadados inválidos); os wrappers do produto não precisaram mudar.
+
+As integrações PostHog/HubSpot, a persistência de outbox, a autenticação e o tratamento de falhas de entrega
+continuam nos adapters do produto. Eventos, decisão de limite e mapeamento de sinal comercial vêm do pacote
+compartilhado.
