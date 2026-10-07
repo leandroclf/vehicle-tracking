@@ -1,0 +1,10 @@
+{
+  "repository": "leandroclf/product-platform-harness",
+  "source_commit": "ffb68c07dfbe491b804e3b59ad1e0ad791872e9e",
+  "package": "@leandroclf/product-platform-harness",
+  "version": "0.1.0",
+  "file": "product-platform-harness-ffb68c07dfbe491b804e3b59ad1e0ad791872e9e.tgz",
+  "sha256": "4a61b59c09fb4dfacd5e8297760e669035c1f01c5c315d15b37b4fd2b68bb79a",
+  "build": ["npm install --ignore-scripts", "npm run validate", "npm pack"],
+  "distribution": "local immutable artifact; not a published registry release"
+}
