@@ -1,12 +1,12 @@
 # Product Harness extraction boundary
 
-Canonical reusable owner: `leandroclf/product-platform-harness` (repository creation pending).
+Canonical reusable owner: `leandroclf/product-platform-harness` (canonical repository active).
 
-## Move to product-harness
+## Move to product-platform-harness
 
 ### core
-- product-harness/events.ts generic runtime behavior
-- product-harness/entitlements.ts
+- product-platform-harness/events.ts generic runtime behavior
+- product-platform-harness/entitlements.ts
 - composite sink behavior
 
 ### growth
