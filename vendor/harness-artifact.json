@@ -1,0 +1,11 @@
+{
+  "repository": "leandroclf/product-platform",
+  "release_tag": "harness-v0.2.0",
+  "source_commit": "b3375495bd86b6ee01d8430419496cbc492fbb49",
+  "package": "@leandroclf/product-platform-harness",
+  "version": "0.2.0",
+  "file": "leandroclf-product-platform-harness-0.2.0.tgz",
+  "sha256": "aebca54a2efa720c2eed2d49a647d18f3c007408fd926cbf0e2710bb34650c0c",
+  "checksums": "SHA256SUMS published as an asset of the release",
+  "distribution": "asset of a GitHub release of a private repository, vendored in vendor/ and verified by SHA-256; not a public registry release"
+}

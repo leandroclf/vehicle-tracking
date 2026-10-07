@@ -1,0 +1,17 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const root = path.resolve(__dirname, '..');
+const manifest = JSON.parse(fs.readFileSync(path.join(root, 'vendor/harness-artifact.json'), 'utf8'));
+const fail = (message) => { throw new Error(message); };
+if (manifest.repository !== 'leandroclf/product-platform') fail('Harness must come from the platform repository leandroclf/product-platform');
+if (!/^\d+\.\d+\.\d+$/.test(manifest.version)) fail('Invalid harness version');
+if (manifest.release_tag !== `harness-v${manifest.version}`) fail('release_tag must be harness-v<version>');
+if (!/^[a-f0-9]{40}$/.test(manifest.source_commit)) fail('source_commit must be the full commit SHA of the release tag');
+if (manifest.file !== `leandroclf-product-platform-harness-${manifest.version}.tgz`) fail('Invalid pinned harness artifact identity');
+if (!/^[a-f0-9]{64}$/.test(manifest.sha256)) fail('sha256 must be the digest published in the release SHA256SUMS');
+const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+if (pkg.dependencies[manifest.package] !== `file:vendor/${manifest.file}`) fail('Harness dependency is not pinned to the recorded artifact');
+const hash = crypto.createHash('sha256').update(fs.readFileSync(path.join(root, 'vendor', manifest.file))).digest('hex');
+if (hash !== manifest.sha256) fail('Harness artifact checksum mismatch');
+console.log(`Harness artifact verified: ${manifest.release_tag} (${manifest.source_commit.slice(0, 12)})`);

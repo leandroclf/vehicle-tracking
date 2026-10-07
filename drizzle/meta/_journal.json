@@ -8,6 +8,27 @@
       "when": 1763933005999,
       "tag": "0000_lowly_newton_destine",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1791273600000,
+      "tag": "0001_sales_signal_outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1791273660000,
+      "tag": "0002_payment_harness",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1791273720000,
+      "tag": "0003_harden_sales_outbox",
+      "breakpoints": true
     }
   ]
 }
