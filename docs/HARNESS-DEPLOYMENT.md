@@ -1,11 +1,11 @@
 # Harness-aware deployment sequence
 
-The product pins an immutable product-harness release. The Harness is embedded in the application; it is not independently deployed.
+The product pins an immutable product-platform-harness release. The Harness is embedded in the application; it is not independently deployed.
 
 ## Production sequence
 
 1. install frozen dependencies and verify pinned Harness version
-2. validate ai-kit/product-harness contracts
+2. validate product-platform-kit/product-harness contracts
 3. unit + integration + build
 4. build immutable application artifact
 5. apply backward-compatible EXPAND migrations
