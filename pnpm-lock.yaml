@@ -273,6 +273,11 @@ importers:
 
 packages:
 
+  '@leandroclf/product-platform-harness@github.com/leandroclf/product-platform-harness/ffb68c07dfbe491b804e3b59ad1e0ad791872e9e':
+    resolution: {commit: ffb68c07dfbe491b804e3b59ad1e0ad791872e9e, repo: https://github.com/leandroclf/product-platform-harness.git, type: git}
+    engines: {node: '>=20'}
+
+
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
     engines: {node: '>=10'}
@@ -7056,6 +7061,9 @@ packages:
     resolution: {integrity: sha512-HhY1oqzWCQWuUqvBFnsyrtZRhyPeR7SUGv+C4+MsisMuVfSPx8HpwWqH8tRahSlt6M3PiFAcoeFhZAqIXTxoSg==}
 
 snapshots:
+
+  '@leandroclf/product-platform-harness@github.com/leandroclf/product-platform-harness/ffb68c07dfbe491b804e3b59ad1e0ad791872e9e': {}
+
 
   '@alloc/quick-lru@5.2.0': {}
 
@@ -15480,7 +15488,3 @@ snapshots:
   zod@3.22.3: {}
 
   zod@3.24.3: {}
-
-  github.com/leandroclf/product-platform-harness/ffb68c07dfbe491b804e3b59ad1e0ad791872e9e:
-    resolution: {commit: ffb68c07dfbe491b804e3b59ad1e0ad791872e9e, repo: https://github.com/leandroclf/product-platform-harness.git, type: git}
-    engines: {node: '>=20'}
