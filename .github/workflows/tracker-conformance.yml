@@ -1,0 +1,17 @@
+name: tracker-conformance
+on:
+  pull_request:
+    paths: ['tracker-server/**','.github/workflows/tracker-conformance.yml']
+  push:
+    branches: [main]
+    paths: ['tracker-server/**','.github/workflows/tracker-conformance.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: cd tracker-server && npm test
