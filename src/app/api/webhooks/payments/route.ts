@@ -17,12 +17,16 @@ export async function POST(request:Request){
     const event=await gateway.normalizeWebhook(input);
     const result=await processPaymentEventOnce(event);
     if (result === 'processed' && event.type === 'subscription' && event.tenantId) {
-      await emitProductEvent(createProductEvent('subscription_changed', {
-        account_id: event.tenantId,
-        plan_id: undefined,
-        feature: 'subscription',
-        outcome: event.status,
-      }));
+      // Falha de analytics nunca derruba o webhook: o pagamento já foi processado de forma idempotente.
+      try {
+        await emitProductEvent(createProductEvent('subscription_changed', {
+          account_id: event.tenantId,
+          feature: 'subscription',
+          outcome: event.status,
+        }));
+      } catch (analyticsError) {
+        console.error('product_event_failed', analyticsError instanceof Error ? analyticsError.message : 'unknown');
+      }
     }
     return NextResponse.json({received:true,result},{status:200});
   }catch(error){
