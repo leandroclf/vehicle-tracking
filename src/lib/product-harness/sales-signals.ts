@@ -1,3 +1,31 @@
-export { toSalesSignal } from '@leandroclf/product-platform-harness';
-export type { SalesSignal } from '@leandroclf/product-platform-harness';
-export interface SalesSignalSink { emit(signal: SalesSignal): Promise<void>; }
+import type { ProductEvent } from './events';
+
+export interface SalesSignal {
+  idempotencyKey: string;
+  kind: 'usage_limit_reached' | 'upgrade_intent';
+  accountId: string;
+  userId?: string | null;
+  planId?: string | null;
+  feature?: string | null;
+  occurredAt: string;
+}
+
+export interface SalesSignalSink {
+  emit(signal: SalesSignal): Promise<void>;
+}
+
+export function toSalesSignal(event: ProductEvent): SalesSignal | null {
+  if (!event.account_id) return null;
+  if (event.event !== 'limit_reached' && event.event !== 'upgrade_intent') return null;
+
+  const day = event.occurred_at.slice(0, 10);
+  return {
+    idempotencyKey: [event.product_id, event.account_id, event.event, event.feature || 'general', day].join(':'),
+    kind: event.event === 'limit_reached' ? 'usage_limit_reached' : 'upgrade_intent',
+    accountId: event.account_id,
+    userId: event.user_id,
+    planId: event.plan_id,
+    feature: event.feature,
+    occurredAt: event.occurred_at,
+  };
+}
