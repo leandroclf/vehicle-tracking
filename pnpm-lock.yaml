@@ -15484,5 +15484,3 @@ snapshots:
   github.com/leandroclf/product-platform-harness/ffb68c07dfbe491b804e3b59ad1e0ad791872e9e:
     resolution: {commit: ffb68c07dfbe491b804e3b59ad1e0ad791872e9e, repo: https://github.com/leandroclf/product-platform-harness.git, type: git}
     engines: {node: '>=20'}
-
-  github.com/leandroclf/product-platform-harness/ffb68c07dfbe491b804e3b59ad1e0ad791872e9e: {}
