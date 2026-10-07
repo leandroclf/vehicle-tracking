@@ -1,19 +1,8 @@
-export type ProductEventName = 'signup_completed' | 'activation_completed' | 'feature_used' | 'limit_reached' | 'upgrade_intent' | 'subscription_changed' | 'feedback_submitted';
+import { createProductEvent as createSharedEvent } from '@leandroclf/product-platform-harness';
+import type { ProductEvent as SharedProductEvent, ProductEventName } from '@leandroclf/product-platform-harness';
 
-export interface ProductEvent {
-  schema_version: '1.0';
-  event: ProductEventName;
-  product_id: 'vehicle-tracking';
-  environment: string;
-  release_sha: string;
-  occurred_at: string;
-  user_id?: string | null;
-  account_id?: string | null;
-  plan_id?: string | null;
-  session_id?: string | null;
-  feature?: string | null;
-  outcome?: string | null;
-}
+export type { ProductEventName } from '@leandroclf/product-platform-harness';
+export type ProductEvent = Omit<SharedProductEvent, 'product_id'> & { product_id: 'vehicle-tracking' };
 
 export interface ProductEventSink {
   emit(event: ProductEvent): Promise<void>;
@@ -27,13 +16,12 @@ type ProductEventFields = Partial<Omit<ProductEvent, 'event' | 'product_id' | 'e
 
 export function createProductEvent(event: ProductEventName, fields: ProductEventFields = {}): ProductEvent {
   return {
-    ...fields,
-    schema_version: '1.0',
-    event,
+    ...createSharedEvent({
+      productId: 'vehicle-tracking',
+      environment: process.env.NODE_ENV || 'development',
+      releaseSha: process.env.RELEASE_SHA || 'local',
+    }, event, fields),
     product_id: 'vehicle-tracking',
-    environment: process.env.NODE_ENV || 'development',
-    release_sha: process.env.RELEASE_SHA || 'local',
-    occurred_at: new Date().toISOString(),
   };
 }
 

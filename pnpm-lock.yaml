@@ -11,6 +11,9 @@ importers:
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.56.2(react@18.3.1))
+      '@leandroclf/product-platform-harness':
+        specifier: file:vendor/product-platform-harness-ffb68c07dfbe491b804e3b59ad1e0ad791872e9e.tgz
+        version: file:vendor/product-platform-harness-ffb68c07dfbe491b804e3b59ad1e0ad791872e9e.tgz
       '@radix-ui/react-accordion':
         specifier: ^1.2.2
         version: 1.2.8(@types/react-dom@18.3.7(@types/react@18.3.20))(@types/react@18.3.20)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -2227,6 +2230,11 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
+
+  '@leandroclf/product-platform-harness@file:vendor/product-platform-harness-ffb68c07dfbe491b804e3b59ad1e0ad791872e9e.tgz':
+    resolution: {integrity: sha512-y5xxZr0hv6pYgP2WBLq0gRKpXCzFE2R8c8963DTdKr6HHht8nKc7hLlQFUPSSiYaU76GGiLZM6xwRsmX6tmHZA==, tarball: file:vendor/product-platform-harness-ffb68c07dfbe491b804e3b59ad1e0ad791872e9e.tgz}
+    version: 0.1.0
+    engines: {node: '>=20'}
 
   '@napi-rs/wasm-runtime@0.2.9':
     resolution: {integrity: sha512-OKRBiajrrxB9ATokgEQoG87Z25c67pCpYcCwmXYX8PBftC9pBfN18gnm/fh1wurSLEKIAt+QRFLFCQISrb66Jg==}
@@ -9796,6 +9804,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
+
+  '@leandroclf/product-platform-harness@file:vendor/product-platform-harness-ffb68c07dfbe491b804e3b59ad1e0ad791872e9e.tgz': {}
 
   '@napi-rs/wasm-runtime@0.2.9':
     dependencies:
