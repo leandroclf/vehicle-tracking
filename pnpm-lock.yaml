@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@leandroclf/product-platform-harness':
+        specifier: github:leandroclf/product-platform-harness#ffb68c07dfbe491b804e3b59ad1e0ad791872e9e
+        version: github.com/leandroclf/product-platform-harness/ffb68c07dfbe491b804e3b59ad1e0ad791872e9e
       '@hookform/resolvers':
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.56.2(react@18.3.1))
@@ -15477,3 +15480,9 @@ snapshots:
   zod@3.22.3: {}
 
   zod@3.24.3: {}
+
+  github.com/leandroclf/product-platform-harness/ffb68c07dfbe491b804e3b59ad1e0ad791872e9e:
+    resolution: {commit: ffb68c07dfbe491b804e3b59ad1e0ad791872e9e, repo: https://github.com/leandroclf/product-platform-harness.git, type: git}
+    engines: {node: '>=20'}
+
+  github.com/leandroclf/product-platform-harness/ffb68c07dfbe491b804e3b59ad1e0ad791872e9e: {}
