@@ -22,9 +22,10 @@
     "seed:rbac": "node scripts/seed-rbac.js",
     "test:integration": "jest -c jest.integration.config.js --runInBand",
     "worker:sales": "ts-node scripts/sales-outbox-worker.ts",
-    "validate:product-contract": "node scripts/validate-product-event-contract.cjs"
+    "validate:product-contract": "node scripts/validate-product-event-contract.cjs && node scripts/validate-product-platform-artifact.cjs"
   },
   "dependencies": {
+    "@leandroclf/product-platform-harness": "file:vendor/product-platform-harness-ffb68c07dfbe491b804e3b59ad1e0ad791872e9e.tgz",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.4",
