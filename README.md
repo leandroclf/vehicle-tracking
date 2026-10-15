@@ -99,6 +99,22 @@ pnpm run migrate
 pnpm run start
 ```
 
+### Instalação congelada e regeneração do lockfile
+
+Use o pnpm fixado em `packageManager` (atualmente `pnpm@10.0.0-rc.2`).
+
+```bash
+# Instalação normal e reprodutível
+pnpm install --frozen-lockfile
+
+# Regeneração deliberada do lockfile (somente ao alterar dependências)
+pnpm install --lockfile-only --ignore-scripts
+git diff pnpm-lock.yaml   # revise o diff antes de commitar
+pnpm install --frozen-lockfile
+```
+
+Se a instalação congelada falhar, diagnostique a mensagem de erro: ela pode indicar lockfile divergente do `package.json`, mas também rede, integridade de pacote ou permissões. Não contorne a falha removendo `--frozen-lockfile`.
+
 ### Deploy e rollback
 
 1. Gere e aplique migrações em ambiente de homologação antes da produção.
