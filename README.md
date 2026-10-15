@@ -58,13 +58,13 @@ Consulte os diretórios `src/app`, `src/lib`, `src/components`, `drizzle`, `migr
 
 ### Classificação atual
 
-O projeto está **parcialmente funcional e não pronto para produção** até que as validações críticas abaixo sejam aprovadas sem o uso de `ignoreBuildErrors`/`ignoreDuringBuilds` no `next.config.js`.
+O projeto **não tem aceitação de produção**: as validações abaixo são locais e offline, e a validação funcional completa depende de serviços externos.
 
-Evidências da revisão atual:
+Baseline local (checks offline do host, sem rede externa, contas ou Docker; não é deploy nem migração):
 
-- O build de Next.js pode gerar artefatos porque a configuração atual ignora erros de TypeScript e ESLint durante o build.
-- A verificação de tipos (`pnpm run typecheck`) ainda encontra inconsistências de contratos entre componentes, providers, rotas e testes.
-- A suíte Jest (`pnpm run test`) ainda possui falhas por mocks/arquivos ausentes e expectativas desalinhadas no serviço de veículos.
+- `pnpm run typecheck`, `pnpm test` (Jest) e `pnpm run build` passaram, assim como a conformance do contrato do produto e a verificação do lockfile.
+- `next.config.js` mantém `ignoreBuildErrors` e `ignoreDuringBuilds` em `false`; o build não ignora erros de TypeScript nem de ESLint.
+- Não houve execução de lint dedicado, integração externa, CI remoto nem aceitação em produção; nenhum deploy foi realizado.
 - A aplicação depende de PostgreSQL, Redis, WebSocket tracker e Google Maps para validação funcional completa.
 
 ### Variáveis obrigatórias
@@ -90,7 +90,7 @@ wrangler secret put JWT_SECRET --env production
 ### Comandos de validação
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm run test
 pnpm run typecheck
 pnpm run lint
@@ -98,6 +98,22 @@ pnpm run build
 pnpm run migrate
 pnpm run start
 ```
+
+### Instalação congelada e regeneração do lockfile
+
+Use o pnpm fixado em `packageManager` (atualmente `pnpm@10.0.0-rc.2`).
+
+```bash
+# Instalação normal e reprodutível
+pnpm install --frozen-lockfile
+
+# Regeneração deliberada do lockfile (somente ao alterar dependências)
+pnpm install --lockfile-only --ignore-scripts
+git diff pnpm-lock.yaml   # revise o diff antes de commitar
+pnpm install --frozen-lockfile
+```
+
+Se a instalação congelada falhar, diagnostique a mensagem de erro: ela pode indicar lockfile divergente do `package.json`, mas também rede, integridade de pacote ou permissões. Não contorne a falha removendo `--frozen-lockfile`.
 
 ### Deploy e rollback
 
@@ -108,6 +124,5 @@ pnpm run start
 
 ### Bloqueios conhecidos
 
-- Contratos de UI e providers divergem dos tipos atuais em várias páginas do dashboard.
-- Alguns testes referenciam módulos inexistentes (`sms-service`, `types/mfa`) ou mocks incompatíveis com a implementação atual.
+- Typecheck, Jest e build passaram na baseline local acima; não há bloqueio conhecido nesses checks.
 - A validação funcional completa requer PostgreSQL/Redis e dados de teste compatíveis com as migrações.
