@@ -41,9 +41,18 @@ jobs:
         env:
           CI: "true"
           WRANGLER_SEND_METRICS: "false"
-      - name: Verify local output and print source/bundle fingerprints
+      - name: Verify local output and write sanitized evidence manifest
         run: |
           test "$GITHUB_SHA" = "$(git rev-parse HEAD)" || { echo 'Mismatch between CI SHA and HEAD'; exit 1; }
+          mkdir -m 700 .g6-staging-evidence
           python3 scripts/verify-staging-dry-run.py \
             --directory .g6-staging-dry-run \
-            --source-sha "$GITHUB_SHA"
+            --source-sha "$GITHUB_SHA" \
+            --output .g6-staging-evidence/manifest.json
+      - name: Store staging dry-run fingerprints for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-dry-run-evidence-${{ github.sha }}
+          path: .g6-staging-evidence/manifest.json
+          if-no-files-found: error
+          retention-days: 14
