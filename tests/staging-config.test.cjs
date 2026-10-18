@@ -28,6 +28,6 @@ test('OpenNext adapter has committed non-interactive config without cloud bindin
   const file = path.join(__dirname, '..', 'open-next.config.ts');
   const config = fs.readFileSync(file, 'utf8');
   assert.match(config, /incrementalCache:\s*"dummy"/);
-  assert.match(config, /from ["']@opennextjs\/cloudflare["']/);
+  assert.match(config, /wrapper:\s*"cloudflare-node"/);
   assert.doesNotMatch(config, /(?:kv|r2)IncrementalCache|process\.env\./);
 });
