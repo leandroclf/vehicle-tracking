@@ -23,3 +23,11 @@ test('reject missing or repeated staging sections', () => {
   assert.ok(validate(base.replace('[env.staging]', '[env.staging-removed]')).length);
   assert.ok(validate(base + '\n[env.staging.vars]\nENVIRONMENT = "staging"\n').length);
 });
+
+test('OpenNext adapter has committed non-interactive config without cloud bindings', () => {
+  const file = path.join(__dirname, '..', 'open-next.config.ts');
+  const config = fs.readFileSync(file, 'utf8');
+  assert.match(config, /defineCloudflareConfig\(\)/);
+  assert.match(config, /from ["']@opennextjs\/cloudflare["']/);
+  assert.doesNotMatch(config, /(?:kv|r2)IncrementalCache|process\.env\./);
+});
