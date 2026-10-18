@@ -1,5 +1,24 @@
-import { defineCloudflareConfig } from "@opennextjs/cloudflare";
+// OpenNext Cloudflare 0.3.x uses the v3 OpenNextConfig object, not
+// defineCloudflareConfig() from later adapter versions.
+// Disable KV-backed caches until staging bindings are provisioned.
+const config = {
+  default: {
+    override: {
+      wrapper: "cloudflare-node",
+      converter: "edge",
+      incrementalCache: "dummy",
+      tagCache: "dummy",
+      queue: "dummy",
+    },
+  },
+  middleware: {
+    external: true,
+    override: {
+      wrapper: "cloudflare-edge",
+      converter: "edge",
+      proxyExternalRequest: "fetch",
+    },
+  },
+};
 
-// Non-interactive configuration for CI and Cloudflare Worker builds.
-// No cache bindings are enabled until isolated Cloudflare resources are provisioned.
-export default defineCloudflareConfig();
+export default config;
