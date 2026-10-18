@@ -39,6 +39,31 @@ class StagingBundleTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.fingerprint(self.root, self.sha)
 
+    def test_manifest_is_sanitized_private_and_non_overwriting(self):
+        import json
+        import stat
+        destination = self.root / "manifest.json"
+        report = module.fingerprint(self.root, self.sha)
+        module.write_manifest(destination, report)
+        saved = json.loads(destination.read_text())
+        self.assertEqual(saved["source_sha"], self.sha)
+        self.assertFalse(saved["authorized_to_deploy"])
+        self.assertEqual(stat.S_IMODE(destination.stat().st_mode), 0o600)
+        with self.assertRaises(ValueError):
+            module.write_manifest(destination, report)
+
+    def test_manifest_rejects_symlink_or_missing_parent(self):
+        report = module.fingerprint(self.root, self.sha)
+        target = self.root / "real.json"
+        target.write_text("keep")
+        linked = self.root / "linked.json"
+        linked.symlink_to(target)
+        with self.assertRaises(ValueError):
+            module.write_manifest(linked, report)
+        self.assertEqual(target.read_text(), "keep")
+        with self.assertRaises(ValueError):
+            module.write_manifest(self.root / "missing" / "manifest.json", report)
+
     def test_invalid_source_and_linked_directory_block(self):
         with self.assertRaises(ValueError):
             module.fingerprint(self.root, "main")

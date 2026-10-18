@@ -19,7 +19,7 @@
     "test": "jest --runInBand",
     "typecheck": "tsc --noEmit",
     "validate": "pnpm run validate:product-contract && pnpm run validate:staging && pnpm run typecheck && pnpm run test && pnpm run build",
-    "validate:staging": "node scripts/validate-staging-config.cjs && node --test tests/staging-config.test.cjs",
+    "validate:staging": "node scripts/validate-staging-config.cjs && node --test tests/staging-config.test.cjs && python3 -m unittest discover -s tests -p test_staging_dry_run.py",
     "seed:rbac": "node scripts/seed-rbac.js",
     "test:integration": "jest -c jest.integration.config.js --runInBand",
     "worker:sales": "ts-node scripts/sales-outbox-worker.ts",

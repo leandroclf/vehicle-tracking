@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import stat
@@ -52,13 +53,31 @@ def fingerprint(directory, source_sha):
     }
 
 
+def write_manifest(destination, report):
+    """Write a sanitized manifest once; never replace existing files or links."""
+    destination = Path(destination)
+    if destination.parent.is_symlink() or not destination.parent.is_dir():
+        raise ValueError("Evidence directory missing or linked")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(destination, flags, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(report, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+    except OSError as exc:
+        raise ValueError("Cannot create new evidence manifest") from exc
+
+
 def main():
     parser = argparse.ArgumentParser(description="Fingerprint only Wrangler staging dry-run bundles")
     parser.add_argument("--directory", required=True, type=Path)
     parser.add_argument("--source-sha", required=True)
+    parser.add_argument("--output", type=Path, help="new sanitized manifest file; existing paths are refused")
     args = parser.parse_args()
     try:
         result = fingerprint(args.directory, args.source_sha)
+        if args.output is not None:
+            write_manifest(args.output, result)
         print(json.dumps(result, sort_keys=True))
         return 0
     except (ValueError, OSError):
