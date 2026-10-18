@@ -7,6 +7,14 @@
 - Inclui casos negativos via `node --test tests/staging-config.test.cjs`, executados no `pnpm validate` do CI atual.
 - Preserva o workflow de produção manual existente, **sem alterar regras de ambiente ou secrets**.
 
+## Ensaio de build offline do Staging
+
+O workflow manual `.github/workflows/staging-bundle-dry-run.yml` executa apenas em `main`, sem environment privilegiado, secrets, token Cloudflare ou migração. Ele executa `pnpm validate`, os testes offline do verificador, `pnpm build:worker` e então o comando oficial `pnpm exec wrangler deploy --env staging --dry-run --outdir .g6-staging-dry-run`. A opção `--dry-run` compila o Worker e não publica na Cloudflare. Os bundles JavaScript gerados são vinculados ao SHA do commit e recebem fingerprint local SHA-256 através de `scripts/verify-staging-dry-run.py`. A saída reporta `deployment_executed=false` e `authorized_to_deploy=false`.
+
+**Esse workflow não faz deploy, não configura Staging na Cloudflare e não verifica banco, Redis, endpoints ou aprovação de produção.** O artefato local não é prova de publicação no registry. Essa preparação não habilita workflow de produção.
+
+Para executar: GitHub → Actions → `staging-bundle-dry-run` → Run workflow → branch `main`. Se falhar, corrigir build/compatibilidade em PR separado, sem contornar checks.
+
 ## Preparação obrigatória antes de qualquer deploy em staging
 
 1. Configurar um environment GitHub `staging` com separação de credenciais e revisão de branch/atores; não apontar para produção.
