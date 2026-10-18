@@ -1,0 +1,47 @@
+name: staging-bundle-dry-run
+
+# Offline rehearsal only: deliberately no deploy, migrations, production environment or credentials.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-dry-run
+  cancel-in-progress: false
+
+jobs:
+  rehearse:
+    if: ${{ github.ref == 'refs/heads/main' && github.repository == 'leandroclf/vehicle-tracking' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout pinned event commit
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install pinned dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify staging isolation and full product quality checks
+        run: pnpm validate
+      - name: Build Cloudflare Worker bundle without cloud access
+        run: pnpm build:worker
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+      - name: Offline Wrangler staging dry-run
+        run: pnpm exec wrangler deploy --env staging --dry-run --outdir .g6-staging-dry-run
+        env:
+          CI: "true"
+          WRANGLER_SEND_METRICS: "false"
+      - name: Verify local output and print source/bundle fingerprints
+        run: |
+          test "$GITHUB_SHA" = "$(git rev-parse HEAD)" || { echo 'Mismatch between CI SHA and HEAD'; exit 1; }
+          python3 scripts/verify-staging-dry-run.py \
+            --directory .g6-staging-dry-run \
+            --source-sha "$GITHUB_SHA"
