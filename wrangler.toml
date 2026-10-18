@@ -11,6 +11,16 @@ binding = "ASSETS"
 [vars]
 ENVIRONMENT = "development"
 
+# Non-production Worker is intentionally isolated from the production name.
+# No secrets, routes, KV, R2, D1, or external service bindings are configured
+# until independent staging resources and GitHub environment are reviewed.
+[env.staging]
+name = "yukz-app-staging"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+APP_ENV = "staging"
+
 [env.production.vars]
 ENVIRONMENT = "production"
 APP_ENV = "production"
