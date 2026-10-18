@@ -11,6 +11,8 @@ import sys
 
 SHA = re.compile(r"^[0-9a-f]{40}$")
 MAX_BUNDLE = 128 * 1024 * 1024
+MAX_OUTPUT_FILES = 512
+MAX_OUTPUT_BYTES = 512 * 1024 * 1024
 
 
 def fingerprint(directory, source_sha):
@@ -20,6 +22,8 @@ def fingerprint(directory, source_sha):
     if directory.is_symlink() or not directory.is_dir():
         raise ValueError("Missing or linked Wrangler dry-run directory")
     bundles = []
+    outputs = []
+    total_bytes = 0
     for item in directory.rglob("*"):
         if item.is_symlink():
             raise ValueError("Linked dry-run output is not allowed")
@@ -27,11 +31,12 @@ def fingerprint(directory, source_sha):
             continue
         if not item.is_file():
             raise ValueError("Unexpected nonregular dry-run file")
-        if item.suffix != ".js":
-            continue
         info = item.stat(follow_symlinks=False)
         if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= MAX_BUNDLE:
             raise ValueError("Invalid Worker bundle")
+        total_bytes += info.st_size
+        if len(outputs) >= MAX_OUTPUT_FILES or total_bytes > MAX_OUTPUT_BYTES:
+            raise ValueError("Dry-run outputs exceed count or cumulative size limit")
         digest = hashlib.sha256()
         with item.open("rb") as stream:
             for block in iter(lambda: stream.read(1024 * 1024), b""):
@@ -40,13 +45,18 @@ def fingerprint(directory, source_sha):
         if (info.st_ino, info.st_size, info.st_mtime_ns) != (
                 after.st_ino, after.st_size, after.st_mtime_ns):
             raise ValueError("Bundle changed while being hashed")
-        bundles.append({"file": item.relative_to(directory).as_posix(), "sha256": digest.hexdigest()})
+        record = {"file": item.relative_to(directory).as_posix(), "sha256": digest.hexdigest()}
+        outputs.append(record)
+        if item.suffix == ".js":
+            bundles.append(record)
     if not bundles:
         raise ValueError("No JavaScript Worker bundle produced by dry-run")
     return {
         "status": "OFFLINE_STAGING_BUNDLE_VERIFIED",
         "source_sha": source_sha,
         "bundles": sorted(bundles, key=lambda x: x["file"]),
+        "outputs": sorted(outputs, key=lambda x: x["file"]),
+        "outputs_total_bytes": total_bytes,
         "remote_cloudflare_verified": False,
         "deployment_executed": False,
         "authorized_to_deploy": False,

@@ -27,6 +27,29 @@ class StagingBundleTests(unittest.TestCase):
         self.assertFalse(report["deployment_executed"])
         self.assertFalse(report["authorized_to_deploy"])
 
+    def test_manifest_includes_non_js_metadata_not_just_bundle(self):
+        (self.root / "metadata.json").write_text('{"bindings":[]}')
+        result = module.fingerprint(self.root, self.sha)
+        self.assertEqual(len(result["bundles"]), 1)
+        self.assertEqual(len(result["outputs"]), 2)
+        self.assertIn("metadata.json", [entry["file"] for entry in result["outputs"]])
+        self.assertGreater(result["outputs_total_bytes"], 0)
+        self.assertFalse(result["authorized_to_deploy"])
+
+    def test_changed_non_js_metadata_changes_evidence_digest(self):
+        metadata = self.root / "metadata.json"
+        metadata.write_text('{"status":"first"}')
+        original = module.fingerprint(self.root, self.sha)
+        metadata.write_text('{"status":"second"}')
+        changed = module.fingerprint(self.root, self.sha)
+        self.assertNotEqual(original["outputs"], changed["outputs"])
+
+    def test_limits_output_fanout_and_bytes_fail_closed(self):
+        for index in range(module.MAX_OUTPUT_FILES):
+            (self.root / f"extra-{index}.txt").write_text("x")
+        with self.assertRaisesRegex(ValueError, "count or cumulative"):
+            module.fingerprint(self.root, self.sha)
+
     def test_missing_empty_or_linked_bundle_blocks(self):
         (self.root / "index.js").unlink()
         with self.assertRaises(ValueError):
