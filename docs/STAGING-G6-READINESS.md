@@ -11,6 +11,8 @@
 
 O workflow manual `.github/workflows/staging-bundle-dry-run.yml` executa apenas em `main`, sem environment privilegiado, secrets, token Cloudflare ou migração. Ele executa `pnpm validate`, os testes offline do verificador, `pnpm build:worker` e então o comando oficial `pnpm exec wrangler deploy --env staging --dry-run --outdir .g6-staging-dry-run`. A opção `--dry-run` compila o Worker e não publica na Cloudflare. Os bundles JavaScript gerados são vinculados ao SHA do commit e recebem fingerprint local SHA-256 através de `scripts/verify-staging-dry-run.py`. A saída reporta `deployment_executed=false` e `authorized_to_deploy=false`.
 
+O ensaio também produz um manifesto JSON sanitizado em `Actions → execução → Artifacts`, nomeado `staging-dry-run-evidence-<SHA>` e retido por 14 dias. Contém SHA Git e SHA-256/nome relativo dos bundles e flags negativas para deployment e autorização. A escrita falha se o destino já existir ou for symlink. Este arquivo é **evidência do build local**, não um atestado de publicação, aprovação ou saúde de Cloudflare. Evite adicionar logs e outputs brutos ao artefato.
+
 **Esse workflow não faz deploy, não configura Staging na Cloudflare e não verifica banco, Redis, endpoints ou aprovação de produção.** O artefato local não é prova de publicação no registry. Essa preparação não habilita workflow de produção.
 
 Para executar: GitHub → Actions → `staging-bundle-dry-run` → Run workflow → branch `main`. Se falhar, corrigir build/compatibilidade em PR separado, sem contornar checks.
