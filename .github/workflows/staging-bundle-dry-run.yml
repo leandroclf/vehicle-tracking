@@ -30,6 +30,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Verify staging isolation and full product quality checks
         run: pnpm validate
+      - name: Validate offline fingerprint guard against tampering
+        run: python3 -m unittest discover -s tests -p test_staging_dry_run.py
       - name: Build Cloudflare Worker bundle without cloud access
         run: pnpm build:worker
         env:
