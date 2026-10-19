@@ -47,11 +47,6 @@ jobs:
         run: pnpm build:worker
         env:
           RELEASE_SHA: ${{ github.sha }}
-      - name: Deploy staging Worker only
-        run: pnpm exec wrangler deploy --env staging
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.STAGING_CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.STAGING_CLOUDFLARE_ACCOUNT_ID }}
       - name: Fetch immutable platform G7 verifier
         uses: actions/checkout@v4
         with:
@@ -62,6 +57,17 @@ jobs:
           # This step needs repository access; private repo workflows should use
           # a read-only installation token, not a broad personal access token.
           token: ${{ secrets.PLATFORM_READ_TOKEN }}
+      - name: Validate pinned G7 verifier before deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile .trusted-platform-g7/packages/kit/scripts/verify-post-deploy-health.py
+          python3 .trusted-platform-g7/packages/kit/scripts/verify-post-deploy-health.test.py
+      - name: Deploy staging Worker only
+        run: pnpm exec wrangler deploy --env staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.STAGING_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.STAGING_CLOUDFLARE_ACCOUNT_ID }}
       - name: Verify stable staging health
         env:
           STAGING_HEALTH_URL: ${{ vars.STAGING_HEALTH_URL }}
