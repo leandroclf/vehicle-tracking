@@ -2,7 +2,7 @@
 
 ## O que esta mudança entrega
 
-- Declara um **Worker separado** `yukz-app-staging`, sem configurar acesso a banco de produção, rotas/domínios públicos nem secrets.
+- Declara um **Worker separado** `yukz-app-staging` (identificador legado mantido para evitar criar outro recurso Cloudflare), sem configurar acesso a banco de produção, rotas/domínios públicos nem secrets.
 - Adiciona `scripts/validate-staging-config.cjs` com checagens estáticas de separação em `wrangler.toml`, sem acessar Cloudflare ou modificar infraestrutura.
 - Inclui casos negativos via `node --test tests/staging-config.test.cjs`, executados no `pnpm validate` do CI atual.
 - Preserva o workflow de produção manual existente, **sem alterar regras de ambiente ou secrets**.

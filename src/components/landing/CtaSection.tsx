@@ -24,7 +24,7 @@ export default function CtaSection() {
                         Pronto para assumir o controle?
                     </h2>
                     <p className="text-xl text-slate-400 mb-10">
-                        Junte-se a centenas de empresas que já otimizaram suas frotas com o Yukz.
+                        Centralize a operação da sua frota com a plataforma da LF Soluções.
                         Segurança, economia e eficiência em uma única plataforma.
                     </p>
 

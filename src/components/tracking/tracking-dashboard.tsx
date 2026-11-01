@@ -1,5 +1,5 @@
 /**
- * Painel de Controle de Rastreamento - Yukz Vehicle Tracking
+ * Painel de Controle de Rastreamento - LF Soluções Gestão de Frotas
  * 
  * Este componente fornece uma interface completa para monitoramento
  * e controle do sistema de rastreamento de veículos.

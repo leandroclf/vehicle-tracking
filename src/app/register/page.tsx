@@ -64,7 +64,7 @@ function RegisterForm() {
       <Container className="max-w-md">
         <Card className="border-t-4 border-t-[#00315c] dark:bg-gray-800">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-[#00315c] dark:text-blue-400">Yukz</h1>
+            <h1 className="text-2xl font-bold text-[#00315c] dark:text-blue-400">LF Soluções</h1>
             <p className="text-gray-700 dark:text-gray-300 mt-2">Novo Usuário</p>
           </div>
           

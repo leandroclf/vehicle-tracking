@@ -1,4 +1,4 @@
-# Servidor de Rastreamento Yukz
+# Servidor de Rastreamento | LF Soluções
 
 Este servidor é responsável pela comunicação com dispositivos de rastreamento GPS e armazenamento dos dados no PostgreSQL.
 

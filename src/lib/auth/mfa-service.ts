@@ -82,7 +82,7 @@ export const mfaService = {
       client.release();
 
       // Enviar SMS (integração com provedor SMS)
-      await this.sendSMS(phone, `Seu código de verificação Yukz: ${verificationCode}`);
+      await this.sendSMS(phone, `Seu código de verificação LF Soluções: ${verificationCode}`);
 
       return {
         success: true,
@@ -101,7 +101,7 @@ export const mfaService = {
     try {
       // Gerar secret para TOTP
       const secret = authenticator.generateSecret();
-      const serviceName = 'Yukz';
+      const serviceName = 'LF Soluções';
       
       // Buscar dados do usuário
       const client = await getConnection();
@@ -176,7 +176,7 @@ export const mfaService = {
       client.release();
 
       // Enviar email de verificação
-      await this.sendEmail(email, 'Código de Verificação Yukz', `Seu código: ${verificationCode}`);
+      await this.sendEmail(email, 'Código de Verificação LF Soluções', `Seu código: ${verificationCode}`);
 
       return {
         success: true,

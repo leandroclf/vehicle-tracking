@@ -1,5 +1,5 @@
 /**
- * Dashboard de Rastreamento Simples - Yukz Vehicle Tracking
+ * Dashboard de Rastreamento Simples - LF Soluções Gestão de Frotas
  * 
  * Este componente fornece uma interface simples para monitoramento
  * de veículos sem dependências complexas.

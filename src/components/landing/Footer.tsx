@@ -8,7 +8,7 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                     <div className="col-span-1 md:col-span-1">
                         <Link href="/" className="text-2xl font-bold text-white mb-4 block">
-                            YUKZ
+                            LF Soluções
                         </Link>
                         <p className="text-slate-400 text-sm leading-relaxed">
                             Tecnologia avançada em rastreamento e telemetria veicular para empresas que buscam eficiência máxima.
@@ -47,7 +47,7 @@ export default function Footer() {
 
                 <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
                     <p className="text-slate-500 text-sm">
-                        © {new Date().getFullYear()} Yukz Tracking Systems. Todos os direitos reservados.
+                        © {new Date().getFullYear()} LF Soluções. Todos os direitos reservados.
                     </p>
                     <div className="flex items-center gap-4">
                         <Link href="#" className="text-slate-400 hover:text-white transition-colors"><Twitter className="w-5 h-5" /></Link>

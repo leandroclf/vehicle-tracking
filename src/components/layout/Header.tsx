@@ -37,7 +37,7 @@ export default function Header({ className = '' }: HeaderProps) {
         </button>
 
         <Link href="/dashboard" className="text-xl font-bold text-blue-600 dark:text-blue-400">
-          YUKZ Track<span className="text-gray-800 dark:text-gray-300">er</span>
+          LF Soluções
         </Link>
 
         {/* Componente de Pesquisa Global - mais visível */}

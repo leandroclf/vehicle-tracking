@@ -30,7 +30,7 @@ export default function AnalyticsSection() {
                             <span className="text-violet-400">Decisões Estratégicas</span>
                         </h2>
                         <p className="text-slate-400 text-lg mb-8 leading-relaxed">
-                            Não basta apenas saber onde seus veículos estão. O Yukz analisa padrões de condução, consumo e manutenção para entregar insights que economizam dinheiro real.
+                            Não basta apenas saber onde seus veículos estão. A LF Soluções analisa padrões de condução, consumo e manutenção para entregar insights que ajudam a reduzir custos.
                         </p>
 
                         <ul className="space-y-4 mb-8">

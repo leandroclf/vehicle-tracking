@@ -49,7 +49,7 @@ import NotificationsBell from '@/components/notifications/NotificationsBell';
 <header className="flex items-center justify-between h-16">
   <div className="flex items-center space-x-4">
     <button onClick={toggleSidebar}>...</button>
-    <Link href="/dashboard">YUKZ Tracker</Link>
+    <Link href="/dashboard">LF Soluções</Link>
     <GlobalSearch className="ml-4 flex-1 max-w-md" />
   </div>
   

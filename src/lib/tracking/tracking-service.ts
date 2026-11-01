@@ -1,5 +1,5 @@
 /**
- * Serviço de Rastreamento GPS - Yukz Vehicle Tracking
+ * Serviço de Rastreamento GPS - LF Soluções Gestão de Frotas
  * 
  * Este serviço gerencia o rastreamento em tempo real dos veículos,
  * incluindo processamento de posições GPS, cálculo de viagens,

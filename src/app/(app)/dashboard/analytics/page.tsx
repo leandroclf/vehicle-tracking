@@ -7,7 +7,7 @@ import { Metadata } from 'next';
 import { AnalyticsDashboard } from '@/components/analytics/analytics-dashboard';
 
 export const metadata: Metadata = {
-  title: 'Dashboard Analytics | Yukz',
+  title: 'Dashboard Analytics | LF Soluções',
   description: 'Análise completa da performance da sua frota',
 };
 
