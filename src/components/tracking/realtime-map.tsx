@@ -1,5 +1,5 @@
 /**
- * Componente de Mapa em Tempo Real - Yukz Vehicle Tracking
+ * Componente de Mapa em Tempo Real - LF Soluções Gestão de Frotas
  * 
  * Este componente exibe um mapa interativo com rastreamento em tempo real
  * dos veículos, incluindo posições atuais, histórico de rotas e eventos.

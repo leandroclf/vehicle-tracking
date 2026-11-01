@@ -14,7 +14,7 @@ import Script from 'next/script'
 import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
-  title: 'YUKZ Tracker',
+  title: 'LF Soluções | Gestão de Frotas',
   description: 'Sistema de rastreamento de veículos',
 }
 

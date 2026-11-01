@@ -1,4 +1,6 @@
-# 🚗 Yukz - Sistema de Rastreamento Veicular
+# 🚗 LF Soluções | Gestão de Frotas
+
+Produto de propriedade da LF Soluções.
 
 ## 📋 Status do Projeto
 

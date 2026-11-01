@@ -44,7 +44,7 @@ export default function HowItWorks() {
             <div className="container px-4 md:px-6 mx-auto">
                 <div className="text-center mb-16">
                     <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                        Como Funciona o <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-500">Ecossistema Yukz</span>
+                        Como Funciona o <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-violet-500">Ecossistema LF Soluções</span>
                     </h2>
                     <p className="text-slate-400 text-lg max-w-2xl mx-auto">
                         Uma infraestrutura robusta e invisível que conecta sua frota à sua gestão em milissegundos.

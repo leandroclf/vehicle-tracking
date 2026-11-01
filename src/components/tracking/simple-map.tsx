@@ -1,5 +1,5 @@
 /**
- * Componente de Mapa Simples - Yukz Vehicle Tracking
+ * Componente de Mapa Simples - LF Soluções Gestão de Frotas
  * 
  * Este componente exibe um mapa simples com rastreamento em tempo real
  * dos veículos usando uma implementação básica sem Google Maps API.

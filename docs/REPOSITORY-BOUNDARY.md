@@ -1,21 +1,9 @@
-# Repository boundary and lineage
+# Limites do repositório
 
-Status: canonical candidate for the current Yukz vehicle-tracking product.
+Este é o repositório canônico do produto **Gestão de Frotas**, de propriedade da **LF Soluções**.
 
-## Canonical scope
+O produto mantém autenticação, painel de frotas, rastreamento em tempo real, mapas, geocercas, alertas, relatórios e as integrações necessárias para essas funções.
 
-This repository owns the actively maintained vehicle-tracking application: authentication, fleet dashboard, realtime tracking, maps, geofences, alerts, reports and the runtime/integration surface required by those capabilities.
+Identificadores técnicos históricos como `yukz-app-staging`, prefixos `yukz-` no armazenamento local e o emissor JWT existente foram preservados para evitar criar recursos de infraestrutura, perder preferências locais ou invalidar sessões. Eles não representam a marca atual do produto.
 
-## Related repositories
-
-- `vehicle-tracking-v2`: predecessor/reference implementation. Preserve unique connector or backend ideas until a capability comparison is complete; do not develop a second product line there.
-- `yukz-track-palma-5708cc2d`: early frontend/reference implementation, especially historical Google Maps/Supabase decisions.
-- `trakio-fleet-track`: prototype/reference; not a canonical Yukz runtime.
-- `site-yukz` and `site-yukz-v2`: company/API-marketplace web properties, not predecessors of this tracking runtime.
-- `yukz-flow`: workflow-automation product with a separate bounded context.
-
-## Evolution rule
-
-New vehicle-tracking work should land here unless a capability is intentionally extracted into a clearly reusable service. Before archiving a predecessor, compare connectors, migrations, operational scripts and documentation and migrate only unique capabilities that remain required.
-
-Do not merge unrelated Yukz products into this repository merely to reduce repository count.
+Novas alterações funcionais deste produto devem ser feitas aqui. Extrações para serviços compartilhados exigem um limite de domínio e contrato próprios.
